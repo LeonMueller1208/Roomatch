@@ -15,6 +15,8 @@ function App() {
     // Zustand für die Firebase Firestore-Datenbankinstanz
     const [db, setDb] = useState(null);
     // Zustand für die eindeutige App-ID (für Firestore-Pfade)
+    // Beachten Sie: appId wird hier nicht mehr direkt für die Sammlungspfade verwendet,
+    // da wir zu Root-Level-Sammlungen wechseln. Sie bleibt für andere zukünftige Zwecke erhalten.
     const [appId, setAppId] = useState(null);
     // Zustand für die Benutzer-ID des aktuell angemeldeten Benutzers
     const [userId, setUserId] = useState(null);
@@ -27,34 +29,33 @@ function App() {
     // Zustand für die Meldung nach dem Speichern (z.B. "Profil gespeichert!")
     const [saveMessage, setSaveMessage] = useState('');
 
+    // Firebase-Konfiguration
+    // Dies sind DEINE ECHTEN KONFIGURATIONSDETAILS, die du von Firebase kopiert hast.
+    // Bitte NICHT durch Platzhalter ersetzen, sondern durch deine kopierten Werte.
+    const firebaseConfig = {
+        apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <-- HIER DEINEN ECHTEN API-KEY EINSETZEN
+        authDomain: "mvp-roomatch.firebaseapp.com", // <-- HIER DEINE ECHTE AUTH-DOMAIN EINSETZEN
+        projectId: "mvp-roomatch", // <-- HIER DEINE ECHTE PROJECT-ID EINSETZEN
+        storageBucket: "mvp-roomatch.firebasestorage.app", // <-- HIER DEINEN ECHTEN STORAGE-BUCKET EINSETZEN
+        messagingSenderId: "190918526277", // <-- HIER DEINE ECHTE MESSAGING_SENDER_ID EINSETZEN
+        appId: "1:190918526277:web:268e07e2f1f326b8e86a2c", // <-- HIER DEINE ECHTE APP_ID EINSETZEN
+        measurementId: "G-5JPWLDD0ZC"
+    };
+
     // Initialisierung von Firebase (Firestore und Auth) und Setzen des Auth-State-Listeners
     useEffect(() => {
-        // **GEÄNDERT: Firebase-Konfiguration hierher verschoben**
-        const firebaseConfig = {
-            apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
-            authDomain: "mvp-roomatch.firebaseapp.com",
-            projectId: "mvp-roomatch",
-            storageBucket: "mvp-roomatch.firebasestorage.app",
-            messagingSenderId: "190918526277",
-            appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
-            measurementId: "G-5JPWLDD0ZC"
-        };
-
         let appInstance, dbInstance, authInstance;
 
         try {
-            // Firebase App initialisieren
             appInstance = initializeApp(firebaseConfig);
             dbInstance = getFirestore(appInstance);
             authInstance = getAuth(appInstance);
 
             setDb(dbInstance);
-            setAppId(firebaseConfig.projectId);
+            setAppId(firebaseConfig.projectId); // App ID bleibt hier aus Konsistenzgründen erhalten
 
-            // Anonyme Anmeldung und Setzen des Auth-State-Listeners
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (!user) {
-                    // Benutzer ist noch nicht angemeldet, anonym anmelden
                     try {
                         await signInAnonymously(authInstance);
                     } catch (signInError) {
@@ -73,18 +74,19 @@ function App() {
             };
         } catch (initError) {
             console.error("Fehler bei der Firebase-Initialisierung:", initError);
-            setError("Firebase konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut.");
+            setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
             setLoading(false);
         }
-    }, []); // GEÄNDERT: Abhängigkeits-Array ist jetzt wieder leer, da firebaseConfig im Hook definiert ist.
+    }, [firebaseConfig]); // firebaseConfig als Abhängigkeit beibehalten
 
 
     // Echtzeit-Datenabruf für Suchende-Profile von Firestore
     useEffect(() => {
-        if (!db || !userId || !appId) return;
+        if (!db || !userId) return; // appId wird hier nicht mehr direkt für den Pfad benötigt
 
         setLoading(true);
-        const searchersCollectionRef = collection(db, `artifacts/${appId}/public/data/searcherProfiles`);
+        // GEÄNDERT: Einfacherer Sammlungspfad 'searcherProfiles'
+        const searchersCollectionRef = collection(db, `searcherProfiles`);
         const q = query(searchersCollectionRef);
 
         const unsubscribeSearchers = onSnapshot(q, (snapshot) => {
@@ -101,14 +103,16 @@ function App() {
         });
 
         return () => unsubscribeSearchers();
-    }, [db, userId, appId]);
+    }, [db, userId]); // Abhängigkeiten angepasst
+
 
     // Echtzeit-Datenabruf für WG-Profile von Firestore
     useEffect(() => {
-        if (!db || !userId || !appId) return;
+        if (!db || !userId) return; // appId wird hier nicht mehr direkt für den Pfad benötigt
 
         setLoading(true);
-        const wgsCollectionRef = collection(db, `artifacts/${appId}/public/data/wgProfiles`);
+        // GEÄNDERT: Einfacherer Sammlungspfad 'wgProfiles'
+        const wgsCollectionRef = collection(db, `wgProfiles`);
         const q = query(wgsCollectionRef);
 
         const unsubscribeWGs = onSnapshot(q, (snapshot) => {
@@ -125,7 +129,7 @@ function App() {
         });
 
         return () => unsubscribeWGs();
-    }, [db, userId, appId]);
+    }, [db, userId]); // Abhängigkeiten angepasst
 
 
     // Match-Logik, die ausgelöst wird, wenn sich searcherProfiles oder wgProfiles ändern
@@ -162,12 +166,13 @@ function App() {
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
     const addSearcherProfile = async (profileData) => {
-        if (!db || !userId || !appId) {
+        if (!db || !userId) { // appId nicht mehr im Pfad
             setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
             return;
         }
         try {
-            await addDoc(collection(db, `artifacts/${appId}/public/data/searcherProfiles`), {
+            // GEÄNDERT: Einfacherer Sammlungspfad 'searcherProfiles'
+            await addDoc(collection(db, `searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -182,12 +187,13 @@ function App() {
 
     // Funktion zum Hinzufügen eines WG-Profils zu Firestore
     const addWGProfile = async (profileData) => {
-        if (!db || !userId || !appId) {
+        if (!db || !userId) { // appId nicht mehr im Pfad
             setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
             return;
         }
         try {
-            await addDoc(collection(db, `artifacts/${appId}/public/data/wgProfiles`), {
+            // GEÄNDERT: Einfacherer Sammlungspfad 'wgProfiles'
+            await addDoc(collection(db, `wgProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,

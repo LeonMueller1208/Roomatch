@@ -12,8 +12,6 @@ function App() {
     // Zustand für die Firebase Firestore-Datenbankinstanz
     const [db, setDb] = useState(null);
     // Zustand für die Firebase Auth-Instanz
-    const [auth, setAuth] = useState(null);
-    // Zustand für die eindeutige App-ID (für Firestore-Pfade)
     const [appId, setAppId] = useState(null);
     // Zustand für die Benutzer-ID des aktuell angemeldeten Benutzers
     const [userId, setUserId] = useState(null);
@@ -31,7 +29,6 @@ function App() {
         // Überprüfen, ob Firebase-Instanzen global verfügbar sind (von public/index.html)
         if (window.firestoreDb && window.firebaseAuth && window.appId) {
             setDb(window.firestoreDb);
-            setAuth(window.firebaseAuth);
             setAppId(window.appId);
 
             // Listener für Authentifizierungsstatusänderungen

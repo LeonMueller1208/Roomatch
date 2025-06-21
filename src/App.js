@@ -69,7 +69,8 @@ function App() {
                     }
                 }
                 // Wenn angemeldet (egal ob neu oder bestehend), die userId setzen
-                setUserId(authInstance.currentUser?.uid || crypto.randomUUID()); // Fallback für den Fall, dass uid noch nicht gesetzt ist
+                // Geändert: Verwende Date.now() und Math.random() für universelle Kompatibilität
+                setUserId(authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2));
                 setLoading(false); // Auth ist bereit, Laden beenden
             });
 

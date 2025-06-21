@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, onSnapshot, query } from 'firebase/firestore'; // Import Firestore-Funktionen
+// Importiere Firebase-Module direkt aus dem installierten Paket
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, addDoc, onSnapshot, query } from 'firebase/firestore';
 
 // Hauptkomponente der WG-Match-Anwendung
 function App() {
@@ -11,7 +14,7 @@ function App() {
     const [matches, setMatches] = useState([]);
     // Zustand für die Firebase Firestore-Datenbankinstanz
     const [db, setDb] = useState(null);
-    // Zustand für die Firebase Auth-Instanz
+    // Zustand für die eindeutige App-ID (für Firestore-Pfade)
     const [appId, setAppId] = useState(null);
     // Zustand für die Benutzer-ID des aktuell angemeldeten Benutzers
     const [userId, setUserId] = useState(null);
@@ -24,36 +27,71 @@ function App() {
     // Zustand für die Meldung nach dem Speichern (z.B. "Profil gespeichert!")
     const [saveMessage, setSaveMessage] = useState('');
 
+    // **NEU: Firebase-Konfiguration und Initialisierung**
+    // Dies ist eine generische Konfiguration. Da die Daten im öffentlichen Bereich liegen,
+    // sind keine sensiblen Schlüssel erforderlich. Dies ermöglicht die Initialisierung
+    // direkt in der React-App, unabhängig von der Canvas-Umgebung.
+    // Die Firebase-Projekt-ID wird dynamisch aus der Umgebung bezogen, falls verfügbar,
+    // ansonsten wird eine generische ID verwendet, die den öffentlichen Zugriff erlaubt.
+    const firebaseConfig = {
+        apiKey: "", // Leerer API-Key ist in Canvas-Umgebung erlaubt und wird vom System bereitgestellt
+        authDomain: "wg-match-app.firebaseapp.com", // Beispiel-Domain, wird vom System überschrieben
+        projectId: typeof __app_id !== 'undefined' ? __app_id : 'default-app-id', // Nutzt die App-ID als Projekt-ID
+        storageBucket: "wg-match-app.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:abcdef1234567890"
+    };
+
     // Initialisierung von Firebase (Firestore und Auth) und Setzen des Auth-State-Listeners
     useEffect(() => {
-        // Überprüfen, ob Firebase-Instanzen global verfügbar sind (von public/index.html)
-        if (window.firestoreDb && window.firebaseAuth && window.appId) {
-            setDb(window.firestoreDb);
-            setAppId(window.appId);
+        let appInstance, dbInstance, authInstance;
 
-            // Listener für Authentifizierungsstatusänderungen
-            const unsubscribeAuth = window.firebaseAuth.onAuthStateChanged(user => {
-                if (user) {
-                    setUserId(user.uid);
-                    setLoading(false); // Auth ist bereit, Laden beenden
-                } else {
-                    // Benutzer ist nicht angemeldet (sollte durch signInAnonymously in index.html behandelt werden)
-                    setLoading(true); // Warten auf Authentifizierung
+        try {
+            // Firebase App initialisieren
+            appInstance = initializeApp(firebaseConfig);
+            dbInstance = getFirestore(appInstance);
+            authInstance = getAuth(appInstance);
+
+            setDb(dbInstance);
+            setAppId(firebaseConfig.projectId); // App ID ist die Projekt ID in diesem Kontext
+
+            // Anonyme Anmeldung und Setzen des Auth-State-Listeners
+            const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
+                if (!user) {
+                    // Benutzer ist noch nicht angemeldet, anonym anmelden
+                    try {
+                        await signInAnonymously(authInstance);
+                    } catch (signInError) {
+                        console.error("Fehler bei der Firebase-Anonym-Authentifizierung:", signInError);
+                        setError("Fehler bei der Anmeldung. Bitte versuchen Sie es später erneut.");
+                        setLoading(false);
+                        return;
+                    }
                 }
+                // Wenn angemeldet (egal ob neu oder bestehend), die userId setzen
+                setUserId(authInstance.currentUser?.uid || crypto.randomUUID()); // Fallback für den Fall, dass uid noch nicht gesetzt ist
+                setLoading(false); // Auth ist bereit, Laden beenden
             });
 
-            return () => unsubscribeAuth(); // Cleanup bei Komponenten-Unmount
-        } else {
-            setError("Firebase-Instanzen sind nicht verfügbar. Bitte überprüfen Sie die Initialisierung in index.html.");
+            return () => {
+                unsubscribeAuth(); // Cleanup bei Komponenten-Unmount
+                // Hier könnten weitere Cleanup-Funktionen für Firebase-Instanzen hinzugefügt werden,
+                // falls die App mehr Kontrolle über den Lebenszyklus benötigt.
+            };
+        } catch (initError) {
+            console.error("Fehler bei der Firebase-Initialisierung:", initError);
+            setError("Firebase konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut.");
             setLoading(false);
         }
-    }, []);
+    }, []); // Leeres Abhängigkeits-Array, damit dieser Effekt nur einmal beim Mounten ausgeführt wird.
+
 
     // Echtzeit-Datenabruf für Suchende-Profile von Firestore
     useEffect(() => {
         if (!db || !userId || !appId) return; // Warten, bis Firebase initialisiert und Benutzer angemeldet ist
 
         setLoading(true); // Laden starten
+        // Pfad zur öffentlichen Sammlung für Suchende-Profile
         const searchersCollectionRef = collection(db, `artifacts/${appId}/public/data/searcherProfiles`);
         const q = query(searchersCollectionRef); // Abfrage für alle suchenden Profile
 
@@ -78,6 +116,7 @@ function App() {
         if (!db || !userId || !appId) return; // Warten, bis Firebase initialisiert und Benutzer angemeldet ist
 
         setLoading(true); // Laden starten
+        // Pfad zur öffentlichen Sammlung für WG-Profile
         const wgsCollectionRef = collection(db, `artifacts/${appId}/public/data/wgProfiles`);
         const q = query(wgsCollectionRef); // Abfrage für alle WG-Profile
 

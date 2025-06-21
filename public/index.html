@@ -26,58 +26,6 @@
     -->
     <title>React App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
-<script type="module">
-    // Firebase wird hier initialisiert und die Instanzen für die Verwendung in der App verfügbar gemacht.
-    // Die globalen Variablen __app_id, __firebase_config und __initial_auth_token werden von der Canvas-Umgebung bereitgestellt.
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // Firebase-Konfiguration aus der Umgebung, falls vorhanden
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-    // App-ID aus der Umgebung, falls vorhanden
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    // Initialer Auth-Token aus der Umgebung, falls vorhanden
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-    // Nur initialisieren, wenn eine gültige Konfiguration vorliegt
-    if (Object.keys(firebaseConfig).length > 0) {
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        // Machen Sie die Firebase-Instanzen und die App-ID global verfügbar,
-        // damit die React-App darauf zugreifen kann.
-        window.firebaseApp = app;
-        window.firestoreDb = db;
-        window.firebaseAuth = auth;
-        window.appId = appId;
-
-        // Authentifizierung des Benutzers
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                try {
-                    if (initialAuthToken) {
-                        // Versuchen Sie, sich mit dem bereitgestellten Token anzumelden
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        // Wenn kein Token vorhanden ist, melden Sie sich anonym an
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Fehler bei der Firebase-Authentifizierung:", error);
-                }
-            }
-            // Zeigt die Benutzer-ID in der Konsole an (optional)
-            console.log("Firebase User ID:", auth.currentUser?.uid || "Nicht angemeldet");
-        });
-    } else {
-        console.warn("Firebase-Konfiguration nicht gefunden. Firebase wird nicht initialisiert.");
-    }
-</script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

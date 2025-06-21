@@ -27,18 +27,18 @@ function App() {
     // Zustand für die Meldung nach dem Speichern (z.B. "Profil gespeichert!")
     const [saveMessage, setSaveMessage] = useState('');
 
-    // **Firebase-Konfiguration und Initialisierung**
-    const firebaseConfig = {
-        apiKey: "", // Leerer API-Key ist in Canvas-Umgebung erlaubt und wird vom System bereitgestellt
-        authDomain: "wg-match-app.firebaseapp.com",
-        projectId: 'wg-match-app-public', // Feste Projekt-ID, die auf Netlify funktioniert
-        storageBucket: "wg-match-app.appspot.com",
-        messagingSenderId: "1234567890",
-        appId: "1:1234567890:web:abcdef1234567890"
-    };
-
     // Initialisierung von Firebase (Firestore und Auth) und Setzen des Auth-State-Listeners
     useEffect(() => {
+        // **GEÄNDERT: Firebase-Konfiguration hierher verschoben**
+        const firebaseConfig = {
+            apiKey: "", // Leerer API-Key ist in Canvas-Umgebung erlaubt und wird vom System bereitgestellt
+            authDomain: "wg-match-app.firebaseapp.com",
+            projectId: 'wg-match-app-public', // Feste Projekt-ID, die auf Netlify funktioniert
+            storageBucket: "wg-match-app.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef1234567890"
+        };
+
         let appInstance, dbInstance, authInstance;
 
         try {
@@ -75,7 +75,7 @@ function App() {
             setError("Firebase konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut.");
             setLoading(false);
         }
-    }, [firebaseConfig]); // GEÄNDERT: firebaseConfig als Abhängigkeit hinzugefügt
+    }, []); // GEÄNDERT: Abhängigkeits-Array ist jetzt wieder leer, da firebaseConfig im Hook definiert ist.
 
 
     // Echtzeit-Datenabruf für Suchende-Profile von Firestore

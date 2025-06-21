@@ -27,17 +27,11 @@ function App() {
     // Zustand für die Meldung nach dem Speichern (z.B. "Profil gespeichert!")
     const [saveMessage, setSaveMessage] = useState('');
 
-    // **NEU: Firebase-Konfiguration und Initialisierung**
-    // Dies ist eine generische Konfiguration. Da die Daten im öffentlichen Bereich liegen,
-    // sind keine sensiblen Schlüssel erforderlich. Dies ermöglicht die Initialisierung
-    // direkt in der React-App, unabhängig von der Canvas-Umgebung.
-    // Die Firebase-Projekt-ID wird dynamisch aus der Umgebung bezogen, falls verfügbar,
-    // ansonsten wird eine generische ID verwendet, die den öffentlichen Zugriff erlaubt.
+    // **Firebase-Konfiguration und Initialisierung**
     const firebaseConfig = {
         apiKey: "", // Leerer API-Key ist in Canvas-Umgebung erlaubt und wird vom System bereitgestellt
-        authDomain: "wg-match-app.firebaseapp.com", // Beispiel-Domain, wird vom System überschrieben
-        // GEÄNDERT: Feste Projekt-ID, die auf Netlify funktioniert
-        projectId: 'wg-match-app-public',
+        authDomain: "wg-match-app.firebaseapp.com",
+        projectId: 'wg-match-app-public', // Feste Projekt-ID, die auf Netlify funktioniert
         storageBucket: "wg-match-app.appspot.com",
         messagingSenderId: "1234567890",
         appId: "1:1234567890:web:abcdef1234567890"
@@ -54,7 +48,6 @@ function App() {
             authInstance = getAuth(appInstance);
 
             setDb(dbInstance);
-            // GEÄNDERT: App ID ist jetzt die feste Projekt-ID
             setAppId(firebaseConfig.projectId);
 
             // Anonyme Anmeldung und Setzen des Auth-State-Listeners
@@ -70,89 +63,78 @@ function App() {
                         return;
                     }
                 }
-                // Wenn angemeldet (egal ob neu oder bestehend), die userId setzen
-                // Geändert: Verwende Date.now() und Math.random() für universelle Kompatibilität
                 setUserId(authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2));
-                setLoading(false); // Auth ist bereit, Laden beenden
+                setLoading(false);
             });
 
             return () => {
-                unsubscribeAuth(); // Cleanup bei Komponenten-Unmount
-                // Hier könnten weitere Cleanup-Funktionen für Firebase-Instanzen hinzugefügt werden,
-                // falls die App mehr Kontrolle über den Lebenszyklus benötigt.
+                unsubscribeAuth();
             };
         } catch (initError) {
             console.error("Fehler bei der Firebase-Initialisierung:", initError);
             setError("Firebase konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut.");
             setLoading(false);
         }
-    }, []); // Leeres Abhängigkeits-Array, damit dieser Effekt nur einmal beim Mounten ausgeführt wird.
+    }, [firebaseConfig]); // GEÄNDERT: firebaseConfig als Abhängigkeit hinzugefügt
 
 
     // Echtzeit-Datenabruf für Suchende-Profile von Firestore
     useEffect(() => {
-        if (!db || !userId || !appId) return; // Warten, bis Firebase initialisiert und Benutzer angemeldet ist
+        if (!db || !userId || !appId) return;
 
-        setLoading(true); // Laden starten
-        // Pfad zur öffentlichen Sammlung für Suchende-Profile
+        setLoading(true);
         const searchersCollectionRef = collection(db, `artifacts/${appId}/public/data/searcherProfiles`);
-        const q = query(searchersCollectionRef); // Abfrage für alle suchenden Profile
+        const q = query(searchersCollectionRef);
 
         const unsubscribeSearchers = onSnapshot(q, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({
-                id: doc.id, // Firestore-Dokument-ID
-                ...doc.data() // Daten des Dokuments
+                id: doc.id,
+                ...doc.data()
             }));
             setSearcherProfiles(profiles);
-            setLoading(false); // Laden beenden
+            setLoading(false);
         }, (err) => {
             console.error("Fehler beim Abrufen der Suchenden-Profile:", err);
             setError("Fehler beim Laden der Suchenden-Profile.");
             setLoading(false);
         });
 
-        return () => unsubscribeSearchers(); // Cleanup bei Komponenten-Unmount
-    }, [db, userId, appId]); // Abhängigkeiten: db, userId und appId
+        return () => unsubscribeSearchers();
+    }, [db, userId, appId]);
 
     // Echtzeit-Datenabruf für WG-Profile von Firestore
     useEffect(() => {
-        if (!db || !userId || !appId) return; // Warten, bis Firebase initialisiert und Benutzer angemeldet ist
+        if (!db || !userId || !appId) return;
 
-        setLoading(true); // Laden starten
-        // Pfad zur öffentlichen Sammlung für WG-Profile
+        setLoading(true);
         const wgsCollectionRef = collection(db, `artifacts/${appId}/public/data/wgProfiles`);
-        const q = query(wgsCollectionRef); // Abfrage für alle WG-Profile
+        const q = query(wgsCollectionRef);
 
         const unsubscribeWGs = onSnapshot(q, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({
-                id: doc.id, // Firestore-Dokument-ID
-                ...doc.data() // Daten des Dokuments
+                id: doc.id,
+                ...doc.data()
             }));
             setWgProfiles(profiles);
-            setLoading(false); // Laden beenden
+            setLoading(false);
         }, (err) => {
             console.error("Fehler beim Abrufen der WG-Profile:", err);
             setError("Fehler beim Laden der WG-Profile.");
             setLoading(false);
         });
 
-        return () => unsubscribeWGs(); // Cleanup bei Komponenten-Unmount
-    }, [db, userId, appId]); // Abhängigkeiten: db, userId und appId
+        return () => unsubscribeWGs();
+    }, [db, userId, appId]);
 
 
     // Match-Logik, die ausgelöst wird, wenn sich searcherProfiles oder wgProfiles ändern
     useEffect(() => {
         const calculateMatches = () => {
             const newMatches = [];
-            // Iteriere durch alle suchenden Profile
             searcherProfiles.forEach(searcher => {
-                // Filtere WG-Profile, die zum suchenden Profil passen
                 const matchingWGs = wgProfiles.filter(wg => {
-                    // Beispiel-Matching-Logik: Alter, Geschlecht und Interessen
                     const ageMatch = !searcher.age || !wg.age || (searcher.age >= wg.minAge && searcher.age <= wg.maxAge);
                     const genderMatch = !searcher.gender || !wg.genderPreference || wg.genderPreference === 'egal' || searcher.gender === wg.genderPreference;
-
-                    // Interessen-Matching: Überlappende Interessen
                     const searcherInterests = searcher.interests ? searcher.interests.split(',').map(i => i.trim().toLowerCase()) : [];
                     const wgInterests = wg.interests ? wg.interests.split(',').map(i => i.trim().toLowerCase()) : [];
                     const interestsMatch = searcherInterests.some(si => wgInterests.includes(si));
@@ -173,9 +155,9 @@ function App() {
         if (searcherProfiles.length > 0 || wgProfiles.length > 0) {
             calculateMatches();
         } else {
-            setMatches([]); // Keine Profile, keine Matches
+            setMatches([]);
         }
-    }, [searcherProfiles, wgProfiles]); // Abhängigkeiten: searcherProfiles, wgProfiles
+    }, [searcherProfiles, wgProfiles]);
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
     const addSearcherProfile = async (profileData) => {
@@ -184,14 +166,13 @@ function App() {
             return;
         }
         try {
-            // Speichere Profil im öffentlichen Bereich, damit es von allen Geräten gesehen werden kann
             await addDoc(collection(db, `artifacts/${appId}/public/data/searcherProfiles`), {
                 ...profileData,
-                createdAt: new Date(), // Zeitstempel für Erstellungsdatum
-                createdBy: userId, // Benutzer-ID des Erstellers
+                createdAt: new Date(),
+                createdBy: userId,
             });
             setSaveMessage('Suchenden-Profil erfolgreich gespeichert!');
-            setTimeout(() => setSaveMessage(''), 3000); // Nachricht nach 3 Sekunden ausblenden
+            setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error("Fehler beim Hinzufügen des Suchenden-Profils: ", e);
             setError("Fehler beim Speichern des Suchenden-Profils.");
@@ -205,14 +186,13 @@ function App() {
             return;
         }
         try {
-            // Speichere Profil im öffentlichen Bereich
             await addDoc(collection(db, `artifacts/${appId}/public/data/wgProfiles`), {
                 ...profileData,
-                createdAt: new Date(), // Zeitstempel für Erstellungsdatum
-                createdBy: userId, // Benutzer-ID des Erstellers
+                createdAt: new Date(),
+                createdBy: userId,
             });
             setSaveMessage('WG-Profil erfolgreich gespeichert!');
-            setTimeout(() => setSaveMessage(''), 3000); // Nachricht nach 3 Sekunden ausblenden
+            setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error("Fehler beim Hinzufügen des WG-Profils: ", e);
             setError("Fehler beim Speichern des WG-Profils.");

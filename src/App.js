@@ -31,12 +31,13 @@ function App() {
     useEffect(() => {
         // **GEÄNDERT: Firebase-Konfiguration hierher verschoben**
         const firebaseConfig = {
-            apiKey: "", // Leerer API-Key ist in Canvas-Umgebung erlaubt und wird vom System bereitgestellt
-            authDomain: "wg-match-app.firebaseapp.com",
-            projectId: 'wg-match-app-public', // Feste Projekt-ID, die auf Netlify funktioniert
-            storageBucket: "wg-match-app.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef1234567890"
+            apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
+            authDomain: "mvp-roomatch.firebaseapp.com",
+            projectId: "mvp-roomatch",
+            storageBucket: "mvp-roomatch.firebasestorage.app",
+            messagingSenderId: "190918526277",
+            appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
+            measurementId: "G-5JPWLDD0ZC"
         };
 
         let appInstance, dbInstance, authInstance;

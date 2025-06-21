@@ -36,7 +36,8 @@ function App() {
     const firebaseConfig = {
         apiKey: "", // Leerer API-Key ist in Canvas-Umgebung erlaubt und wird vom System bereitgestellt
         authDomain: "wg-match-app.firebaseapp.com", // Beispiel-Domain, wird vom System überschrieben
-        projectId: typeof __app_id !== 'undefined' ? __app_id : 'default-app-id', // Nutzt die App-ID als Projekt-ID
+        // GEÄNDERT: Feste Projekt-ID, die auf Netlify funktioniert
+        projectId: 'wg-match-app-public',
         storageBucket: "wg-match-app.appspot.com",
         messagingSenderId: "1234567890",
         appId: "1:1234567890:web:abcdef1234567890"
@@ -53,7 +54,8 @@ function App() {
             authInstance = getAuth(appInstance);
 
             setDb(dbInstance);
-            setAppId(firebaseConfig.projectId); // App ID ist die Projekt ID in diesem Kontext
+            // GEÄNDERT: App ID ist jetzt die feste Projekt-ID
+            setAppId(firebaseConfig.projectId);
 
             // Anonyme Anmeldung und Setzen des Auth-State-Listeners
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {

@@ -283,11 +283,6 @@ function App() {
             location: '', // Ort/Stadtteil
         });
 
-        // GEÄNDERT: Unbenutzte Variablen entfernt
-        // const commonFields = ['location'];
-        // const seekerOnlyFields = ['age', 'maxRent', 'pets', 'lookingFor', 'gender'];
-        // const providerOnlyFields = ['minAge', 'maxAge', 'description', 'rent', 'roomType', 'petsAllowed', 'avgAge', 'lookingForInFlatmate', 'genderPreference'];
-
         const handleChange = (e) => {
             const { name, value, type, checked } = e.target;
             if (type === 'checkbox') {
@@ -691,9 +686,10 @@ function App() {
                                 <h3 className="text-xl font-semibold text-blue-700 mb-3">
                                     Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                 </h3>
+                                {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
                                 <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
-                                <p className="text-gray-700 mb-4">Interessen: {match.searcher.interests?.join(', ') || 'N/A'}</p>
-                                <p className="text-gray-700 mb-4">Persönlichkeit: {match.searcher.personalityTraits?.join(', ') || 'N/A'}</p>
+                                <p className="text-gray-700 mb-4">Interessen: {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
+                                <p className="text-gray-700 mb-4">Persönlichkeit: {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
 
 
                                 <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
@@ -702,8 +698,9 @@ function App() {
                                         <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
                                             <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
                                             <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                            <p className="text-sm text-gray-600">Interessen: {wgMatch.wg.interests?.join(', ') || 'N/A'}</p>
-                                            <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {wgMatch.wg.personalityTraits?.join(', ') || 'N/A'}</p>
+                                            {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
+                                            <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -724,8 +721,9 @@ function App() {
                                 <p className="font-semibold text-purple-700">Name: {profile.name}</p>
                                 <p className="text-sm text-gray-600">Alter: {profile.age}</p>
                                 <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
-                                <p className="text-sm text-gray-600">Interessen: {profile.interests?.join(', ') || 'N/A'}</p>
-                                <p className="text-sm text-gray-600">Persönlichkeit: {profile.personalityTraits?.join(', ') || 'N/A'}</p>
+                                {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
+                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                             </div>
@@ -745,8 +743,9 @@ function App() {
                                 <p className="font-semibold text-green-700">WG-Name: {profile.name}</p> {/* Name der WG */}
                                 <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
                                 <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
-                                <p className="text-sm text-gray-600">Interessen: {profile.interests?.join(', ') || 'N/A'}</p>
-                                <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {profile.personalityTraits?.join(', ') || 'N/A'}</p>
+                                {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
+                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                             </div>

@@ -145,8 +145,10 @@ function App() {
 
                     // 3. Persönlichkeitsmerkmale (Übereinstimmung)
                     // Mittlere Priorität
-                    const searcherTraits = searcher.personalityTraits || [];
-                    const wgTraits = wg.personalityTraits || []; // Für WG-Profile jetzt auch 'personalityTraits'
+                    // GEÄNDERT: Sicherstellen, dass personalityTraits ein Array ist
+                    const searcherTraits = Array.isArray(searcher.personalityTraits) ? searcher.personalityTraits : (searcher.personalityTraits ? String(searcher.personalityTraits).split(',').map(s => s.trim()) : []);
+                    const wgTraits = Array.isArray(wg.personalityTraits) ? wg.personalityTraits : (wg.personalityTraits ? String(wg.personalityTraits).split(',').map(s => s.trim()) : []);
+                    
                     searcherTraits.forEach(trait => {
                         if (wgTraits.includes(trait)) {
                             score += 5;
@@ -155,8 +157,10 @@ function App() {
 
                     // 4. Interessen (Überlappung)
                     // Mittlere Priorität
-                    const searcherInterests = searcher.interests || [];
-                    const wgInterests = wg.interests || []; // Für WG-Profile jetzt auch 'interests'
+                    // GEÄNDERT: Sicherstellen, dass interests ein Array ist
+                    const searcherInterests = Array.isArray(searcher.interests) ? searcher.interests : (searcher.interests ? String(searcher.interests).split(',').map(s => s.trim()) : []);
+                    const wgInterests = Array.isArray(wg.interests) ? wg.interests : (wg.interests ? String(wg.interests).split(',').map(s => s.trim()) : []);
+                    
                     searcherInterests.forEach(interest => {
                         if (wgInterests.includes(interest)) {
                             score += 3;

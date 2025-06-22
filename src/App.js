@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-// Importiere Firebase-Module direkt aus dem installierten Paket
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query } from 'firebase/firestore';
 
-// **Firebase-Konfiguration außerhalb der Komponente definiert**
-// Dies stellt sicher, dass firebaseConfig nur einmal initialisiert wird
-// und keine Abhängigkeitsprobleme im useEffect verursacht.
+// Firebase-Konfiguration
 // DEINE ECHTEN FIREBASE-KONFIGURATIONSDATEN SIND HIER EINGEFÜGT!
 const firebaseConfig = {
     apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
@@ -18,29 +15,23 @@ const firebaseConfig = {
     measurementId: "G-5JPWLDD0ZC"
 };
 
+// Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
+const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher'];
+const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming'];
+
 // Hauptkomponente der WG-Match-Anwendung
 function App() {
-    // Zustand für die Liste der suchenden Profile
     const [searcherProfiles, setSearcherProfiles] = useState([]);
-    // Zustand für die Liste der WG-Angebote
     const [wgProfiles, setWgProfiles] = useState([]);
-    // Zustand für die aktuell angezeigten Matches
     const [matches, setMatches] = useState([]);
-    // Zustand für die Firebase Firestore-Datenbankinstanz
     const [db, setDb] = useState(null);
-    // GEÄNDERT: appId-State-Variable entfernt, da nicht mehr benötigt und ESLint-Fehler verursacht hat.
-    // Die projectId aus firebaseConfig wird direkt für die Firestore-Pfade verwendet.
     const [userId, setUserId] = useState(null);
-    // Zustand für den Ladezustand der Firebase-Initialisierung und Daten
     const [loading, setLoading] = useState(true);
-    // Zustand für Fehlermeldungen
     const [error, setError] = useState(null);
-    // Zustand für die Umschaltung zwischen Suchenden- und WG-Formular
-    const [showSearcherForm, setShowSearcherForm] = useState(true);
-    // Zustand für die Meldung nach dem Speichern (z.B. "Profil gespeichert!")
+    const [showSeekerForm, setShowSeekerForm] = useState(true); // Steuert, welches Formular angezeigt wird
     const [saveMessage, setSaveMessage] = useState('');
 
-    // Initialisierung von Firebase (Firestore und Auth) und Setzen des Auth-State-Listeners
+    // Firebase-Initialisierung und Authentifizierung
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
 
@@ -50,8 +41,6 @@ function App() {
             authInstance = getAuth(appInstance);
 
             setDb(dbInstance);
-            // GEÄNDERT: 'currentAppId' wurde entfernt, da es nicht verwendet wurde.
-            // Die projectId aus firebaseConfig wird bei Bedarf direkt genutzt.
 
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (!user) {
@@ -76,15 +65,14 @@ function App() {
             setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
             setLoading(false);
         }
-    }, []); // Abhängigkeits-Array ist leer, da firebaseConfig außerhalb der Komponente stabil ist.
-
+    }, []);
 
     // Echtzeit-Datenabruf für Suchende-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
 
         setLoading(true);
-        const searchersCollectionRef = collection(db, `searcherProfiles`); // Vereinfachter Pfad
+        const searchersCollectionRef = collection(db, `searcherProfiles`);
         const q = query(searchersCollectionRef);
 
         const unsubscribeSearchers = onSnapshot(q, (snapshot) => {
@@ -103,13 +91,12 @@ function App() {
         return () => unsubscribeSearchers();
     }, [db, userId]);
 
-
     // Echtzeit-Datenabruf für WG-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
 
         setLoading(true);
-        const wgsCollectionRef = collection(db, `wgProfiles`); // Vereinfachter Pfad
+        const wgsCollectionRef = collection(db, `wgProfiles`);
         const q = query(wgsCollectionRef);
 
         const unsubscribeWGs = onSnapshot(q, (snapshot) => {
@@ -128,21 +115,92 @@ function App() {
         return () => unsubscribeWGs();
     }, [db, userId]);
 
-
-    // Match-Logik, die ausgelöst wird, wenn sich searcherProfiles oder wgProfiles ändern
+    // **Verbesserte Match-Logik**
     useEffect(() => {
         const calculateMatches = () => {
             const newMatches = [];
             searcherProfiles.forEach(searcher => {
-                const matchingWGs = wgProfiles.filter(wg => {
-                    const ageMatch = !searcher.age || !wg.age || (searcher.age >= wg.minAge && searcher.age <= wg.maxAge);
-                    const genderMatch = !searcher.gender || !wg.genderPreference || wg.genderPreference === 'egal' || searcher.gender === wg.genderPreference;
-                    const searcherInterests = searcher.interests ? searcher.interests.split(',').map(i => i.trim().toLowerCase()) : [];
-                    const wgInterests = wg.interests ? wg.interests.split(',').map(i => i.trim().toLowerCase()) : [];
-                    const interestsMatch = searcherInterests.some(si => wgInterests.includes(si));
+                const matchingWGs = wgProfiles.map(wg => {
+                    let score = 0;
 
-                    return ageMatch && genderMatch && interestsMatch;
-                });
+                    // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
+                    // Hohe Priorität: Muss im Bereich liegen
+                    if (searcher.age && wg.minAge && wg.maxAge) {
+                        if (searcher.age >= wg.minAge && searcher.age <= wg.maxAge) {
+                            score += 20;
+                        } else {
+                            score -= 15; // Deutlicher Abzug, wenn Alter nicht passt
+                        }
+                    }
+
+                    // 2. Geschlechtspräferenz
+                    // Hohe Priorität
+                    if (searcher.gender && wg.genderPreference) {
+                        if (wg.genderPreference === 'egal' || searcher.gender === wg.genderPreference) {
+                            score += 10;
+                        } else {
+                            score -= 10; // Abzug, wenn Geschlecht nicht passt
+                        }
+                    }
+
+                    // 3. Persönlichkeitsmerkmale (Übereinstimmung)
+                    // Mittlere Priorität
+                    const searcherTraits = searcher.personalityTraits || [];
+                    const wgTraits = wg.personalityTraits || []; // Für WG-Profile jetzt auch 'personalityTraits'
+                    searcherTraits.forEach(trait => {
+                        if (wgTraits.includes(trait)) {
+                            score += 5;
+                        }
+                    });
+
+                    // 4. Interessen (Überlappung)
+                    // Mittlere Priorität
+                    const searcherInterests = searcher.interests || [];
+                    const wgInterests = wg.interests || []; // Für WG-Profile jetzt auch 'interests'
+                    searcherInterests.forEach(interest => {
+                        if (wgInterests.includes(interest)) {
+                            score += 3;
+                        }
+                    });
+
+                    // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
+                    // Hohe Priorität
+                    if (searcher.maxRent && wg.rent) {
+                        if (searcher.maxRent >= wg.rent) {
+                            score += 15;
+                        } else {
+                            score -= 15; // Deutlicher Abzug, wenn Miete zu hoch
+                        }
+                    }
+
+                    // 6. Haustiere (Match)
+                    // Mittlere Priorität
+                    if (searcher.pets && wg.petsAllowed) {
+                        if (searcher.pets === 'ja' && wg.petsAllowed === 'ja') {
+                            score += 8;
+                        } else if (searcher.pets === 'ja' && wg.petsAllowed === 'nein') {
+                            score -= 8; // Abzug, wenn Haustiere nicht erlaubt sind
+                        }
+                    }
+
+                    // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
+                    // Niedrigere Priorität, für Textübereinstimmung
+                    const seekerLookingFor = (searcher.lookingFor || '').toLowerCase();
+                    const wgDescription = (wg.description || '').toLowerCase();
+                    const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
+
+                    const seekerKeywords = seekerLookingFor.split(' ').filter(word => word.length > 2);
+                    seekerKeywords.forEach(keyword => {
+                        if (wgDescription.includes(keyword) || wgLookingForInFlatmate.includes(keyword)) {
+                            score += 1;
+                        }
+                    });
+
+                    return { wg, score };
+                }).filter(match => match.score > 0); // Nur Matches mit positivem Score anzeigen
+
+                // Sortiere die passenden WGs nach Score für diesen Suchenden
+                matchingWGs.sort((a, b) => b.score - a.score);
 
                 if (matchingWGs.length > 0) {
                     newMatches.push({
@@ -160,6 +218,7 @@ function App() {
             setMatches([]);
         }
     }, [searcherProfiles, wgProfiles]);
+
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
     const addSearcherProfile = async (profileData) => {
@@ -201,160 +260,363 @@ function App() {
         }
     };
 
-    // Komponenten für Formulare und Anzeige
-    const SearcherForm = ({ onSubmit }) => {
-        const [name, setName] = useState('');
-        const [age, setAge] = useState('');
-        const [gender, setGender] = useState('männlich');
-        const [interests, setInterests] = useState('');
+    // **Vereinheitlichte Profilformular-Komponente**
+    const ProfileForm = ({ onSubmit, type }) => {
+        const [formState, setFormState] = useState({
+            name: '', // Für Suchender, Name der WG für Anbieter
+            age: '', // Alter Suchender
+            minAge: '', // Min-Alter Anbieter
+            maxAge: '', // Max-Alter Anbieter
+            gender: 'männlich', // Geschlecht Suchender
+            genderPreference: 'egal', // Geschlechtspräferenz Anbieter
+            personalityTraits: [],
+            interests: [],
+            maxRent: '', // Max. Miete Suchender
+            pets: 'egal', // Haustiere Suchender
+            lookingFor: '', // Was sucht Suchender
+            description: '', // Beschreibung WG
+            rent: '', // Miete WG
+            roomType: 'Einzelzimmer', // Zimmertyp WG
+            petsAllowed: 'egal', // Haustiere erlaubt Anbieter
+            avgAge: '', // Durchschnittsalter Bewohner Anbieter
+            lookingForInFlatmate: '', // Was sucht WG im Mitbewohner
+            location: '', // Ort/Stadtteil
+        });
 
-        const handleSubmit = (e) => {
-            e.preventDefault();
-            onSubmit({ name, age: parseInt(age), gender, interests });
-            setName('');
-            setAge('');
-            setGender('männlich');
-            setInterests('');
+        // Felder, die für beide Typen gleich sind
+        const commonFields = ['location'];
+
+        // Felder, die nur für Suchende relevant sind
+        const seekerOnlyFields = ['age', 'maxRent', 'pets', 'lookingFor', 'gender'];
+
+        // Felder, die nur für Anbieter relevant sind
+        const providerOnlyFields = ['minAge', 'maxAge', 'description', 'rent', 'roomType', 'petsAllowed', 'avgAge', 'lookingForInFlatmate', 'genderPreference'];
+
+        const handleChange = (e) => {
+            const { name, value, type, checked } = e.target;
+            if (type === 'checkbox') {
+                const currentValues = formState[name] || [];
+                if (checked) {
+                    setFormState({ ...formState, [name]: [...currentValues, value] });
+                } else {
+                    setFormState({ ...formState, [name]: currentValues.filter((item) => item !== value) });
+                }
+            } else {
+                setFormState({ ...formState, [name]: value });
+            }
         };
 
-        return (
-            <form onSubmit={handleSubmit} className="p-6 bg-white rounded-xl shadow-lg space-y-4">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Suchenden-Profil erstellen</h2>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Name:</label>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                </div>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Alter:</label>
-                    <input
-                        type="number"
-                        value={age}
-                        onChange={(e) => setAge(e.target.value)}
-                        required
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                </div>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Geschlecht:</label>
-                    <select
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value)}
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    >
-                        <option value="männlich">Männlich</option>
-                        <option value="weiblich">Weiblich</option>
-                        <option value="divers">Divers</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Interessen (kommagetrennt):</label>
-                    <input
-                        type="text"
-                        value={interests}
-                        onChange={(e) => setInterests(e.target.value)}
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                </div>
-                <button
-                    type="submit"
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
-                >
-                    Profil erstellen
-                </button>
-            </form>
-        );
-    };
-
-    const WGForm = ({ onSubmit }) => {
-        const [wgName, setWgName] = useState('');
-        const [minAge, setMinAge] = useState('');
-        const [maxAge, setMaxAge] = useState('');
-        const [genderPreference, setGenderPreference] = useState('egal');
-        const [interests, setInterests] = useState('');
-
         const handleSubmit = (e) => {
             e.preventDefault();
-            onSubmit({
-                wgName,
-                minAge: parseInt(minAge),
-                maxAge: parseInt(maxAge),
-                genderPreference,
-                interests
+            // Umwandlung von Zahlfeldern und Hinzufügen von Werten
+            const dataToSubmit = { ...formState };
+            if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age);
+            if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
+            if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
+            if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
+            if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
+            if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
+
+            onSubmit(dataToSubmit);
+            // Formular zurücksetzen nach dem Speichern
+            setFormState({
+                name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
+                genderPreference: 'egal', personalityTraits: [], interests: [],
+                maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
+                roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
+                lookingForInFlatmate: '', location: ''
             });
-            setWgName('');
-            setMinAge('');
-            setMaxAge('');
-            setGenderPreference('egal');
-            setInterests('');
         };
 
         return (
-            <form onSubmit={handleSubmit} className="p-6 bg-white rounded-xl shadow-lg space-y-4">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">WG-Angebot erstellen</h2>
+            <form onSubmit={handleSubmit} className="p-6 bg-white rounded-xl shadow-lg space-y-4 w-full max-w-xl">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+                    {type === 'seeker' ? 'Suchenden-Profil erstellen' : 'WG-Angebot erstellen'}
+                </h2>
+
+                {/* Name / WG-Name */}
                 <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">WG-Name:</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                        {type === 'seeker' ? 'Dein Name:' : 'Name der WG:'}
+                    </label>
                     <input
                         type="text"
-                        value={wgName}
-                        onChange={(e) => setWgName(e.target.value)}
+                        name="name"
+                        value={formState.name}
+                        onChange={handleChange}
                         required
                         className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                 </div>
+
+                {/* Alter (Suchender) / Altersbereich (Anbieter) */}
+                {type === 'seeker' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Dein Alter:</label>
+                        <input
+                            type="number"
+                            name="age"
+                            value={formState.age}
+                            onChange={handleChange}
+                            required
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
+                )}
+                {type === 'provider' && (
+                    <div className="flex space-x-4">
+                        <div className="flex-1">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Mindestalter Mitbewohner:</label>
+                            <input
+                                type="number"
+                                name="minAge"
+                                value={formState.minAge}
+                                onChange={handleChange}
+                                required
+                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Höchstalter Mitbewohner:</label>
+                            <input
+                                type="number"
+                                name="maxAge"
+                                value={formState.maxAge}
+                                onChange={handleChange}
+                                required
+                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
+                {type === 'seeker' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Dein Geschlecht:</label>
+                        <select
+                            name="gender"
+                            value={formState.gender}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        >
+                            <option value="männlich">Männlich</option>
+                            <option value="weiblich">Weiblich</option>
+                            <option value="divers">Divers</option>
+                        </select>
+                    </div>
+                )}
+                {type === 'provider' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Geschlechtspräferenz Mitbewohner:</label>
+                        <select
+                            name="genderPreference"
+                            value={formState.genderPreference}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        >
+                            <option value="egal">Egal</option>
+                            <option value="männlich">Männlich</option>
+                            <option value="weiblich">Weiblich</option>
+                            <option value="divers">Divers</option>
+                        </select>
+                    </div>
+                )}
+
+                {/* Persönlichkeitsmerkmale (für beide) */}
                 <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Mindestalter:</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                        {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 p-2 border rounded-xl bg-gray-50">
+                        {allPersonalityTraits.map(trait => (
+                            <label key={trait} className="inline-flex items-center text-gray-800">
+                                <input
+                                    type="checkbox"
+                                    name="personalityTraits" // Name ist für beide gleich
+                                    value={trait}
+                                    checked={formState.personalityTraits.includes(trait)}
+                                    onChange={handleChange}
+                                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                                />
+                                <span className="ml-2">{trait}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Interessen (für beide) */}
+                <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                        {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 p-2 border rounded-xl bg-gray-50">
+                        {allInterests.map(interest => (
+                            <label key={interest} className="inline-flex items-center text-gray-800">
+                                <input
+                                    type="checkbox"
+                                    name="interests" // Name ist für beide gleich
+                                    value={interest}
+                                    checked={formState.interests.includes(interest)}
+                                    onChange={handleChange}
+                                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                                />
+                                <span className="ml-2">{interest}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
+                {type === 'seeker' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Maximale Miete (€):</label>
+                        <input
+                            type="number"
+                            name="maxRent"
+                            value={formState.maxRent}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
+                )}
+                {type === 'provider' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Miete (€):</label>
+                        <input
+                            type="number"
+                            name="rent"
+                            value={formState.rent}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
+                )}
+
+                {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
+                {type === 'seeker' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Haustiere:</label>
+                        <select
+                            name="pets"
+                            value={formState.pets}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        >
+                            <option value="egal">Egal</option>
+                            <option value="ja">Ja</option>
+                            <option value="nein">Nein</option>
+                        </select>
+                    </div>
+                )}
+                {type === 'provider' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Haustiere erlaubt:</label>
+                        <select
+                            name="petsAllowed"
+                            value={formState.petsAllowed}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        >
+                            <option value="egal">Egal</option>
+                            <option value="ja">Ja</option>
+                            <option value="nein">Nein</option>
+                        </select>
+                    </div>
+                )}
+
+                {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}
+                {type === 'seeker' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Was suchst du in einer WG?:</label>
+                        <textarea
+                            name="lookingFor"
+                            value={formState.lookingFor}
+                            onChange={handleChange}
+                            rows="3"
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        ></textarea>
+                    </div>
+                )}
+                {type === 'provider' && (
+                    <>
+                        <div>
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Beschreibung der WG:</label>
+                            <textarea
+                                name="description"
+                                value={formState.description}
+                                onChange={handleChange}
+                                rows="3"
+                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            ></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-gray-700 text-sm font-bold mb-2">Was sucht ihr im neuen Mitbewohner?:</label>
+                            <textarea
+                                name="lookingForInFlatmate"
+                                value={formState.lookingForInFlatmate}
+                                onChange={handleChange}
+                                rows="3"
+                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            ></textarea>
+                        </div>
+                    </>
+                )}
+                {type === 'provider' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Zimmertyp:</label>
+                        <select
+                            name="roomType"
+                            value={formState.roomType}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        >
+                            <option value="Einzelzimmer">Einzelzimmer</option>
+                            <option value="Doppelzimmer">Doppelzimmer</option>
+                        </select>
+                    </div>
+                )}
+                {type === 'provider' && (
+                    <div>
+                        <label className="block text-gray-700 text-sm font-bold mb-2">Durchschnittsalter der Bewohner:</label>
+                        <input
+                            type="number"
+                            name="avgAge"
+                            value={formState.avgAge}
+                            onChange={handleChange}
+                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        />
+                    </div>
+                )}
+
+                {/* Ort/Stadtteil (für beide) */}
+                <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Ort / Stadtteil:</label>
                     <input
-                        type="number"
-                        value={minAge}
-                        onChange={(e) => setMinAge(e.target.value)}
-                        required
+                        type="text"
+                        name="location"
+                        value={formState.location}
+                        onChange={handleChange}
                         className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     />
                 </div>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Höchstalter:</label>
-                    <input
-                        type="number"
-                        value={maxAge}
-                        onChange={(e) => setMaxAge(e.target.value)}
-                        required
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                </div>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Geschlechtspräferenz:</label>
-                    <select
-                        value={genderPreference}
-                        onChange={(e) => setGenderPreference(e.target.value)}
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+
+
+                <div className="flex justify-between mt-6">
+                    <button
+                        type="button"
+                        onClick={() => setShowSeekerForm(true)} // Zurück zur Auswahl des Formulars
+                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
                     >
-                        <option value="egal">Egal</option>
-                        <option value="männlich">Männlich</option>
-                        <option value="weiblich">Weiblich</option>
-                        <option value="divers">Divers</option>
-                    </select>
+                        Abbrechen
+                    </button>
+                    <button
+                        type="submit"
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
+                    >
+                        Profil speichern
+                    </button>
                 </div>
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Interessen (kommagetrennt):</label>
-                    <input
-                        type="text"
-                        value={interests}
-                        onChange={(e) => setInterests(e.target.value)}
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                </div>
-                <button
-                    type="submit"
-                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
-                >
-                    Angebot erstellen
-                </button>
             </form>
         );
     };
@@ -391,9 +653,9 @@ function App() {
 
             <div className="w-full max-w-4xl flex justify-center space-x-4 mb-8">
                 <button
-                    onClick={() => setShowSearcherForm(true)}
+                    onClick={() => setShowSeekerForm(true)}
                     className={`px-6 py-3 rounded-full text-lg font-semibold shadow-md transition-all duration-200 ${
-                        showSearcherForm
+                        showSeekerForm
                             ? 'bg-blue-600 text-white transform scale-105'
                             : 'bg-white text-blue-800 hover:bg-blue-50'
                     }`}
@@ -401,9 +663,9 @@ function App() {
                     Suchenden-Profil
                 </button>
                 <button
-                    onClick={() => setShowSearcherForm(false)}
+                    onClick={() => setShowSeekerForm(false)}
                     className={`px-6 py-3 rounded-full text-lg font-semibold shadow-md transition-all duration-200 ${
-                        !showSearcherForm
+                        !showSeekerForm
                             ? 'bg-green-600 text-white transform scale-105'
                             : 'bg-white text-green-800 hover:bg-green-50'
                     }`}
@@ -413,10 +675,10 @@ function App() {
             </div>
 
             <div className="w-full max-w-xl mb-12">
-                {showSearcherForm ? (
-                    <SearcherForm onSubmit={addSearcherProfile} />
+                {showSeekerForm ? (
+                    <ProfileForm onSubmit={addSearcherProfile} type="seeker" />
                 ) : (
-                    <WGForm onSubmit={addWGProfile} />
+                    <ProfileForm onSubmit={addWGProfile} type="provider" />
                 )}
             </div>
 
@@ -434,15 +696,18 @@ function App() {
                                     Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                 </h3>
                                 <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
-                                <p className="text-gray-700 mb-4">Interessen: {match.searcher.interests}</p>
+                                <p className="text-gray-700 mb-4">Interessen: {match.searcher.interests?.join(', ') || 'N/A'}</p>
+                                <p className="text-gray-700 mb-4">Persönlichkeit: {match.searcher.personalityTraits?.join(', ') || 'N/A'}</p>
+
 
                                 <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
                                 <div className="space-y-4">
-                                    {match.matchingWGs.map(wg => (
-                                        <div key={wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
-                                            <p className="font-bold text-gray-800">{wg.wgName} (ID: {wg.id.substring(0, 8)}...)</p>
-                                            <p className="text-sm text-gray-600">Alter: {wg.minAge}-{wg.maxAge}, Geschlechtspräferenz: {wg.genderPreference}</p>
-                                            <p className="text-sm text-gray-600">Interessen: {wg.interests}</p>
+                                    {match.matchingWGs.map(wgMatch => (
+                                        <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
+                                            <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
+                                            <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
+                                            <p className="text-sm text-gray-600">Interessen: {wgMatch.wg.interests?.join(', ') || 'N/A'}</p>
+                                            <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {wgMatch.wg.personalityTraits?.join(', ') || 'N/A'}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -463,7 +728,8 @@ function App() {
                                 <p className="font-semibold text-purple-700">Name: {profile.name}</p>
                                 <p className="text-sm text-gray-600">Alter: {profile.age}</p>
                                 <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
-                                <p className="text-sm text-gray-600">Interessen: {profile.interests}</p>
+                                <p className="text-sm text-gray-600">Interessen: {profile.interests?.join(', ') || 'N/A'}</p>
+                                <p className="text-sm text-gray-600">Persönlichkeit: {profile.personalityTraits?.join(', ') || 'N/A'}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                             </div>
@@ -480,10 +746,11 @@ function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {wgProfiles.map(profile => (
                             <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200">
-                                <p className="font-semibold text-green-700">Name: {profile.wgName}</p>
-                                <p className="text-sm text-gray-600">Alter: {profile.minAge}-{profile.maxAge}</p>
-                                <p className="text-sm text-gray-600">Geschlecht: {profile.genderPreference}</p>
-                                <p className="text-sm text-gray-600">Interessen: {profile.interests}</p>
+                                <p className="font-semibold text-green-700">WG-Name: {profile.name}</p> {/* Name der WG */}
+                                <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
+                                <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
+                                <p className="text-sm text-gray-600">Interessen: {profile.interests?.join(', ') || 'N/A'}</p>
+                                <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {profile.personalityTraits?.join(', ') || 'N/A'}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                             </div>

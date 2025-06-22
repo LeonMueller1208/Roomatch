@@ -283,14 +283,10 @@ function App() {
             location: '', // Ort/Stadtteil
         });
 
-        // Felder, die für beide Typen gleich sind
-        const commonFields = ['location'];
-
-        // Felder, die nur für Suchende relevant sind
-        const seekerOnlyFields = ['age', 'maxRent', 'pets', 'lookingFor', 'gender'];
-
-        // Felder, die nur für Anbieter relevant sind
-        const providerOnlyFields = ['minAge', 'maxAge', 'description', 'rent', 'roomType', 'petsAllowed', 'avgAge', 'lookingForInFlatmate', 'genderPreference'];
+        // GEÄNDERT: Unbenutzte Variablen entfernt
+        // const commonFields = ['location'];
+        // const seekerOnlyFields = ['age', 'maxRent', 'pets', 'lookingFor', 'gender'];
+        // const providerOnlyFields = ['minAge', 'maxAge', 'description', 'rent', 'roomType', 'petsAllowed', 'avgAge', 'lookingForInFlatmate', 'genderPreference'];
 
         const handleChange = (e) => {
             const { name, value, type, checked } = e.target;

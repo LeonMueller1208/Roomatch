@@ -50,9 +50,8 @@ function App() {
             authInstance = getAuth(appInstance);
 
             setDb(dbInstance);
-            // GEÄNDERT: appId wird direkt aus firebaseConfig.projectId genommen
-            // und nicht mehr als eigener State gehalten.
-            const currentAppId = firebaseConfig.projectId; // Diese Variable wird nur lokal im Hook verwendet, um Konsistenz zu gewährleisten.
+            // GEÄNDERT: 'currentAppId' wurde entfernt, da es nicht verwendet wurde.
+            // Die projectId aus firebaseConfig wird bei Bedarf direkt genutzt.
 
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (!user) {
@@ -77,12 +76,11 @@ function App() {
             setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
             setLoading(false);
         }
-    }, []); // GEÄNDERT: Abhängigkeits-Array ist leer, da firebaseConfig jetzt außerhalb des Komponente stabil ist.
+    }, []); // Abhängigkeits-Array ist leer, da firebaseConfig außerhalb der Komponente stabil ist.
 
 
     // Echtzeit-Datenabruf für Suchende-Profile von Firestore
     useEffect(() => {
-        // GEÄNDERT: appId wird jetzt direkt von firebaseConfig.projectId bezogen, oder einfach weggelassen, da Root-Level-Sammlung
         if (!db || !userId) return;
 
         setLoading(true);
@@ -108,7 +106,6 @@ function App() {
 
     // Echtzeit-Datenabruf für WG-Profile von Firestore
     useEffect(() => {
-        // GEÄNDERT: appId wird jetzt direkt von firebaseConfig.projectId bezogen, oder einfach weggelassen, da Root-Level-Sammlung
         if (!db || !userId) return;
 
         setLoading(true);
@@ -171,7 +168,6 @@ function App() {
             return;
         }
         try {
-            // GEÄNDERT: Verwendung von Root-Level-Sammlung
             await addDoc(collection(db, `searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
@@ -192,7 +188,6 @@ function App() {
             return;
         }
         try {
-            // GEÄNDERT: Verwendung von Root-Level-Sammlung
             await addDoc(collection(db, `wgProfiles`), {
                 ...profileData,
                 createdAt: new Date(),

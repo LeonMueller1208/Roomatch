@@ -121,7 +121,7 @@ function App() {
     const [error, setError] = useState(null);
     const [showSeekerForm, setShowSeekerForm] = useState(true);
     const [saveMessage, setSaveMessage] = useState('');
-    const [adminMode, setAdminMode] = useState(false); // NEU: Zustand für den Admin-Modus
+    const [adminMode, setAdminMode] = useState(false); // Zustand für den Admin-Modus
 
     // Firebase-Initialisierung und Authentifizierung
     useEffect(() => {
@@ -168,7 +168,7 @@ function App() {
 
         setLoading(true);
         let searchersQuery;
-        // NEU: Filtere nach userId, es sei denn, es ist der Admin-Modus
+        // Filtere nach userId, es sei denn, es ist der Admin-Modus
         if (adminMode && userId === ADMIN_UID) {
             searchersQuery = query(collection(db, `searcherProfiles`));
         } else {
@@ -189,7 +189,7 @@ function App() {
         });
 
         return () => unsubscribeSearchers();
-    }, [db, userId, adminMode]); // 'adminMode' als Abhängigkeit hinzugefügt
+    }, [db, userId, adminMode]);
 
 
     // Echtzeit-Datenabruf für WG-Profile von Firestore (mit Filterung)
@@ -198,7 +198,7 @@ function App() {
 
         setLoading(true);
         let wgsQuery;
-        // NEU: Filtere nach userId, es sei denn, es ist der Admin-Modus
+        // Filtere nach userId, es sei denn, es ist der Admin-Modus
         if (adminMode && userId === ADMIN_UID) {
             wgsQuery = query(collection(db, `wgProfiles`));
         } else {
@@ -219,59 +219,69 @@ function App() {
         });
 
         return () => unsubscribeWGs();
-    }, [db, userId, adminMode]); // 'adminMode' als Abhängigkeit hinzugefügt
+    }, [db, userId, adminMode]);
 
     // Match-Berechnung für beide Richtungen
     useEffect(() => {
         const calculateAllMatches = () => {
+            // Für Suchender-findet-WG Matches
             const newSeekerToWGMatches = [];
-            // Jedes Suchende-Profil matcht gegen ALLE WG-Profile, wenn im Admin-Modus.
-            // Sonst matcht es nur gegen die WG-Profile, die es sehen kann.
-            const wgsToMatchAgainst = adminMode && userId === ADMIN_UID ? wgProfiles : wgProfiles.filter(wg => wg.createdBy === userId);
+            // Alle WG-Profile, die zum Matchen verwendet werden (alle für Admin, eigene für Benutzer)
+            const wgsToMatchAgainst = adminMode && userId === ADMIN_UID ? wgProfiles : wgProfiles; // Normaler User sieht alle WGs, da es um WGs für ihn geht
 
             searcherProfiles.forEach(searcher => {
-                const matchingWGs = wgsToMatchAgainst.map(wg => {
-                    const score = calculateMatchScore(searcher, wg);
-                    return { wg, score };
-                });
+                // Nur die eigenen Suchender-Profile für den Nicht-Admin-Modus anzeigen
+                if (!adminMode || userId === ADMIN_UID) { // Admin sieht alle, Normalo nur seine eigenen Seeker
+                    if (adminMode || searcher.createdBy === userId) {
+                        const matchingWGs = wgsToMatchAgainst.map(wg => {
+                            const score = calculateMatchScore(searcher, wg);
+                            return { wg, score };
+                        });
 
-                matchingWGs.sort((a, b) => b.score - a.score);
+                        matchingWGs.sort((a, b) => b.score - a.score);
 
-                newSeekerToWGMatches.push({
-                    searcher: searcher,
-                    matchingWGs: matchingWGs
-                });
+                        newSeekerToWGMatches.push({
+                            searcher: searcher,
+                            matchingWGs: matchingWGs
+                        });
+                    }
+                }
             });
             setMatches(newSeekerToWGMatches);
 
+            // Für WG-findet-Suchenden Matches
             const newWGToSeekerMatches = [];
-            // Jedes WG-Profil matcht gegen ALLE Suchenden-Profile, wenn im Admin-Modus.
-            // Sonst matcht es nur gegen die Suchenden-Profile, die es sehen kann.
-            const seekersToMatchAgainst = adminMode && userId === ADMIN_UID ? searcherProfiles : searcherProfiles.filter(seeker => seeker.createdBy === userId);
+            // Alle Suchenden-Profile, die zum Matchen verwendet werden (alle für Admin, eigene für Benutzer)
+            const seekersToMatchAgainst = adminMode && userId === ADMIN_UID ? searcherProfiles : searcherProfiles; // Normaler User sieht alle Suchenden
 
             wgProfiles.forEach(wg => {
-                const matchingSeekers = seekersToMatchAgainst.map(searcher => {
-                    const score = calculateMatchScore(searcher, wg);
-                    return { searcher, score };
-                });
+                 // Nur die eigenen WG-Profile für den Nicht-Admin-Modus anzeigen
+                if (!adminMode || userId === ADMIN_UID) { // Admin sieht alle, Normalo nur seine eigenen WG
+                    if (adminMode || wg.createdBy === userId) {
+                        const matchingSeekers = seekersToMatchAgainst.map(searcher => {
+                            const score = calculateMatchScore(searcher, wg);
+                            return { searcher, score };
+                        });
 
-                matchingSeekers.sort((a, b) => b.score - a.score);
+                        matchingSeekers.sort((a, b) => b.score - a.score);
 
-                newWGToSeekerMatches.push({
-                    wg: wg,
-                    matchingSeekers: matchingSeekers
-                });
+                        newWGToSeekerMatches.push({
+                            wg: wg,
+                            matchingSeekers: matchingSeekers
+                        });
+                    }
+                }
             });
             setReverseMatches(newWGToSeekerMatches);
         };
 
-        if ((searcherProfiles.length > 0 || wgProfiles.length > 0) && !loading) {
+        if (!loading) { // Berechne Matches, sobald Daten und userId geladen sind
             calculateAllMatches();
         } else if (searcherProfiles.length === 0 && wgProfiles.length === 0 && !loading) {
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [searcherProfiles, wgProfiles, loading, adminMode, userId]); // 'userId' als Abhängigkeit hinzugefügt
+    }, [searcherProfiles, wgProfiles, loading, adminMode, userId]);
 
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
@@ -321,7 +331,7 @@ function App() {
             return;
         }
 
-        // NEU: Prüfe, ob der Benutzer berechtigt ist, zu löschen
+        // Prüfe, ob der Benutzer berechtigt ist, zu löschen
         if (!adminMode && userId !== profileCreatorId) {
             setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
             setTimeout(() => setError(''), 3000);
@@ -705,7 +715,7 @@ function App() {
             {userId && (
                 <div className="bg-blue-200 text-blue-800 text-sm px-4 py-2 rounded-full mb-6 shadow">
                     Ihre Benutzer-ID: <span className="font-mono font-semibold">{userId}</span>
-                    {/* NEU: Toggle für Admin-Modus, nur sichtbar für den ADMIN_UID */}
+                    {/* Toggle für Admin-Modus, nur sichtbar für den ADMIN_UID */}
                     {userId === ADMIN_UID && (
                         <label className="ml-4 inline-flex items-center">
                             <input
@@ -756,6 +766,7 @@ function App() {
                 )}
             </div>
 
+            {/* Matches: Suchender findet WG (Für alle Suchenden-Profile des aktuellen Benutzers oder alle im Admin-Modus) */}
             <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl">
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: Suchender findet WG</h2>
                 {matches.length === 0 ? (
@@ -764,38 +775,39 @@ function App() {
                     </p>
                 ) : (
                     <div className="space-y-8">
-                        {matches.map((match, index) => (
-                            <div key={index} className="bg-blue-50 p-6 rounded-lg shadow-inner border border-blue-200">
-                                <h3 className="text-xl font-semibold text-blue-700 mb-3">
-                                    Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
-                                </h3>
-                                <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
-                                <p className="text-gray-700 mb-4">Interessen: {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
-                                <p className="text-gray-700 mb-4">Persönlichkeit: {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
+                        {matches
+                            .filter(match => adminMode || match.searcher.createdBy === userId) // Filter für Nicht-Admin-Modus
+                            .map((match, index) => (
+                                <div key={index} className="bg-blue-50 p-6 rounded-lg shadow-inner border border-blue-200">
+                                    <h3 className="text-xl font-semibold text-blue-700 mb-3">
+                                        Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
+                                    </h3>
+                                    <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
+                                    <p className="text-gray-700 mb-4">Interessen: {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
+                                    <p className="text-gray-700 mb-4">Persönlichkeit: {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
 
-
-                                <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
-                                <div className="space-y-4">
-                                    {match.matchingWGs.length === 0 ? (
-                                        <p className="text-gray-600 text-sm">Keine passenden WGs.</p>
-                                    ) : (
-                                        match.matchingWGs.map(wgMatch => (
-                                            <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
-                                                <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
-                                                <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                            </div>
-                                        ))
-                                    )}
+                                    <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
+                                    <div className="space-y-4">
+                                        {match.matchingWGs.length === 0 ? (
+                                            <p className="text-gray-600 text-sm">Keine passenden WGs.</p>
+                                        ) : (
+                                            match.matchingWGs.map(wgMatch => (
+                                                <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
+                                                    <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
+                                                    <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
+                                                    <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                    <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 )}
             </div>
 
-            {/* Matches aus Sicht der WG-Profile */}
+            {/* Matches aus Sicht der WG-Profile (Für alle WG-Profile des aktuellen Benutzers oder alle im Admin-Modus) */}
             <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: WG findet Suchenden</h2>
                 {reverseMatches.length === 0 ? (
@@ -804,89 +816,97 @@ function App() {
                     </p>
                 ) : (
                     <div className="space-y-8">
-                        {reverseMatches.map((wgMatch, index) => (
-                            <div key={index} className="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
-                                <h3 className="text-xl font-semibold text-green-700 mb-3">
-                                    WG-Name: <span className="font-bold">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
-                                </h3>
-                                <p className="text-gray-700 mb-2">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                <p className="text-gray-700 mb-4">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                <p className="text-gray-700 mb-4">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                        {reverseMatches
+                            .filter(wgMatch => adminMode || wgMatch.wg.createdBy === userId) // Filter für Nicht-Admin-Modus
+                            .map((wgMatch, index) => (
+                                <div key={index} className="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
+                                    <h3 className="text-xl font-semibold text-green-700 mb-3">
+                                        WG-Name: <span className="font-bold">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
+                                    </h3>
+                                    <p className="text-gray-700 mb-2">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
+                                    <p className="text-gray-700 mb-4">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                    <p className="text-gray-700 mb-4">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
 
-                                <h4 className="text-lg font-semibold text-green-600 mb-2">Passende Suchende:</h4>
-                                <div className="space-y-4">
-                                    {wgMatch.matchingSeekers.length === 0 ? (
-                                        <p className="text-gray-600 text-sm">Keine passenden Suchenden.</p>
-                                    ) : (
-                                        wgMatch.matchingSeekers.map(seekerMatch => (
-                                            <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
-                                                <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
-                                                <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
-                                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                            </div>
-                                        ))
-                                    )}
+                                    <h4 className="text-lg font-semibold text-green-600 mb-2">Passende Suchende:</h4>
+                                    <div className="space-y-4">
+                                        {wgMatch.matchingSeekers.length === 0 ? (
+                                            <p className="text-gray-600 text-sm">Keine passenden Suchenden.</p>
+                                        ) : (
+                                            wgMatch.matchingSeekers.map(seekerMatch => (
+                                                <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
+                                                    <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
+                                                    <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
+                                                    <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                    <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 )}
             </div>
 
-            <div className="w-full max-w-6xl mt-12 bg-white p-8 rounded-xl shadow-2xl">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Alle Suchenden-Profile</h2>
-                {searcherProfiles.length === 0 ? (
-                    <p className="text-center text-gray-600 text-lg">Noch keine Suchenden-Profile vorhanden.</p>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {searcherProfiles.map(profile => (
-                            <div key={profile.id} className="bg-purple-50 p-5 rounded-lg shadow-inner border border-purple-200 flex flex-col">
-                                <p className="font-semibold text-purple-700">Name: {profile.name}</p>
-                                <p className="text-sm text-gray-600">Alter: {profile.age}</p>
-                                <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
-                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
-                                <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
-                                <button
-                                    onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
-                                    className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
-                                >
-                                    Löschen
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+            {/* "Alle Suchenden-Profile" nur im Admin-Modus sichtbar */}
+            {adminMode && (
+                <div className="w-full max-w-6xl mt-12 bg-white p-8 rounded-xl shadow-2xl">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Alle Suchenden-Profile</h2>
+                    {searcherProfiles.length === 0 ? (
+                        <p className="text-center text-gray-600 text-lg">Noch keine Suchenden-Profile vorhanden.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {searcherProfiles.map(profile => (
+                                <div key={profile.id} className="bg-purple-50 p-5 rounded-lg shadow-inner border border-purple-200 flex flex-col">
+                                    <p className="font-semibold text-purple-700">Name: {profile.name}</p>
+                                    <p className="text-sm text-gray-600">Alter: {profile.age}</p>
+                                    <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
+                                    <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                    <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                    <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                    <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                    <button
+                                        onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
+                                        className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
+                                    >
+                                        Löschen
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
-            <div className="w-full max-w-6xl mt-8 bg-white p-8 rounded-xl shadow-2xl">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Alle WG-Angebote</h2>
-                {wgProfiles.length === 0 ? (
-                    <p className="text-center text-gray-600 text-lg">Noch keine WG-Angebote vorhanden.</p>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {wgProfiles.map(profile => (
-                            <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200 flex flex-col">
-                                <p className="font-semibold text-green-700">WG-Name: {profile.name}</p>
-                                <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
-                                <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
-                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}大手</p>
-                                <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
-                                <button
-                                    onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
-                                    className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
-                                >
-                                    Löschen
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+            {/* "Alle WG-Angebote" nur im Admin-Modus sichtbar */}
+            {adminMode && (
+                <div className="w-full max-w-6xl mt-8 bg-white p-8 rounded-xl shadow-2xl">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Alle WG-Angebote</h2>
+                    {wgProfiles.length === 0 ? (
+                        <p className="text-center text-gray-600 text-lg">Noch keine WG-Angebote vorhanden.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {wgProfiles.map(profile => (
+                                <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200 flex flex-col">
+                                    <p className="font-semibold text-green-700">WG-Name: {profile.name}</p>
+                                    <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
+                                    <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
+                                    <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                    <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                    <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                    <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                    <button
+                                        onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
+                                        className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
+                                    >
+                                        Löschen
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

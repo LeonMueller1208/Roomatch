@@ -16,8 +16,11 @@ const firebaseConfig = {
 };
 
 // Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
-const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher'];
-const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming'];
+const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher', 'tolerant', 'tierlieb', 'flexibel', 'strukturiert'];
+const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming', 'Pflanzen', 'Kultur', 'Kunst'];
+const allCommunalLivingPreferences = ['sehr ordentlich', 'eher entspannt', 'wöchentliche Putzpläne bevorzugt', 'spontanes Aufräumen', 'oft zusammen kochen', 'manchmal zusammen kochen', 'selten zusammen kochen'];
+const allWGValues = ['Nachhaltigkeit wichtig', 'offene Kommunikation bevorzugt', 'Respekt vor Privatsphäre', 'gemeinsame Aktivitäten wichtig', 'ruhiges Zuhause bevorzugt', 'lebhaftes Zuhause bevorzugt', 'politisch engagiert', 'kulturell interessiert'];
+
 
 // **WICHTIG:** ERSETZE DIESEN WERT EXAKT MIT DEINER ADMIN-ID, DIE IN DER APP ANGEZEIGT WIRD!
 const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
@@ -101,6 +104,24 @@ const calculateMatchScore = (seeker, wg) => {
     if (seeker.age && wg.avgAge) {
         score -= Math.abs(seeker.age - wg.avgAge);
     }
+
+    // 9. Neue: Präferenzen zum Zusammenleben (Communal Living Preferences)
+    const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
+    const wgCommunalPrefs = getArrayValue(wg, 'wgCommunalLiving');
+    seekerCommunalPrefs.forEach(pref => {
+        if (wgCommunalPrefs.includes(pref)) {
+            score += 7; // Hoher Wert für Übereinstimmung bei Lebensgewohnheiten
+        }
+    });
+
+    // 10. Neue: Werte (Values)
+    const seekerValues = getArrayValue(seeker, 'values');
+    const wgValues = getArrayValue(wg, 'wgValues');
+    seekerValues.forEach(val => {
+        if (wgValues.includes(val)) {
+            score += 10; // Sehr hoher Wert für Übereinstimmung bei Werten
+        }
+    });
 
     return score;
 };
@@ -331,6 +352,9 @@ function App() {
 
     // Vereinheitlichte Profilformular-Komponente
     const ProfileForm = ({ onSubmit, type }) => {
+        const [currentStep, setCurrentStep] = useState(1);
+        const totalSteps = 3; 
+
         const [formState, setFormState] = useState({
             name: '',
             age: '', minAge: '', maxAge: '',
@@ -341,6 +365,10 @@ function App() {
             description: '', rent: '', roomType: 'Einzelzimmer', petsAllowed: 'egal',
             avgAge: '', lookingForInFlatmate: '',
             location: '',
+            communalLivingPreferences: [], // Neu für Suchende
+            wgCommunalLiving: [],          // Neu für Anbieter
+            values: [],                    // Neu für Suchende
+            wgValues: [],                  // Neu für Anbieter
         });
 
         const handleChange = (e) => {
@@ -357,320 +385,399 @@ function App() {
             }
         };
 
+        const nextStep = () => {
+            setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+        };
+
+        const prevStep = () => {
+            setCurrentStep((prev) => Math.max(prev - 1, 1));
+        };
+
         const handleSubmit = (e) => {
             e.preventDefault();
-            const dataToSubmit = { ...formState };
-            if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age);
-            if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
-            if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
-            if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
-            if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
-            if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
+            if (currentStep === totalSteps) {
+                const dataToSubmit = { ...formState };
+                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age);
+                if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
+                if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
+                if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
+                if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
+                if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
 
-            onSubmit(dataToSubmit);
-            setFormState({
-                name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
-                genderPreference: 'egal', personalityTraits: [], interests: [],
-                maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
-                roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
-                lookingForInFlatmate: '', location: ''
-            });
+                onSubmit(dataToSubmit);
+                setFormState({ // Formular zurücksetzen nach dem Speichern
+                    name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
+                    genderPreference: 'egal', personalityTraits: [], interests: [],
+                    maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
+                    roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
+                    lookingForInFlatmate: '', location: '',
+                    communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
+                });
+                setCurrentStep(1); // Zurück zum ersten Schritt
+            } else {
+                nextStep();
+            }
         };
 
         return (
             <form onSubmit={handleSubmit} className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
-                    {type === 'seeker' ? 'Suchenden-Profil erstellen' : 'WG-Angebot erstellen'}
+                    {type === 'seeker' ? `Suchenden-Profil erstellen (Schritt ${currentStep}/${totalSteps})` : `WG-Angebot erstellen (Schritt ${currentStep}/${totalSteps})`}
                 </h2>
 
-                <div className="space-y-4">
-                    {/* Name / WG-Name */}
-                    <div>
-                        <label className="block text-gray-700 text-base font-semibold mb-2">
-                            {type === 'seeker' ? 'Dein Name:' : 'Name der WG:'}
-                        </label>
-                        <input
-                            type="text"
-                            name="name"
-                            value={formState.name}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                        />
-                    </div>
-
-                    {/* Alter (Suchender) / Altersbereich (Anbieter) */}
-                    {type === 'seeker' && (
+                {currentStep === 1 && (
+                    <div className="space-y-4">
+                        {/* Name / WG-Name */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Dein Alter:</label>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                                {type === 'seeker' ? 'Dein Name:' : 'Name der WG:'}
+                            </label>
                             <input
-                                type="number"
-                                name="age"
-                                value={formState.age}
+                                type="text"
+                                name="name"
+                                value={formState.name}
                                 onChange={handleChange}
                                 required
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                             />
                         </div>
-                    )}
-                    {type === 'provider' && (
-                        <div className="flex space-x-4">
-                            <div className="flex-1">
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Mindestalter Mitbewohner:</label>
+
+                        {/* Alter (Suchender) / Altersbereich (Anbieter) */}
+                        {type === 'seeker' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Dein Alter:</label>
                                 <input
                                     type="number"
-                                    name="minAge"
-                                    value={formState.minAge}
+                                    name="age"
+                                    value={formState.age}
                                     onChange={handleChange}
                                     required
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 />
                             </div>
-                            <div className="flex-1">
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Höchstalter Mitbewohner:</label>
+                        )}
+                        {type === 'provider' && (
+                            <div className="flex space-x-4">
+                                <div className="flex-1">
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Mindestalter Mitbewohner:</label>
+                                    <input
+                                        type="number"
+                                        name="minAge"
+                                        value={formState.minAge}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Höchstalter Mitbewohner:</label>
+                                    <input
+                                        type="number"
+                                        name="maxAge"
+                                        value={formState.maxAge}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
+                        {type === 'seeker' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Dein Geschlecht:</label>
+                                <select
+                                    name="gender"
+                                    value={formState.gender}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                >
+                                    <option value="männlich">Männlich</option>
+                                    <option value="weiblich">Weiblich</option>
+                                    <option value="divers">Divers</option>
+                                </select>
+                            </div>
+                        )}
+                        {type === 'provider' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Geschlechtspräferenz Mitbewohner:</label>
+                                <select
+                                    name="genderPreference"
+                                    value={formState.genderPreference}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                >
+                                    <option value="egal">Egal</option>
+                                    <option value="männlich">Männlich</option>
+                                    <option value="weiblich">Weiblich</option>
+                                    <option value="divers">Divers</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Ort/Stadtteil (für beide) */}
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Ort / Stadtteil:</label>
+                            <input
+                                type="text"
+                                name="location"
+                                value={formState.location}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {currentStep === 2 && (
+                    <div className="space-y-4">
+                        {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
+                        {type === 'seeker' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Maximale Miete (€):</label>
                                 <input
                                     type="number"
-                                    name="maxAge"
-                                    value={formState.maxAge}
+                                    name="maxRent"
+                                    value={formState.maxRent}
                                     onChange={handleChange}
-                                    required
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 />
                             </div>
-                        </div>
-                    )}
-
-                    {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
-                    {type === 'seeker' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Dein Geschlecht:</label>
-                            <select
-                                name="gender"
-                                value={formState.gender}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            >
-                                <option value="männlich">Männlich</option>
-                                <option value="weiblich">Weiblich</option>
-                                <option value="divers">Divers</option>
-                            </select>
-                        </div>
-                    )}
-                    {type === 'provider' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Geschlechtspräferenz Mitbewohner:</label>
-                            <select
-                                name="genderPreference"
-                                value={formState.genderPreference}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            >
-                                <option value="egal">Egal</option>
-                                <option value="männlich">Männlich</option>
-                                <option value="weiblich">Weiblich</option>
-                                <option value="divers">Divers</option>
-                            </select>
-                        </div>
-                    )}
-
-                    {/* Persönlichkeitsmerkmale (für beide) */}
-                    <div>
-                        <label className="block text-gray-700 text-base font-semibold mb-2">
-                            {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
-                        </label>
-                        <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
-                            {allPersonalityTraits.map(trait => (
-                                <label key={trait} className="inline-flex items-center text-gray-800 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        name="personalityTraits"
-                                        value={trait}
-                                        checked={formState.personalityTraits.includes(trait)}
-                                        onChange={handleChange}
-                                        className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
-                                    />
-                                    <span className="ml-2 text-sm">{trait}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Interessen (für beide) */}
-                    <div>
-                        <label className="block text-gray-700 text-base font-semibold mb-2">
-                            {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
-                        </label>
-                        <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
-                            {allInterests.map(interest => (
-                                <label key={interest} className="inline-flex items-center text-gray-800 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        name="interests"
-                                        value={interest}
-                                        checked={formState.interests.includes(interest)}
-                                        onChange={handleChange}
-                                        className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
-                                    />
-                                    <span className="ml-2 text-sm">{interest}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
-                    {type === 'seeker' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Maximale Miete (€):</label>
-                            <input
-                                type="number"
-                                name="maxRent"
-                                value={formState.maxRent}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            />
-                        </div>
-                    )}
-                    {type === 'provider' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Miete (€):</label>
-                            <input
-                                type="number"
-                                name="rent"
-                                value={formState.rent}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            />
-                        </div>
-                    )}
-
-                    {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
-                    {type === 'seeker' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere:</label>
-                            <select
-                                name="pets"
-                                value={formState.pets}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            >
-                                <option value="egal">Egal</option>
-                                <option value="ja">Ja</option>
-                                <option value="nein">Nein</option>
-                            </select>
-                        </div>
-                    )}
-                    {type === 'provider' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere erlaubt:</label>
-                            <select
-                                name="petsAllowed"
-                                value={formState.petsAllowed}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            >
-                                <option value="egal">Egal</option>
-                                <option value="ja">Ja</option>
-                                <option value="nein">Nein</option>
-                            </select>
-                        </div>
-                    )}
-
-                    {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}
-                    {type === 'seeker' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Was suchst du in einer WG?:</label>
-                            <textarea
-                                name="lookingFor"
-                                value={formState.lookingFor}
-                                onChange={handleChange}
-                                rows="3"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            ></textarea>
-                        </div>
-                    )}
-                    {type === 'provider' && (
-                        <>
+                        )}
+                        {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Beschreibung der WG:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Miete (€):</label>
+                                <input
+                                    type="number"
+                                    name="rent"
+                                    value={formState.rent}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                />
+                            </div>
+                        )}
+
+                        {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
+                        {type === 'seeker' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere:</label>
+                                <select
+                                    name="pets"
+                                    value={formState.pets}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                >
+                                    <option value="egal">Egal</option>
+                                    <option value="ja">Ja</option>
+                                    <option value="nein">Nein</option>
+                                </select>
+                            </div>
+                        )}
+                        {type === 'provider' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere erlaubt:</label>
+                                <select
+                                    name="petsAllowed"
+                                    value={formState.petsAllowed}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                >
+                                    <option value="egal">Egal</option>
+                                    <option value="ja">Ja</option>
+                                    <option value="nein">Nein</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Persönlichkeitsmerkmale (für beide) */}
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                                {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                                {allPersonalityTraits.map(trait => (
+                                    <label key={trait} className="inline-flex items-center text-gray-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            name="personalityTraits"
+                                            value={trait}
+                                            checked={formState.personalityTraits.includes(trait)}
+                                            onChange={handleChange}
+                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                        />
+                                        <span className="ml-2 text-sm">{trait}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Interessen (für beide) */}
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                                {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                                {allInterests.map(interest => (
+                                    <label key={interest} className="inline-flex items-center text-gray-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            name="interests"
+                                            value={interest}
+                                            checked={formState.interests.includes(interest)}
+                                            onChange={handleChange}
+                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                        />
+                                        <span className="ml-2 text-sm">{interest}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Neue: Präferenzen zum WG-Leben (Communal Living Preferences) */}
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                                {type === 'seeker' ? 'Deine Präferenzen zum WG-Leben:' : 'Präferenzen der WG zum Zusammenleben:'}
+                            </label>
+                            <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                                {allCommunalLivingPreferences.map(pref => (
+                                    <label key={pref} className="inline-flex items-center text-gray-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            name={type === 'seeker' ? 'communalLivingPreferences' : 'wgCommunalLiving'}
+                                            value={pref}
+                                            checked={(formState[type === 'seeker' ? 'communalLivingPreferences' : 'wgCommunalLiving'] || []).includes(pref)}
+                                            onChange={handleChange}
+                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                        />
+                                        <span className="ml-2 text-sm">{pref}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {currentStep === 3 && (
+                    <div className="space-y-4">
+                        {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}
+                        {type === 'seeker' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Was suchst du in einer WG?:</label>
                                 <textarea
-                                    name="description"
-                                    value={formState.description}
+                                    name="lookingFor"
+                                    value={formState.lookingFor}
                                     onChange={handleChange}
                                     rows="3"
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 ></textarea>
                             </div>
+                        )}
+                        {type === 'provider' && (
+                            <>
+                                <div>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Beschreibung der WG:</label>
+                                    <textarea
+                                        name="description"
+                                        value={formState.description}
+                                        onChange={handleChange}
+                                        rows="3"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    ></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Was sucht ihr im neuen Mitbewohner?:</label>
+                                    <textarea
+                                        name="lookingForInFlatmate"
+                                        value={formState.lookingForInFlatmate}
+                                        onChange={handleChange}
+                                        rows="3"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    ></textarea>
+                                </div>
+                            </>
+                        )}
+                        {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Was sucht ihr im neuen Mitbewohner?:</label>
-                                <textarea
-                                    name="lookingForInFlatmate"
-                                    value={formState.lookingForInFlatmate}
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Zimmertyp:</label>
+                                <select
+                                    name="roomType"
+                                    value={formState.roomType}
                                     onChange={handleChange}
-                                    rows="3"
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                                ></textarea>
+                                >
+                                    <option value="Einzelzimmer">Einzelzimmer</option>
+                                    <option value="Doppelzimmer">Doppelzimmer</option>
+                                </select>
                             </div>
-                        </>
-                    )}
-                    {type === 'provider' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Zimmertyp:</label>
-                            <select
-                                name="roomType"
-                                value={formState.roomType}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            >
-                                <option value="Einzelzimmer">Einzelzimmer</option>
-                                <option value="Doppelzimmer">Doppelzimmer</option>
-                            </select>
-                        </div>
-                    )}
-                    {type === 'provider' && (
-                        <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Durchschnittsalter der Bewohner:</label>
-                            <input
-                                type="number"
-                                name="avgAge"
-                                value={formState.avgAge}
-                                onChange={handleChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            />
-                        </div>
-                    )}
+                        )}
+                        {type === 'provider' && (
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Durchschnittsalter der Bewohner:</label>
+                                <input
+                                    type="number"
+                                    name="avgAge"
+                                    value={formState.avgAge}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                />
+                            </div>
+                        )}
 
-                    {/* Ort/Stadtteil (für beide) */}
-                    <div>
-                        <label className="block text-gray-700 text-base font-semibold mb-2">Ort / Stadtteil:</label>
-                        <input
-                            type="text"
-                            name="location"
-                            value={formState.location}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                        />
+                        {/* Neue: Werte (Values) */}
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                                {type === 'seeker' ? 'Deine Werte und Erwartungen an das WG-Leben:' : 'Werte und Erwartungen der WG:'}
+                            </label>
+                            <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                                {allWGValues.map(val => (
+                                    <label key={val} className="inline-flex items-center text-gray-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            name={type === 'seeker' ? 'values' : 'wgValues'}
+                                            value={val}
+                                            checked={(formState[type === 'seeker' ? 'values' : 'wgValues'] || []).includes(val)}
+                                            onChange={handleChange}
+                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                        />
+                                        <span className="ml-2 text-sm">{val}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div className="flex justify-between mt-8">
-                    <button
-                        type="button"
-                        // Der "Abbrechen"-Button setzt das Formular auf das Suchenden-Profil zurück
-                        onClick={() => setShowSeekerForm(true)}
-                        className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
-                    >
-                        <XCircle size={20} className="mr-2" /> Abbrechen
-                    </button>
-                    <button
-                        type="submit"
-                        className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
-                            type === 'seeker'
-                                ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
-                                : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
-                        }`}
-                    >
-                        <CheckCircle size={20} className="mr-2" /> Profil speichern
-                    </button>
+                    {currentStep > 1 && (
+                        <button
+                            type="button"
+                            onClick={prevStep}
+                            className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                        >
+                            Zurück
+                        </button>
+                    )}
+                    {currentStep < totalSteps ? (
+                        <button
+                            type="button"
+                            onClick={nextStep}
+                            className="flex items-center px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                        >
+                            Weiter
+                        </button>
+                    ) : (
+                        <button
+                            type="submit"
+                            className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
+                                type === 'seeker'
+                                    ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
+                                    : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
+                            }`}
+                        >
+                            <CheckCircle size={20} className="mr-2" /> Profil speichern
+                        </button>
+                    )}
                 </div>
             </form>
         );
@@ -747,6 +854,8 @@ function App() {
                                             <p><span className="font-semibold">Geschlecht:</span> {match.searcher.gender}</p>
                                             <p><span className="font-semibold">Interessen:</span> {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
                                             <p><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
+                                            <p><span className="font-semibold">WG-Präferenzen:</span> {Array.isArray(match.searcher.communalLivingPreferences) ? match.searcher.communalLivingPreferences.join(', ') : (match.searcher.communalLivingPreferences || 'N/A')}</p>
+                                            <p><span className="font-semibold">Werte:</span> {Array.isArray(match.searcher.values) ? match.searcher.values.join(', ') : (match.searcher.values || 'N/A')}</p>
                                         </div>
 
                                         <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
@@ -763,6 +872,8 @@ function App() {
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Zusammenleben:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Werte:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -790,6 +901,8 @@ function App() {
                                             <p><span className="font-semibold">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
                                             <p><span className="font-semibold">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                             <p className="text-sm text-gray-600"><span className="font-semibold">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG-Zusammenleben:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG-Werte:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                         </div>
 
                                         <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
@@ -806,6 +919,8 @@ function App() {
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Präferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -830,6 +945,8 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Geschlecht:</span> {profile.gender}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG-Präferenzen:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Werte:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
@@ -857,6 +974,8 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Geschlechtspräferenz:</span> {profile.genderPreference}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Persönlichkeit der Bewohner:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG-Zusammenleben:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG-Werte:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
@@ -937,6 +1056,8 @@ function App() {
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Zusammenleben:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Werte:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                                                         </div>
                                                                     </div>
                                                                 ))
@@ -979,6 +1100,8 @@ function App() {
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Präferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                                         </div>
                                                                     </div>
                                                                 ))

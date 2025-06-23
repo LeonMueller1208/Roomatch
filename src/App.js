@@ -155,7 +155,7 @@ function App() {
                 const currentUid = authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2);
                 setUserId(currentUid);
                 setAdminMode(currentUid === ADMIN_UID); 
-                setLoading(false);
+                setLoading(false); // Setze loading auf false nach erfolgreicher Authentifizierung
             });
 
             return () => {
@@ -168,11 +168,11 @@ function App() {
         }
     }, []);
 
-    // **NEU:** Echtzeit-Datenabruf für *eigene* Suchende-Profile von Firestore
+    // Echtzeit-Datenabruf für *eigene* Suchende-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
 
-        setLoading(true);
+        // setLoading(true); // ENTFERNT: Dies hat den loading-Zustand blockiert
         const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
 
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
@@ -181,19 +181,21 @@ function App() {
                 ...doc.data()
             }));
             setMySearcherProfiles(profiles);
+            // Kein setLoading(false) hier, da der auth-Hook es bereits handhabt
         }, (err) => {
             console.error("Fehler beim Abrufen der eigenen Suchenden-Profile:", err);
             setError("Fehler beim Laden der eigenen Suchenden-Profile.");
+            // Kein setLoading(false) hier, da der auth-Hook es bereits handhabt
         });
 
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // **NEU:** Echtzeit-Datenabruf für *eigene* WG-Profile von Firestore
+    // Echtzeit-Datenabruf für *eigene* WG-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
 
-        setLoading(true);
+        // setLoading(true); // ENTFERNT: Dies hat den loading-Zustand blockiert
         const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
 
         const unsubscribeMyWGs = onSnapshot(myWgsQuery, (snapshot) => {
@@ -202,16 +204,18 @@ function App() {
                 ...doc.data()
             }));
             setMyWgProfiles(profiles);
+            // Kein setLoading(false) hier
         }, (err) => {
             console.error("Fehler beim Abrufen der eigenen WG-Profile:", err);
             setError("Fehler beim Laden der eigenen WG-Profile.");
+            // Kein setLoading(false) hier
         });
 
         return () => unsubscribeMyWGs();
     }, [db, userId]);
 
 
-    // **NEU:** Echtzeit-Datenabruf für *alle* Suchende-Profile (für Match-Berechnung)
+    // Echtzeit-Datenabruf für *alle* Suchende-Profile (für Match-Berechnung)
     useEffect(() => {
         if (!db) return; // Kein userId-Filter, da alle abgerufen werden
 
@@ -229,7 +233,7 @@ function App() {
         return () => unsubscribeAllSearchers();
     }, [db]); // Abhängigkeit nur von 'db'
 
-    // **NEU:** Echtzeit-Datenabruf für *alle* WG-Profile (für Match-Berechnung)
+    // Echtzeit-Datenabruf für *alle* WG-Profile (für Match-Berechnung)
     useEffect(() => {
         if (!db) return; // Kein userId-Filter, da alle abgerufen werden
 
@@ -295,7 +299,8 @@ function App() {
         };
 
         // Berechne Matches, sobald alle relevanten Daten geladen sind
-        if (!loading && db && userId && allSearcherProfilesGlobal.length >= 0 && allWgProfilesGlobal.length >= 0) {
+        // und nur, wenn der db und userId vorhanden sind und loading false ist.
+        if (!loading && db && userId) { // Überprüfe ob userId vorhanden ist, bevor calculateAllMatches aufgerufen wird.
             calculateAllMatches();
         } else if (mySearcherProfiles.length === 0 && myWgProfiles.length === 0 && !loading) {
             // Setze Matches auf leer, wenn keine eigenen Profile vorhanden sind und alles geladen ist

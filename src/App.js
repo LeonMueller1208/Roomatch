@@ -6,7 +6,7 @@ import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, delete
 // Firebase-Konfiguration
 // YOUR ACTUAL FIREBASE CONFIG DATA IS INSERTED HERE!
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- HIER WURDE DEIN NEUER API KEY EINGEFÜGT!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- DEIN API KEY
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -529,7 +529,7 @@ function App() {
                                     value={trait}
                                     checked={formState.personalityTraits.includes(trait)}
                                     onChange={handleChange}
-                                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                                    className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded"
                                 />
                                 <span className="ml-2">{trait}</span>
                             </label>
@@ -551,7 +551,7 @@ function App() {
                                     value={interest}
                                     checked={formState.interests.includes(interest)}
                                     onChange={handleChange}
-                                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                                    className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded"
                                 />
                                 <span className="ml-2">{interest}</span>
                             </label>
@@ -702,9 +702,14 @@ function App() {
                     >
                         Abbrechen
                     </button>
+                    {/* Submit button color adjusted based on profile type */}
                     <button
                         type="submit"
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
+                        className={`font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out ${
+                            type === 'seeker'
+                                ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]' // Seeker color scheme
+                                : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]' // Provider color scheme
+                        }`}
                     >
                         Profil speichern
                     </button>
@@ -735,21 +740,21 @@ function App() {
     const showAdminDashboard = adminMode;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 p-8 font-inter flex flex-col items-center">
+        <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center"> {/* App general background */}
             <h1 className="text-5xl font-extrabold text-gray-900 mb-6 text-center">WG-Match App</h1>
             {userId && (
-                <div className="bg-blue-200 text-blue-800 text-sm px-4 py-2 rounded-full mb-6 shadow">
+                <div className="bg-[#c3efe8] text-[#0a665a] text-sm px-4 py-2 rounded-full mb-6 shadow"> {/* User ID badge */}
                     Ihre Benutzer-ID: <span className="font-mono font-semibold">{userId}</span>
                     {/* Toggle for admin mode, only visible for ADMIN_UID */}
                     {userId === ADMIN_UID && (
                         <label className="ml-4 inline-flex items-center">
                             <input
                                 type="checkbox"
-                                className="form-checkbox h-5 w-5 text-purple-600 rounded"
+                                className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded"
                                 checked={adminMode}
                                 onChange={() => setAdminMode(!adminMode)}
                             />
-                            <span className="ml-2 text-purple-800 font-bold">Admin-Modus</span>
+                            <span className="ml-2 text-[#0a665a] font-bold">Admin-Modus</span>
                         </label>
                     )}
                 </div>
@@ -767,8 +772,8 @@ function App() {
                         onClick={() => setShowSeekerForm(true)}
                         className={`px-6 py-3 rounded-full text-lg font-semibold shadow-md transition-all duration-200 ${
                             showSeekerForm
-                                ? 'bg-blue-600 text-white transform scale-105'
-                                : 'bg-white text-blue-800 hover:bg-blue-50'
+                                ? 'bg-[#9adfaa] text-[#333333] transform scale-105' // Seeker selected
+                                : 'bg-white text-[#9adfaa] hover:bg-gray-50' // Seeker unselected
                         }`}
                     >
                         Suchenden-Profil
@@ -777,8 +782,8 @@ function App() {
                         onClick={() => setShowSeekerForm(false)}
                         className={`px-6 py-3 rounded-full text-lg font-semibold shadow-md transition-all duration-200 ${
                             !showSeekerForm
-                                ? 'bg-green-600 text-white transform scale-105'
-                                : 'bg-white text-green-800 hover:bg-green-50'
+                                ? 'bg-[#fecd82] text-[#333333] transform scale-105' // Provider selected
+                                : 'bg-white text-[#fecd82] hover:bg-gray-50' // Provider unselected
                         }`}
                     >
                         WG-Angebot
@@ -809,21 +814,21 @@ function App() {
                         ) : (
                             <div className="space-y-8">
                                 {matches.map((match, index) => (
-                                    <div key={index} className="bg-blue-50 p-6 rounded-lg shadow-inner border border-blue-200">
-                                        <h3 className="text-xl font-semibold text-blue-700 mb-3">
+                                    <div key={index} className="bg-[#f0f8f0] p-6 rounded-lg shadow-inner border border-[#9adfaa]"> {/* Seeker match card */}
+                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Seeker name text */}
                                             Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                         </h3>
                                         <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
                                         <p className="text-gray-700 mb-4">Interessen: {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
                                         <p className="text-gray-700 mb-4">Persönlichkeit: {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
 
-                                        <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
+                                        <h4 className="text-lg font-semibold text-[#5a9c68] mb-2">Passende WG-Angebote:</h4> {/* Matching WGs title */}
                                         <div className="space-y-4">
                                             {match.matchingWGs.length === 0 ? (
                                                 <p className="text-gray-600 text-sm">Keine passenden WGs.</p>
                                             ) : (
                                                 match.matchingWGs.map(wgMatch => (
-                                                    <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
+                                                    <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-[#9adfaa]"> {/* Inner WG card */}
                                                         <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
                                                         <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
                                                         <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
@@ -845,21 +850,21 @@ function App() {
                         ) : (
                             <div className="space-y-8">
                                 {reverseMatches.map((wgMatch, index) => (
-                                    <div key={index} className="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
-                                        <h3 className="text-xl font-semibold text-green-700 mb-3">
+                                    <div key={index} className="bg-[#fff8f0] p-6 rounded-lg shadow-inner border border-[#fecd82]"> {/* Provider match card */}
+                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Provider name text */}
                                             WG-Name: <span className="font-bold">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
                                         </h3>
                                         <p className="text-gray-700 mb-2">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
                                         <p className="text-gray-700 mb-4">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                         <p className="text-gray-700 mb-4">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
 
-                                        <h4 className="text-lg font-semibold text-green-600 mb-2">Passende Suchende:</h4>
+                                        <h4 className="text-lg font-semibold text-[#cc8a2f] mb-2">Passende Suchende:</h4> {/* Matching Seekers title */}
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
                                                 <p className="text-gray-600 text-sm">Keine passenden Suchenden.</p>
                                             ) : (
                                                 wgMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
+                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-[#fecd82]"> {/* Inner Seeker card */}
                                                         <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
                                                         <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
                                                         <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
@@ -881,8 +886,8 @@ function App() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-purple-50 p-5 rounded-lg shadow-inner border border-purple-200 flex flex-col">
-                                        <p className="font-semibold text-purple-700">Name: {profile.name}</p>
+                                    <div key={profile.id} className="bg-[#f0f8f0] p-5 rounded-lg shadow-inner border border-[#9adfaa] flex flex-col"> {/* All Seeker Profiles Card */}
+                                        <p className="font-semibold text-[#333333]">Name: {profile.name}</p>
                                         <p className="text-sm text-gray-600">Alter: {profile.age}</p>
                                         <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
                                         <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
@@ -908,8 +913,8 @@ function App() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allWgProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200 flex flex-col">
-                                        <p className="font-semibold text-green-700">WG-Name: {profile.name}</p>
+                                    <div key={profile.id} className="bg-[#fff8f0] p-5 rounded-lg shadow-inner border border-[#fecd82] flex flex-col"> {/* All WG Profiles Card */}
+                                        <p className="font-semibold text-[#333333]">WG-Name: {profile.name}</p>
                                         <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
                                         <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
                                         <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
@@ -943,17 +948,17 @@ function App() {
                             {matches
                                 .filter(match => match.searcher.createdBy === userId) // Only show matches for own seeker profiles
                                 .map((match, index) => (
-                                    <div key={index} className="bg-blue-50 p-6 rounded-lg shadow-inner border border-blue-200">
-                                        <h3 className="text-xl font-semibold text-blue-700 mb-3">
+                                    <div key={index} className="bg-[#f0f8f0] p-6 rounded-lg shadow-inner border border-[#9adfaa]"> {/* Seeker match card */}
+                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Seeker name text */}
                                             Ihr Profil: <span className="font-bold">{match.searcher.name}</span>
                                         </h3>
-                                        <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
+                                        <h4 className="text-lg font-semibold text-[#5a9c68] mb-2">Passende WG-Angebote:</h4> {/* Matching WGs title */}
                                         <div className="space-y-4">
                                             {match.matchingWGs.length === 0 ? (
                                                 <p className="text-gray-600 text-sm">Keine passenden WGs zu Ihrem Profil.</p>
                                             ) : (
                                                 match.matchingWGs.map(wgMatch => (
-                                                    <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
+                                                    <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-[#9adfaa]"> {/* Inner WG card */}
                                                         <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score})</p>
                                                         <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
                                                         <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
@@ -982,17 +987,17 @@ function App() {
                             {reverseMatches
                                 .filter(wgMatch => wgMatch.wg.createdBy === userId) // Only show matches for own flatshare profiles
                                 .map((wgMatch, index) => (
-                                    <div key={index} className="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
-                                        <h3 className="text-xl font-semibold text-green-700 mb-3">
+                                    <div key={index} className="bg-[#fff8f0] p-6 rounded-lg shadow-inner border border-[#fecd82]"> {/* Provider match card */}
+                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Provider name text */}
                                             Ihr WG-Profil: <span className="font-bold">{wgMatch.wg.name}</span>
                                         </h3>
-                                        <h4 className="text-lg font-semibold text-green-600 mb-2">Passende Suchende:</h4>
+                                        <h4 className="text-lg font-semibold text-[#cc8a2f] mb-2">Passende Suchende:</h4> {/* Matching Seekers title */}
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
                                                 <p className="text-gray-600 text-sm">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
                                             ) : (
                                                 wgMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
+                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-[#fecd82]"> {/* Inner Seeker card */}
                                                         <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score})</p>
                                                         <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
                                                         <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore'; // Importiere 'where'
+import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore'; // Import 'where'
 
 // Firebase-Konfiguration
-// DEINE ECHTEN FIREBASE-KONFIGURATIONSDATEN SIND HIER EINGEFÜGT!
+// YOUR ACTUAL FIREBASE CONFIG DATA IS INSERTED HERE!
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGb",
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -15,16 +15,15 @@ const firebaseConfig = {
     measurementId: "G-5JPWLDD0ZC"
 };
 
-// Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
+// Predefined lists for personality traits and interests
 const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher'];
 const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming'];
 
-// **WICHTIG:** Ersetze 'DEINE_ADMIN_UID_HIER' durch deine tatsächliche Benutzer-ID (UID) von Firebase Auth.
-// Du findest deine UID in der Browser-Konsole (F12 -> Console) nachdem du dich einmal angemeldet hast.
-// Suche nach der Zeile "Ihre Benutzer-ID: ..." in der App-Oberfläche.
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Hier ist deine korrigierte Admin-ID eingefügt!
+// **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID DISPLAYED IN THE APP!
+// Copy it directly from the app to avoid errors.
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
 
-// Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
+// Function to calculate the match score between a seeker and a flatshare profile
 const calculateMatchScore = (seeker, wg) => {
     let score = 0;
 
@@ -34,7 +33,7 @@ const calculateMatchScore = (seeker, wg) => {
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
-    // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
+    // 1. Age match (seeker age vs. flatshare age range)
     if (seeker.age && wg.minAge && wg.maxAge) {
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
             score += 20;
@@ -43,7 +42,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 2. Geschlechtspräferenz
+    // 2. Gender preference
     if (seeker.gender && wg.genderPreference) {
         if (wg.genderPreference === 'egal' || seeker.gender === wg.genderPreference) {
             score += 10;
@@ -52,7 +51,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 3. Persönlichkeitsmerkmale (Übereinstimmung)
+    // 3. Personality traits (match)
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     seekerTraits.forEach(trait => {
@@ -61,7 +60,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 4. Interessen (Überlappung)
+    // 4. Interests (overlap)
     const seekerInterests = getArrayValue(seeker, 'interests');
     const wgInterests = getArrayValue(wg, 'interests');
     seekerInterests.forEach(interest => {
@@ -70,7 +69,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
+    // 5. Rent price (seeker max rent >= flatshare rent)
     if (seeker.maxRent && wg.rent) {
         if (seeker.maxRent >= wg.rent) {
             score += 15;
@@ -79,7 +78,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 6. Haustiere (Match)
+    // 6. Pets (match)
     if (seeker.pets && wg.petsAllowed) {
         if (seeker.pets === 'ja' && wg.petsAllowed === 'ja') {
             score += 8;
@@ -88,7 +87,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
+    // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (flatshare)
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
     const wgDescription = (wg.description || '').toLowerCase();
     const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
@@ -100,7 +99,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 8. Durchschnittsalter der WG-Bewohner im Vergleich zum Suchendenalter
+    // 8. Average age of flatshare residents compared to seeker age
     if (seeker.age && wg.avgAge) {
         score -= Math.abs(seeker.age - wg.avgAge);
     }
@@ -109,18 +108,18 @@ const calculateMatchScore = (seeker, wg) => {
 };
 
 
-// Hauptkomponente der WG-Match-Anwendung
+// Main component of the flatshare match application
 function App() {
-    // Zustände für die *eigenen* Profile des angemeldeten Benutzers
+    // States for the *own* profiles of the logged-in user
     const [mySearcherProfiles, setMySearcherProfiles] = useState([]);
     const [myWgProfiles, setMyWgProfiles] = useState([]);
     
-    // Zustände für *alle* Profile (für Match-Berechnungen und Admin-Ansicht)
+    // States for *all* profiles (for match calculations and admin view)
     const [allSearcherProfilesGlobal, setAllSearcherProfilesGlobal] = useState([]);
     const [allWgProfilesGlobal, setAllWgProfilesGlobal] = useState([]);
 
-    const [matches, setMatches] = useState([]); // Matches: Suchender findet WG
-    const [reverseMatches, setReverseMatches] = useState([]); // Reverse Matches: WG findet Suchenden
+    const [matches, setMatches] = useState([]); // Matches: Seeker finds flatshare
+    const [reverseMatches, setReverseMatches] = useState([]); // Reverse matches: Flatshare finds seeker
     
     const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
@@ -128,9 +127,9 @@ function App() {
     const [error, setError] = useState(null);
     const [showSeekerForm, setShowSeekerForm] = useState(true);
     const [saveMessage, setSaveMessage] = useState('');
-    const [adminMode, setAdminMode] = useState(false); // Zustand für den Admin-Modus
+    const [adminMode, setAdminMode] = useState(false); // State for admin mode
 
-    // Firebase-Initialisierung und Authentifizierung
+    // Firebase initialization and authentication
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
 
@@ -146,8 +145,8 @@ function App() {
                     try {
                         await signInAnonymously(authInstance);
                     } catch (signInError) {
-                        console.error("Fehler bei der Firebase-Anonym-Authentifizierung:", signInError);
-                        setError("Fehler bei der Anmeldung. Bitte versuchen Sie es später erneut.");
+                        console.error("Error during Firebase anonymous authentication:", signInError);
+                        setError("Error logging in. Please try again later.");
                         setLoading(false);
                         return;
                     }
@@ -155,20 +154,20 @@ function App() {
                 const currentUid = authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2);
                 setUserId(currentUid);
                 setAdminMode(currentUid === ADMIN_UID); 
-                setLoading(false); // Setze loading auf false nach erfolgreicher Authentifizierung
+                setLoading(false); // Set loading to false after successful authentication
             });
 
             return () => {
                 unsubscribeAuth();
             };
         } catch (initError) {
-            console.error("Fehler bei der Firebase-Initialisierung:", initError);
-            setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
+            console.error("Error during Firebase initialization:", initError);
+            setError("Firebase could not be initialized. Please check your Firebase configuration and internet connection.");
             setLoading(false);
         }
     }, []);
 
-    // Echtzeit-Datenabruf für *eigene* Suchende-Profile von Firestore
+    // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
 
@@ -181,14 +180,14 @@ function App() {
             }));
             setMySearcherProfiles(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen der eigenen Suchenden-Profile:", err);
-            setError("Fehler beim Laden der eigenen Suchenden-Profile.");
+            console.error("Error retrieving own seeker profiles:", err);
+            setError("Error loading own seeker profiles.");
         });
 
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // Echtzeit-Datenabruf für *eigene* WG-Profile von Firestore
+    // Real-time data retrieval for *own* flatshare profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
 
@@ -201,17 +200,17 @@ function App() {
             }));
             setMyWgProfiles(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen der eigenen WG-Profile:", err);
-            setError("Fehler beim Laden der eigenen WG-Profile.");
+            console.error("Error retrieving own flatshare profiles:", err);
+            setError("Error loading own flatshare profiles.");
         });
 
         return () => unsubscribeMyWGs();
     }, [db, userId]);
 
 
-    // Echtzeit-Datenabruf für *alle* Suchende-Profile (für Match-Berechnung)
+    // Real-time data retrieval for *all* seeker profiles (for match calculation)
     useEffect(() => {
-        if (!db) return; // Kein userId-Filter, da alle abgerufen werden
+        if (!db) return; // No userId filter, as all are retrieved
 
         const allSearchersQuery = query(collection(db, `searcherProfiles`));
         const unsubscribeAllSearchers = onSnapshot(allSearchersQuery, (snapshot) => {
@@ -221,15 +220,15 @@ function App() {
             }));
             setAllSearcherProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen aller Suchenden-Profile (global):", err);
+            console.error("Error retrieving all seeker profiles (global):", err);
         });
 
         return () => unsubscribeAllSearchers();
-    }, [db]); // Abhängigkeit nur von 'db'
+    }, [db]); // Dependency only on 'db'
 
-    // Echtzeit-Datenabruf für *alle* WG-Profile (für Match-Berechnung)
+    // Real-time data retrieval for *all* flatshare profiles (for match calculation)
     useEffect(() => {
-        if (!db) return; // Kein userId-Filter, da alle abgerufen werden
+        if (!db) return; // No userId filter, as all are retrieved
 
         const allWgsQuery = query(collection(db, `wgProfiles`));
         const unsubscribeAllWGs = onSnapshot(allWgsQuery, (snapshot) => {
@@ -239,20 +238,20 @@ function App() {
             }));
             setAllWgProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen aller WG-Profile (global):", err);
+            console.error("Error retrieving all flatshare profiles (global):", err);
         });
 
         return () => unsubscribeAllWGs();
-    }, [db]); // Abhängigkeit nur von 'db'
+    }, [db]); // Dependency only on 'db'
 
 
-    // Match-Berechnung für beide Richtungen
+    // Match calculation for both directions
     useEffect(() => {
         const calculateAllMatches = () => {
-            // Für Suchender-findet-WG Matches
+            // For seeker-finds-flatshare matches
             const newSeekerToWGMatches = [];
-            // Normale Benutzer matchen ihre eigenen Suchende-Profile gegen ALLE WG-Profile
-            // Admins matchen alle Suchende-Profile gegen ALLE WG-Profile
+            // Normal users match their own seeker profiles against ALL flatshare profiles
+            // Admins match all seeker profiles against ALL flatshare profiles
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
@@ -270,10 +269,10 @@ function App() {
             });
             setMatches(newSeekerToWGMatches);
 
-            // Für WG-findet-Suchenden Matches
+            // For flatshare-finds-seeker matches
             const newWGToSeekerMatches = [];
-            // Normale Benutzer matchen ihre eigenen WG-Profile gegen ALLE Suchende-Profile
-            // Admins matchen alle WG-Profile gegen ALLE Suchende-Profile
+            // Normal users match their own flatshare profiles against ALL seeker profiles
+            // Admins match all flatshare profiles against ALL seeker profiles
             const wgsForMatching = adminMode ? allWgProfilesGlobal : myWgProfiles;
 
             wgsForMatching.forEach(wg => {
@@ -292,87 +291,88 @@ function App() {
             setReverseMatches(newWGToSeekerMatches);
         };
 
-        // Berechne Matches, sobald alle relevanten Daten geladen sind
-        // und nur, wenn der db und userId vorhanden sind und loading false ist.
-        if (!loading && db && userId) { // Überprüfe ob userId vorhanden ist, bevor calculateAllMatches aufgerufen wird.
+        // Calculate matches once all relevant data is loaded
+        // and only if db and userId are present and loading is false.
+        if (!loading && db && userId) { 
             calculateAllMatches();
         } else if (mySearcherProfiles.length === 0 && myWgProfiles.length === 0 && !loading) {
-            // Setze Matches auf leer, wenn keine eigenen Profile vorhanden sind und alles geladen ist
+            // Set matches to empty if no own profiles exist and everything is loaded
             setMatches([]);
             setReverseMatches([]);
         }
     }, [mySearcherProfiles, myWgProfiles, allSearcherProfilesGlobal, allWgProfilesGlobal, loading, adminMode, userId, db]);
 
 
-    // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
+    // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
+            setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
             await addDoc(collection(db, `searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId, // Profil wird dem aktuellen Benutzer zugeordnet
+                createdBy: userId, // Profile is assigned to the current user
             });
-            setSaveMessage('Suchenden-Profil erfolgreich gespeichert!');
+            setSaveMessage('Seeker profile successfully saved!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Fehler beim Hinzufügen des Suchenden-Profils: ", e);
-            setError("Fehler beim Speichern des Suchenden-Profils.");
+            console.error("Error adding seeker profile: ", e);
+            setError("Error saving seeker profile.");
         }
     };
 
-    // Funktion zum Hinzufügen eines WG-Profils zu Firestore
+    // Function to add a flatshare profile to Firestore
     const addWGProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
+            setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
             await addDoc(collection(db, `wgProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId, // Profil wird dem aktuellen Benutzer zugeordnet
+                createdBy: userId, // Profile is assigned to the current user
             });
-            setSaveMessage('WG-Profil erfolgreich gespeichert!');
+            setSaveMessage('Flatshare profile successfully saved!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Fehler beim Hinzufügen des WG-Profils: ", e);
-            setError("Fehler beim Speichern des WG-Profils.");
+            console.error("Error adding flatshare profile: ", e);
+            setError("Error saving flatshare profile.");
         }
     };
 
-    // Funktion zum Löschen eines Profils
+    // Function to delete a profile
     const handleDeleteProfile = async (collectionName, docId, profileName, profileCreatorId) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit zum Löschen.");
+            setError("Database not ready for deletion.");
             return;
         }
 
-        // Prüfe, ob der Benutzer berechtigt ist, zu löschen
+        // Check if the user is authorized to delete
+        // THIS LOGIC CONTROLS THE VISIBILITY OF THE DELETE BUTTON AND THE AUTHORIZATION
         if (!adminMode && userId !== profileCreatorId) {
-            setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
+            setError("You are not authorized to delete this profile.");
             setTimeout(() => setError(''), 3000);
             return;
         }
 
-        const confirmDelete = window.confirm(`Möchtest du das Profil "${profileName}" wirklich löschen?`);
+        const confirmDelete = window.confirm(`Do you really want to delete the profile "${profileName}"?`);
 
         if (confirmDelete) {
             try {
                 await deleteDoc(doc(db, collectionName, docId));
-                setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
+                setSaveMessage(`Profile "${profileName}" successfully deleted!`);
                 setTimeout(() => setSaveMessage(''), 3000);
             } catch (e) {
-                console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
-                setError(`Fehler beim Löschen von Profil "${profileName}".`);
+                console.error(`Error deleting profile ${profileName}: `, e);
+                setError(`Error deleting profile "${profileName}".`);
             }
         }
     };
 
-    // Vereinheitlichte Profilformular-Komponente
+    // Unified profile form component
     const ProfileForm = ({ onSubmit, type }) => {
         const [formState, setFormState] = useState({
             name: '',
@@ -515,7 +515,7 @@ function App() {
                     </div>
                 )}
 
-                {/* Persönlichkeitsmerkmale (für beide) */}
+                {/* Personality traits (for both) */}
                 <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
                         {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
@@ -537,7 +537,7 @@ function App() {
                     </div>
                 </div>
 
-                {/* Interessen (für beide) */}
+                {/* Interests (for both) */}
                 <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
                         {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
@@ -559,7 +559,7 @@ function App() {
                     </div>
                 </div>
 
-                {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
+                {/* Maximum rent (seeker) / Rent (provider) */}
                 {type === 'seeker' && (
                     <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2">Maximale Miete (€):</label>
@@ -585,7 +585,7 @@ function App() {
                     </div>
                 )}
 
-                {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
+                {/* Pets (seeker) / Pets allowed (provider) */}
                 {type === 'seeker' && (
                     <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2">Haustiere:</label>
@@ -617,7 +617,7 @@ function App() {
                     </div>
                 )}
 
-                {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}
+                {/* What is being searched for (seeker) / Flatshare description (provider) */}
                 {type === 'seeker' && (
                     <div>
                         <label className="block text-gray-700 text-sm font-bold mb-2">Was suchst du in einer WG?:</label>
@@ -681,7 +681,7 @@ function App() {
                     </div>
                 )}
 
-                {/* Ort/Stadtteil (für beide) */}
+                {/* Location / District (for both) */}
                 <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">Ort / Stadtteil:</label>
                     <input
@@ -697,7 +697,7 @@ function App() {
                 <div className="flex justify-between mt-6">
                     <button
                         type="button"
-                        onClick={() => setShowSeekerForm(true)} // Zurück zur Auswahl des Formulars
+                        onClick={() => setShowSeekerForm(true)} // Back to form selection
                         className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
                     >
                         Abbrechen
@@ -729,7 +729,7 @@ function App() {
         );
     }
 
-    // Bestimme, welche Dashboards angezeigt werden sollen
+    // Determine which dashboards should be displayed
     const showMySeekerDashboard = mySearcherProfiles.length > 0 && !adminMode;
     const showMyWgDashboard = myWgProfiles.length > 0 && !adminMode;
     const showAdminDashboard = adminMode;
@@ -740,7 +740,7 @@ function App() {
             {userId && (
                 <div className="bg-blue-200 text-blue-800 text-sm px-4 py-2 rounded-full mb-6 shadow">
                     Ihre Benutzer-ID: <span className="font-mono font-semibold">{userId}</span>
-                    {/* Toggle für Admin-Modus, nur sichtbar für den ADMIN_UID */}
+                    {/* Toggle for admin mode, only visible for ADMIN_UID */}
                     {userId === ADMIN_UID && (
                         <label className="ml-4 inline-flex items-center">
                             <input
@@ -760,8 +760,8 @@ function App() {
                 </div>
             )}
 
-            {/* Formular-Auswahl-Buttons nur anzeigen, wenn weder Admin- noch Benutzer-Dashboard aktiv sind */}
-            {!showAdminDashboard && !showMySeekerDashboard && !showMyWgDashboard && (
+            {/* Form selection buttons only displayed if neither admin nor user dashboard is active AND not in admin mode */}
+            {!showAdminDashboard && !showMySeekerDashboard && !showMyWgDashboard && !adminMode && (
                 <div className="w-full max-w-4xl flex justify-center space-x-4 mb-8">
                     <button
                         onClick={() => setShowSeekerForm(true)}
@@ -786,16 +786,18 @@ function App() {
                 </div>
             )}
 
-            {/* Formulare immer anzeigen, aber die Sichtbarkeit der Dashboard-Bereiche steuern wir unten */}
-            <div className="w-full max-w-xl mb-12">
-                {showSeekerForm ? (
-                    <ProfileForm onSubmit={addSearcherProfile} type="seeker" />
-                ) : (
-                    <ProfileForm onSubmit={addWGProfile} type="provider" />
-                )}
-            </div>
+            {/* Forms are displayed only if not in admin mode */}
+            {!adminMode && (
+                <div className="w-full max-w-xl mb-12">
+                    {showSeekerForm ? (
+                        <ProfileForm onSubmit={addSearcherProfile} type="seeker" />
+                    ) : (
+                        <ProfileForm onSubmit={addWGProfile} type="provider" />
+                    )}
+                </div>
+            )}
 
-            {/* --- DASHBOARD-BEREICHE (Conditional Rendering) --- */}
+            {/* --- DASHBOARD SECTIONS (Conditional Rendering) --- */}
 
             {/* Admin Dashboard */}
             {showAdminDashboard && (
@@ -928,7 +930,7 @@ function App() {
                 </>
             )}
 
-            {/* Suchender-Dashboard (für normalen Nutzer) */}
+            {/* Seeker Dashboard (for normal user) */}
             {showMySeekerDashboard && (
                 <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl">
                     <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Meine Matches: Suchender findet WG</h2>
@@ -939,7 +941,7 @@ function App() {
                     ) : (
                         <div className="space-y-8">
                             {matches
-                                .filter(match => match.searcher.createdBy === userId) // Zeige nur die Matches für die eigenen Suchende-Profile
+                                .filter(match => match.searcher.createdBy === userId) // Only show matches for own seeker profiles
                                 .map((match, index) => (
                                     <div key={index} className="bg-blue-50 p-6 rounded-lg shadow-inner border border-blue-200">
                                         <h3 className="text-xl font-semibold text-blue-700 mb-3">
@@ -967,7 +969,7 @@ function App() {
                 </div>
             )}
 
-            {/* WG-Dashboard (für normalen Nutzer) */}
+            {/* WG Dashboard (for normal user) */}
             {showMyWgDashboard && (
                 <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
                     <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Meine Matches: WG findet Suchenden</h2>
@@ -978,7 +980,7 @@ function App() {
                     ) : (
                         <div className="space-y-8">
                             {reverseMatches
-                                .filter(wgMatch => wgMatch.wg.createdBy === userId) // Zeige nur die Matches für die eigenen WG-Profile
+                                .filter(wgMatch => wgMatch.wg.createdBy === userId) // Only show matches for own flatshare profiles
                                 .map((wgMatch, index) => (
                                     <div key={index} className="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
                                         <h3 className="text-xl font-semibold text-green-700 mb-3">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } from 'firebase/firestore'; // Importiere doc und deleteDoc
+import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore'; // Importiere 'where'
 
 // Firebase-Konfiguration
 // DEINE ECHTEN FIREBASE-KONFIGURATIONSDATEN SIND HIER EINGEFÜGT!
@@ -19,40 +19,40 @@ const firebaseConfig = {
 const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher'];
 const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming'];
 
+// **WICHTIG:** Ersetze 'DEINE_ADMIN_UID_HIER' durch deine tatsächliche Benutzer-ID (UID) von Firebase Auth.
+// Du findest deine UID in der Browser-Konsole (F12 -> Console) nachdem du dich einmal angemeldet hast.
+// Suche nach der Zeile "Ihre Benutzer-ID: ..." in der App-Oberfläche.
+const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; 
+
 // Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
-// Sie ist außerhalb der Komponente definiert, damit sie nicht bei jedem Render neu erstellt wird.
 const calculateMatchScore = (seeker, wg) => {
     let score = 0;
 
     // Helper to get consistent data access for array fields
-    // This ensures 'interests' and 'personalityTraits' are always arrays for matching
     const getArrayValue = (profile, field) => {
         const value = profile[field];
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
     // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
-    // Hohe Priorität: Muss im Bereich liegen
     if (seeker.age && wg.minAge && wg.maxAge) {
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
             score += 20;
         } else {
-            score -= 15; // Deutlicher Abzug, wenn Alter nicht passt
+            score -= 15;
         }
     }
 
     // 2. Geschlechtspräferenz
-    // Hohe Priorität
     if (seeker.gender && wg.genderPreference) {
         if (wg.genderPreference === 'egal' || seeker.gender === wg.genderPreference) {
             score += 10;
         } else {
-            score -= 10; // Abzug, wenn Geschlecht nicht passt
+            score -= 10;
         }
     }
 
     // 3. Persönlichkeitsmerkmale (Übereinstimmung)
-    // Mittlere Priorität
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     seekerTraits.forEach(trait => {
@@ -62,7 +62,6 @@ const calculateMatchScore = (seeker, wg) => {
     });
 
     // 4. Interessen (Überlappung)
-    // Mittlere Priorität
     const seekerInterests = getArrayValue(seeker, 'interests');
     const wgInterests = getArrayValue(wg, 'interests');
     seekerInterests.forEach(interest => {
@@ -72,27 +71,24 @@ const calculateMatchScore = (seeker, wg) => {
     });
 
     // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
-    // Hohe Priorität
     if (seeker.maxRent && wg.rent) {
         if (seeker.maxRent >= wg.rent) {
             score += 15;
         } else {
-            score -= 15; // Deutlicher Abzug, wenn Miete zu hoch
+            score -= 15;
         }
     }
 
     // 6. Haustiere (Match)
-    // Mittlere Priorität
     if (seeker.pets && wg.petsAllowed) {
         if (seeker.pets === 'ja' && wg.petsAllowed === 'ja') {
             score += 8;
         } else if (seeker.pets === 'ja' && wg.petsAllowed === 'nein') {
-            score -= 8; // Abzug, wenn Haustiere nicht erlaubt sind
+            score -= 8;
         }
     }
 
     // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
-    // Niedrigere Priorität, für Textübereinstimmung
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
     const wgDescription = (wg.description || '').toLowerCase();
     const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
@@ -106,7 +102,7 @@ const calculateMatchScore = (seeker, wg) => {
 
     // 8. Durchschnittsalter der WG-Bewohner im Vergleich zum Suchendenalter
     if (seeker.age && wg.avgAge) {
-        score -= Math.abs(seeker.age - wg.avgAge); // Je näher, desto besser (Punktabzug bei größerer Differenz)
+        score -= Math.abs(seeker.age - wg.avgAge);
     }
 
     return score;
@@ -117,14 +113,15 @@ const calculateMatchScore = (seeker, wg) => {
 function App() {
     const [searcherProfiles, setSearcherProfiles] = useState([]);
     const [wgProfiles, setWgProfiles] = useState([]);
-    const [matches, setMatches] = useState([]); // Matches: Suchender findet WG
-    const [reverseMatches, setReverseMatches] = useState([]); // NEU: Reverse Matches: WG findet Suchenden
+    const [matches, setMatches] = useState([]);
+    const [reverseMatches, setReverseMatches] = useState([]);
     const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showSeekerForm, setShowSeekerForm] = useState(true); // Steuert, welches Formular angezeigt wird
+    const [showSeekerForm, setShowSeekerForm] = useState(true);
     const [saveMessage, setSaveMessage] = useState('');
+    const [adminMode, setAdminMode] = useState(false); // NEU: Zustand für den Admin-Modus
 
     // Firebase-Initialisierung und Authentifizierung
     useEffect(() => {
@@ -148,7 +145,10 @@ function App() {
                         return;
                     }
                 }
-                setUserId(authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2));
+                const currentUid = authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2);
+                setUserId(currentUid);
+                // Setze Admin-Modus nur, wenn der Benutzer die ADMIN_UID hat
+                setAdminMode(currentUid === ADMIN_UID); 
                 setLoading(false);
             });
 
@@ -162,15 +162,20 @@ function App() {
         }
     }, []);
 
-    // Echtzeit-Datenabruf für Suchende-Profile von Firestore
+    // Echtzeit-Datenabruf für Suchende-Profile von Firestore (mit Filterung)
     useEffect(() => {
         if (!db || !userId) return;
 
         setLoading(true);
-        const searchersCollectionRef = collection(db, `searcherProfiles`);
-        const q = query(searchersCollectionRef);
+        let searchersQuery;
+        // NEU: Filtere nach userId, es sei denn, es ist der Admin-Modus
+        if (adminMode && userId === ADMIN_UID) {
+            searchersQuery = query(collection(db, `searcherProfiles`));
+        } else {
+            searchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
+        }
 
-        const unsubscribeSearchers = onSnapshot(q, (snapshot) => {
+        const unsubscribeSearchers = onSnapshot(searchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -184,17 +189,23 @@ function App() {
         });
 
         return () => unsubscribeSearchers();
-    }, [db, userId]);
+    }, [db, userId, adminMode]); // 'adminMode' als Abhängigkeit hinzugefügt
 
-    // Echtzeit-Datenabruf für WG-Profile von Firestore
+
+    // Echtzeit-Datenabruf für WG-Profile von Firestore (mit Filterung)
     useEffect(() => {
         if (!db || !userId) return;
 
         setLoading(true);
-        const wgsCollectionRef = collection(db, `wgProfiles`);
-        const q = query(wgsCollectionRef);
+        let wgsQuery;
+        // NEU: Filtere nach userId, es sei denn, es ist der Admin-Modus
+        if (adminMode && userId === ADMIN_UID) {
+            wgsQuery = query(collection(db, `wgProfiles`));
+        } else {
+            wgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
+        }
 
-        const unsubscribeWGs = onSnapshot(q, (snapshot) => {
+        const unsubscribeWGs = onSnapshot(wgsQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -208,23 +219,24 @@ function App() {
         });
 
         return () => unsubscribeWGs();
-    }, [db, userId]);
+    }, [db, userId, adminMode]); // 'adminMode' als Abhängigkeit hinzugefügt
 
-    // **Verbesserte Match-Logik: Berechnet Matches für beide Richtungen**
+    // Match-Berechnung für beide Richtungen
     useEffect(() => {
         const calculateAllMatches = () => {
             const newSeekerToWGMatches = [];
+            // Jedes Suchende-Profil matcht gegen ALLE WG-Profile, wenn im Admin-Modus.
+            // Sonst matcht es nur gegen die WG-Profile, die es sehen kann.
+            const wgsToMatchAgainst = adminMode && userId === ADMIN_UID ? wgProfiles : wgProfiles.filter(wg => wg.createdBy === userId);
+
             searcherProfiles.forEach(searcher => {
-                const matchingWGs = wgProfiles.map(wg => {
+                const matchingWGs = wgsToMatchAgainst.map(wg => {
                     const score = calculateMatchScore(searcher, wg);
                     return { wg, score };
-                }); // Filter für Score > 0 entfernt, um alle Matches anzuzeigen
+                });
 
                 matchingWGs.sort((a, b) => b.score - a.score);
 
-                // Füge nur hinzu, wenn es überhaupt WGs gibt, auch wenn der Score negativ ist
-                // Hier wurde ein Bug behoben: newSeekerToWGMatches.push sollte immer ausgeführt werden,
-                // wenn der searcherProfiles-Array WGs enthält, sonst wurden die Matches nicht angezeigt
                 newSeekerToWGMatches.push({
                     searcher: searcher,
                     matchingWGs: matchingWGs
@@ -232,19 +244,19 @@ function App() {
             });
             setMatches(newSeekerToWGMatches);
 
-            // NEU: Matches aus Sicht der WG-Profile
             const newWGToSeekerMatches = [];
+            // Jedes WG-Profil matcht gegen ALLE Suchenden-Profile, wenn im Admin-Modus.
+            // Sonst matcht es nur gegen die Suchenden-Profile, die es sehen kann.
+            const seekersToMatchAgainst = adminMode && userId === ADMIN_UID ? searcherProfiles : searcherProfiles.filter(seeker => seeker.createdBy === userId);
+
             wgProfiles.forEach(wg => {
-                const matchingSeekers = searcherProfiles.map(searcher => {
+                const matchingSeekers = seekersToMatchAgainst.map(searcher => {
                     const score = calculateMatchScore(searcher, wg);
                     return { searcher, score };
-                }); // Filter für Score > 0 entfernt, um alle Matches anzuzeigen
+                });
 
                 matchingSeekers.sort((a, b) => b.score - a.score);
 
-                // Füge nur hinzu, wenn es überhaupt Suchende gibt, auch wenn der Score negativ ist
-                // Hier wurde ein Bug behoben: newWGToSeekerMatches.push sollte immer ausgeführt werden,
-                // wenn der wgProfiles-Array Suchende enthält, sonst wurden die Matches nicht angezeigt
                 newWGToSeekerMatches.push({
                     wg: wg,
                     matchingSeekers: matchingSeekers
@@ -253,15 +265,13 @@ function App() {
             setReverseMatches(newWGToSeekerMatches);
         };
 
-        // Trigger Match-Berechnung, wenn Profile geladen sind
-        if (searcherProfiles.length > 0 || wgProfiles.length > 0) {
+        if ((searcherProfiles.length > 0 || wgProfiles.length > 0) && !loading) {
             calculateAllMatches();
         } else if (searcherProfiles.length === 0 && wgProfiles.length === 0 && !loading) {
-            // Wenn keine Profile vorhanden sind und fertig geladen, setze Matches auf leer
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [searcherProfiles, wgProfiles, loading]); // 'loading' als Abhängigkeit hinzugefügt
+    }, [searcherProfiles, wgProfiles, loading, adminMode]); // 'adminMode' als Abhängigkeit hinzugefügt
 
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
@@ -274,7 +284,7 @@ function App() {
             await addDoc(collection(db, `searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId,
+                createdBy: userId, // Profil wird dem aktuellen Benutzer zugeordnet
             });
             setSaveMessage('Suchenden-Profil erfolgreich gespeichert!');
             setTimeout(() => setSaveMessage(''), 3000);
@@ -294,7 +304,7 @@ function App() {
             await addDoc(collection(db, `wgProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId,
+                createdBy: userId, // Profil wird dem aktuellen Benutzer zugeordnet
             });
             setSaveMessage('WG-Profil erfolgreich gespeichert!');
             setTimeout(() => setSaveMessage(''), 3000);
@@ -304,14 +314,20 @@ function App() {
         }
     };
 
-    // NEU: Funktion zum Löschen eines Profils
-    const handleDeleteProfile = async (collectionName, docId, profileName) => {
-        if (!db) {
+    // Funktion zum Löschen eines Profils
+    const handleDeleteProfile = async (collectionName, docId, profileName, profileCreatorId) => {
+        if (!db || !userId) {
             setError("Datenbank nicht bereit zum Löschen.");
             return;
         }
-        // Bestätigungsdialog (da alert() nicht funktioniert, simulieren wir hier eine Bestätigung)
-        // In einer echten App würde hier ein Modal oder ein bestätigter UI-Flow verwendet.
+
+        // NEU: Prüfe, ob der Benutzer berechtigt ist, zu löschen
+        if (!adminMode && userId !== profileCreatorId) {
+            setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
         const confirmDelete = window.confirm(`Möchtest du das Profil "${profileName}" wirklich löschen?`);
 
         if (confirmDelete) {
@@ -326,27 +342,18 @@ function App() {
         }
     };
 
-    // **Vereinheitlichte Profilformular-Komponente**
+    // Vereinheitlichte Profilformular-Komponente
     const ProfileForm = ({ onSubmit, type }) => {
         const [formState, setFormState] = useState({
-            name: '', // Für Suchender, Name der WG für Anbieter
-            age: '', // Alter Suchender
-            minAge: '', // Min-Alter Anbieter
-            maxAge: '', // Max-Alter Anbieter
-            gender: 'männlich', // Geschlecht Suchender
-            genderPreference: 'egal', // Geschlechtspräferenz Anbieter
+            name: '',
+            age: '', minAge: '', maxAge: '',
+            gender: 'männlich', genderPreference: 'egal',
             personalityTraits: [],
             interests: [],
-            maxRent: '', // Max. Miete Suchender
-            pets: 'egal', // Haustiere Suchender
-            lookingFor: '', // Was sucht Suchender
-            description: '', // Beschreibung WG
-            rent: '', // Miete WG
-            roomType: 'Einzelzimmer', // Zimmertyp WG
-            petsAllowed: 'egal', // Haustiere erlaubt Anbieter
-            avgAge: '', // Durchschnittsalter Bewohner Anbieter
-            lookingForInFlatmate: '', // Was sucht WG im Mitbewohner
-            location: '', // Ort/Stadtteil
+            maxRent: '', pets: 'egal', lookingFor: '',
+            description: '', rent: '', roomType: 'Einzelzimmer', petsAllowed: 'egal',
+            avgAge: '', lookingForInFlatmate: '',
+            location: '',
         });
 
         const handleChange = (e) => {
@@ -365,7 +372,6 @@ function App() {
 
         const handleSubmit = (e) => {
             e.preventDefault();
-            // Umwandlung von Zahlfeldern und Hinzufügen von Werten
             const dataToSubmit = { ...formState };
             if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age);
             if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
@@ -375,7 +381,6 @@ function App() {
             if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
 
             onSubmit(dataToSubmit);
-            // Formular zurücksetzen nach dem Speichern
             setFormState({
                 name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
                 genderPreference: 'egal', personalityTraits: [], interests: [],
@@ -490,7 +495,7 @@ function App() {
                             <label key={trait} className="inline-flex items-center text-gray-800">
                                 <input
                                     type="checkbox"
-                                    name="personalityTraits" // Name ist für beide gleich
+                                    name="personalityTraits"
                                     value={trait}
                                     checked={formState.personalityTraits.includes(trait)}
                                     onChange={handleChange}
@@ -512,7 +517,7 @@ function App() {
                             <label key={interest} className="inline-flex items-center text-gray-800">
                                 <input
                                     type="checkbox"
-                                    name="interests" // Name ist für beide gleich
+                                    name="interests"
                                     value={interest}
                                     checked={formState.interests.includes(interest)}
                                     onChange={handleChange}
@@ -700,6 +705,18 @@ function App() {
             {userId && (
                 <div className="bg-blue-200 text-blue-800 text-sm px-4 py-2 rounded-full mb-6 shadow">
                     Ihre Benutzer-ID: <span className="font-mono font-semibold">{userId}</span>
+                    {/* NEU: Toggle für Admin-Modus, nur sichtbar für den ADMIN_UID */}
+                    {userId === ADMIN_UID && (
+                        <label className="ml-4 inline-flex items-center">
+                            <input
+                                type="checkbox"
+                                className="form-checkbox h-5 w-5 text-purple-600 rounded"
+                                checked={adminMode}
+                                onChange={() => setAdminMode(!adminMode)}
+                            />
+                            <span className="ml-2 text-purple-800 font-bold">Admin-Modus</span>
+                        </label>
+                    )}
                 </div>
             )}
             {saveMessage && (
@@ -759,14 +776,18 @@ function App() {
 
                                 <h4 className="text-lg font-semibold text-blue-600 mb-2">Passende WG-Angebote:</h4>
                                 <div className="space-y-4">
-                                    {match.matchingWGs.map(wgMatch => (
-                                        <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
-                                            <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
-                                            <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                            <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                        </div>
-                                    ))}
+                                    {match.matchingWGs.length === 0 ? (
+                                        <p className="text-gray-600 text-sm">Keine passenden WGs.</p>
+                                    ) : (
+                                        match.matchingWGs.map(wgMatch => (
+                                            <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
+                                                <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
+                                                <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
+                                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -774,7 +795,7 @@ function App() {
                 )}
             </div>
 
-            {/* NEU: Matches aus Sicht der WG-Profile */}
+            {/* Matches aus Sicht der WG-Profile */}
             <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: WG findet Suchenden</h2>
                 {reverseMatches.length === 0 ? (
@@ -794,14 +815,18 @@ function App() {
 
                                 <h4 className="text-lg font-semibold text-green-600 mb-2">Passende Suchende:</h4>
                                 <div className="space-y-4">
-                                    {wgMatch.matchingSeekers.map(seekerMatch => (
-                                        <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
-                                            <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
-                                            <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
-                                            <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                        </div>
-                                    ))}
+                                    {wgMatch.matchingSeekers.length === 0 ? (
+                                        <p className="text-gray-600 text-sm">Keine passenden Suchenden.</p>
+                                    ) : (
+                                        wgMatch.matchingSeekers.map(seekerMatch => (
+                                            <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
+                                                <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
+                                                <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
+                                                <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -825,7 +850,7 @@ function App() {
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                 <button
-                                    onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name)}
+                                    onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                     className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
                                 >
                                     Löschen
@@ -844,7 +869,7 @@ function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {wgProfiles.map(profile => (
                             <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200 flex flex-col">
-                                <p className="font-semibold text-green-700">WG-Name: {profile.name}</p> {/* Name der WG */}
+                                <p className="font-semibold text-green-700">WG-Name: {profile.name}</p>
                                 <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
                                 <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
                                 <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
@@ -852,7 +877,7 @@ function App() {
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                 <button
-                                    onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name)}
+                                    onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
                                     className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
                                 >
                                     Löschen

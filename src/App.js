@@ -6,7 +6,7 @@ import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, delete
 // Firebase-Konfiguration
 // YOUR ACTUAL FIREBASE CONFIG DATA IS INSERTED HERE!
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGb",
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- HIER WURDE DEIN NEUER API KEY EINGEFÜGT!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",

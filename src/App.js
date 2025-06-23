@@ -397,7 +397,7 @@ function App() {
             e.preventDefault();
             if (currentStep === totalSteps) {
                 const dataToSubmit = { ...formState };
-                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age);
+                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToToJson.age);
                 if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
                 if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
                 if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);

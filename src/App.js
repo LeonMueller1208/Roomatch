@@ -647,7 +647,7 @@ function App() {
                 <div className="flex justify-between mt-8">
                     <button
                         type="button"
-                        onClick={() => setShowSeekerForm(true)}
+                        onClick={() => setShowSeekerForm(true)} // Dies wird den Typ des Formulars zurücksetzen, wenn man abbricht und wieder zur Auswahl geht
                         className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
                     >
                         <XCircle size={20} className="mr-2" /> Abbrechen
@@ -719,41 +719,40 @@ function App() {
                 </div>
             )}
 
-            {/* Form selection buttons only displayed if neither admin nor user dashboard is active AND not in admin mode */}
-            {!showAdminDashboard && !showMySeekerDashboard && !showMyWgDashboard && !adminMode && (
-                <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12">
-                    <button
-                        onClick={() => setShowSeekerForm(true)}
-                        className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                            showSeekerForm
-                                ? 'bg-[#9adfaa] text-[#333333]'
-                                : 'bg-white text-[#9adfaa] hover:bg-gray-50'
-                        }`}
-                    >
-                        <Search size={24} className="mr-3" /> Suchenden-Profil
-                    </button>
-                    <button
-                        onClick={() => setShowSeekerForm(false)}
-                        className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                            !showSeekerForm
-                                ? 'bg-[#fecd82] text-[#333333]'
-                                : 'bg-white text-[#fecd82] hover:bg-gray-50'
-                        }`}
-                    >
-                        <HomeIcon size={24} className="mr-3" /> WG-Angebot
-                    </button>
-                </div>
-            )}
-
-            {/* Forms are displayed only if not in admin mode */}
+            {/* Profile-Erstellungs-Sektion für normale Nutzer (und Admins im normalen Modus) */}
             {!adminMode && (
-                <div className="w-full max-w-xl mb-12">
-                    {showSeekerForm ? (
-                        <ProfileForm onSubmit={addSearcherProfile} type="seeker" />
-                    ) : (
-                        <ProfileForm onSubmit={addWGProfile} type="provider" />
-                    )}
-                </div>
+                <>
+                    <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12">
+                        <button
+                            onClick={() => setShowSeekerForm(true)}
+                            className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                                showSeekerForm
+                                    ? 'bg-[#9adfaa] text-[#333333]'
+                                    : 'bg-white text-[#9adfaa] hover:bg-gray-50'
+                            }`}
+                        >
+                            <Search size={24} className="mr-3" /> Suchenden-Profil
+                        </button>
+                        <button
+                            onClick={() => setShowSeekerForm(false)}
+                            className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                                !showSeekerForm
+                                    ? 'bg-[#fecd82] text-[#333333]'
+                                    : 'bg-white text-[#fecd82] hover:bg-gray-50'
+                            }`}
+                        >
+                            <HomeIcon size={24} className="mr-3" /> WG-Angebot
+                        </button>
+                    </div>
+
+                    <div className="w-full max-w-xl mb-12">
+                        {showSeekerForm ? (
+                            <ProfileForm onSubmit={addSearcherProfile} type="seeker" />
+                        ) : (
+                            <ProfileForm onSubmit={addWGProfile} type="provider" />
+                        )}
+                    </div>
+                </>
             )}
 
             {/* --- DASHBOARD SECTIONS (Conditional Rendering) --- */}
@@ -903,9 +902,9 @@ function App() {
                 </div>
             ) : (
                 // Wenn nicht im Admin-Modus, die benutzerdefinierten Dashboards rendern
-                <>
+                <div className="w-full max-w-7xl flex flex-col gap-12">
                     {showMySeekerDashboard && (
-                        <div className="w-full max-w-7xl bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
+                        <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
                             <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Meine Matches: Suchender findet WG</h2>
                             {matches.filter(match => match.searcher.createdBy === userId).length === 0 ? (
                                 <p className="text-center text-gray-600 text-lg py-4">
@@ -947,7 +946,7 @@ function App() {
                     )}
 
                     {showMyWgDashboard && (
-                        <div className="w-full max-w-7xl bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
+                        <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
                             <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Meine Matches: WG findet Suchenden</h2>
                             {reverseMatches.filter(wgMatch => wgMatch.wg.createdBy === userId).length === 0 ? (
                                 <p className="text-center text-gray-600 text-lg py-4">
@@ -987,19 +986,8 @@ function App() {
                             )}
                         </div>
                     )}
-                    {/* Meldung, wenn keine eigenen Profile erstellt wurden und nicht im Admin-Modus */}
-                    {!showMySeekerDashboard && !showMyWgDashboard && (
-                        <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-12">
-                            <p className="text-lg">Bitte erstellen Sie ein Suchenden-Profil oder ein WG-Angebot, um Ihre Matches zu sehen.</p>
-                            <button
-                                onClick={() => setShowSeekerForm(true)}
-                                className="mt-6 px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"
-                            >
-                                <span className="flex items-center"><Search size={20} className="mr-2" /> Profil erstellen</span>
-                            </button>
-                        </div>
-                    )}
-                </>
+                    {/* Diese Meldung wird entfernt, da die Formularauswahl jetzt immer sichtbar ist */}
+                </div>
             )}
         </div>
     );

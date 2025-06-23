@@ -271,7 +271,7 @@ function App() {
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [searcherProfiles, wgProfiles, loading, adminMode]); // 'adminMode' als Abhängigkeit hinzugefügt
+    }, [searcherProfiles, wgProfiles, loading, adminMode, userId]); // 'userId' als Abhängigkeit hinzugefügt
 
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
@@ -874,7 +874,7 @@ function App() {
                                 <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
                                 <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                 <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}大手</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                 <button
                                     onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}

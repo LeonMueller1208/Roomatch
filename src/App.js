@@ -703,7 +703,7 @@ function App() {
             <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
 
 
-            <h1 className="text-5xl font-extrabold text-white mb-8 text-center drop-shadow-lg">WG-Match App</h1>
+            <h1 className="text-5xl font-extrabold text-white mb-8 text-center drop-shadow-lg">Roomatch</h1>
             
             {userId && (
                 <div className="bg-[#c3efe8] text-[#0a665a] text-sm px-6 py-3 rounded-full mb-8 shadow-md flex items-center transform transition-all duration-300 hover:scale-[1.02]">
@@ -943,8 +943,7 @@ function App() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                ))
-                                        }
+                                                ))}
                                         </div>
                                     )}
                                 </div>
@@ -986,8 +985,7 @@ function App() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                ))
-                                        }
+                                                ))}
                                         </div>
                                     )}
                                 </div>

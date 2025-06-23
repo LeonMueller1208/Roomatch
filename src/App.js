@@ -815,6 +815,7 @@ function App() {
                                         </div>
                                     </div>
                                 ))}
+                                {/* Removed extra closing brace here */}
                             </div>
                         )}
                     </div>
@@ -946,7 +947,7 @@ function App() {
                                                         </div>
                                                     </div>
                                                 ))
-                                            )}
+                                            {/* Removed extra closing brace here */}
                                         </div>
                                     )}
                                 </div>
@@ -991,7 +992,7 @@ function App() {
                                                         </div>
                                                     </div>
                                                 ))
-                                            )}
+                                            } {/* Removed extra closing brace here */}
                                         </div>
                                     )}
                                 </div>

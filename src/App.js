@@ -19,11 +19,106 @@ const firebaseConfig = {
 const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher'];
 const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming'];
 
+// Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
+// Sie ist außerhalb der Komponente definiert, damit sie nicht bei jedem Render neu erstellt wird.
+const calculateMatchScore = (seeker, wg) => {
+    let score = 0;
+
+    // Helper to get consistent data access for array fields
+    // This ensures 'interests' and 'personalityTraits' are always arrays for matching
+    const getArrayValue = (profile, field) => {
+        const value = profile[field];
+        return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
+    };
+
+    // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
+    // Hohe Priorität: Muss im Bereich liegen
+    if (seeker.age && wg.minAge && wg.maxAge) {
+        if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
+            score += 20;
+        } else {
+            score -= 15; // Deutlicher Abzug, wenn Alter nicht passt
+        }
+    }
+
+    // 2. Geschlechtspräferenz
+    // Hohe Priorität
+    if (seeker.gender && wg.genderPreference) {
+        if (wg.genderPreference === 'egal' || seeker.gender === wg.genderPreference) {
+            score += 10;
+        } else {
+            score -= 10; // Abzug, wenn Geschlecht nicht passt
+        }
+    }
+
+    // 3. Persönlichkeitsmerkmale (Übereinstimmung)
+    // Mittlere Priorität
+    const seekerTraits = getArrayValue(seeker, 'personalityTraits');
+    const wgTraits = getArrayValue(wg, 'personalityTraits');
+    seekerTraits.forEach(trait => {
+        if (wgTraits.includes(trait)) {
+            score += 5;
+        }
+    });
+
+    // 4. Interessen (Überlappung)
+    // Mittlere Priorität
+    const seekerInterests = getArrayValue(seeker, 'interests');
+    const wgInterests = getArrayValue(wg, 'interests');
+    seekerInterests.forEach(interest => {
+        if (wgInterests.includes(interest)) {
+            score += 3;
+        }
+    });
+
+    // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
+    // Hohe Priorität
+    if (seeker.maxRent && wg.rent) {
+        if (seeker.maxRent >= wg.rent) {
+            score += 15;
+        } else {
+            score -= 15; // Deutlicher Abzug, wenn Miete zu hoch
+        }
+    }
+
+    // 6. Haustiere (Match)
+    // Mittlere Priorität
+    if (seeker.pets && wg.petsAllowed) {
+        if (seeker.pets === 'ja' && wg.petsAllowed === 'ja') {
+            score += 8;
+        } else if (seeker.pets === 'ja' && wg.petsAllowed === 'nein') {
+            score -= 8; // Abzug, wenn Haustiere nicht erlaubt sind
+        }
+    }
+
+    // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
+    // Niedrigere Priorität, für Textübereinstimmung
+    const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
+    const wgDescription = (wg.description || '').toLowerCase();
+    const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
+
+    const seekerKeywords = seekerLookingFor.split(' ').filter(word => word.length > 2);
+    seekerKeywords.forEach(keyword => {
+        if (wgDescription.includes(keyword) || wgLookingForInFlatmate.includes(keyword)) {
+            score += 1;
+        }
+    });
+
+    // 8. Durchschnittsalter der WG-Bewohner im Vergleich zum Suchendenalter
+    if (seeker.age && wg.avgAge) {
+        score -= Math.abs(seeker.age - wg.avgAge); // Je näher, desto besser (Punktabzug bei größerer Differenz)
+    }
+
+    return score;
+};
+
+
 // Hauptkomponente der WG-Match-Anwendung
 function App() {
     const [searcherProfiles, setSearcherProfiles] = useState([]);
     const [wgProfiles, setWgProfiles] = useState([]);
-    const [matches, setMatches] = useState([]);
+    const [matches, setMatches] = useState([]); // Matches: Suchender findet WG
+    const [reverseMatches, setReverseMatches] = useState([]); // NEU: Reverse Matches: WG findet Suchenden
     const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -115,111 +210,53 @@ function App() {
         return () => unsubscribeWGs();
     }, [db, userId]);
 
-    // **Verbesserte Match-Logik**
+    // **Verbesserte Match-Logik: Berechnet Matches für beide Richtungen**
     useEffect(() => {
-        const calculateMatches = () => {
-            const newMatches = [];
+        const calculateAllMatches = () => {
+            const newSeekerToWGMatches = [];
             searcherProfiles.forEach(searcher => {
                 const matchingWGs = wgProfiles.map(wg => {
-                    let score = 0;
-
-                    // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
-                    // Hohe Priorität: Muss im Bereich liegen
-                    if (searcher.age && wg.minAge && wg.maxAge) {
-                        if (searcher.age >= wg.minAge && searcher.age <= wg.maxAge) {
-                            score += 20;
-                        } else {
-                            score -= 15; // Deutlicher Abzug, wenn Alter nicht passt
-                        }
-                    }
-
-                    // 2. Geschlechtspräferenz
-                    // Hohe Priorität
-                    if (searcher.gender && wg.genderPreference) {
-                        if (wg.genderPreference === 'egal' || searcher.gender === wg.genderPreference) {
-                            score += 10;
-                        } else {
-                            score -= 10; // Abzug, wenn Geschlecht nicht passt
-                        }
-                    }
-
-                    // 3. Persönlichkeitsmerkmale (Übereinstimmung)
-                    // Mittlere Priorität
-                    // GEÄNDERT: Sicherstellen, dass personalityTraits ein Array ist
-                    const searcherTraits = Array.isArray(searcher.personalityTraits) ? searcher.personalityTraits : (searcher.personalityTraits ? String(searcher.personalityTraits).split(',').map(s => s.trim()) : []);
-                    const wgTraits = Array.isArray(wg.personalityTraits) ? wg.personalityTraits : (wg.personalityTraits ? String(wg.personalityTraits).split(',').map(s => s.trim()) : []);
-                    
-                    searcherTraits.forEach(trait => {
-                        if (wgTraits.includes(trait)) {
-                            score += 5;
-                        }
-                    });
-
-                    // 4. Interessen (Überlappung)
-                    // Mittlere Priorität
-                    // GEÄNDERT: Sicherstellen, dass interests ein Array ist
-                    const searcherInterests = Array.isArray(searcher.interests) ? searcher.interests : (searcher.interests ? String(searcher.interests).split(',').map(s => s.trim()) : []);
-                    const wgInterests = Array.isArray(wg.interests) ? wg.interests : (wg.interests ? String(wg.interests).split(',').map(s => s.trim()) : []);
-                    
-                    searcherInterests.forEach(interest => {
-                        if (wgInterests.includes(interest)) {
-                            score += 3;
-                        }
-                    });
-
-                    // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
-                    // Hohe Priorität
-                    if (searcher.maxRent && wg.rent) {
-                        if (searcher.maxRent >= wg.rent) {
-                            score += 15;
-                        } else {
-                            score -= 15; // Deutlicher Abzug, wenn Miete zu hoch
-                        }
-                    }
-
-                    // 6. Haustiere (Match)
-                    // Mittlere Priorität
-                    if (searcher.pets && wg.petsAllowed) {
-                        if (searcher.pets === 'ja' && wg.petsAllowed === 'ja') {
-                            score += 8;
-                        } else if (searcher.pets === 'ja' && wg.petsAllowed === 'nein') {
-                            score -= 8; // Abzug, wenn Haustiere nicht erlaubt sind
-                        }
-                    }
-
-                    // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
-                    // Niedrigere Priorität, für Textübereinstimmung
-                    const seekerLookingFor = (searcher.lookingFor || '').toLowerCase();
-                    const wgDescription = (wg.description || '').toLowerCase();
-                    const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
-
-                    const seekerKeywords = seekerLookingFor.split(' ').filter(word => word.length > 2);
-                    seekerKeywords.forEach(keyword => {
-                        if (wgDescription.includes(keyword) || wgLookingForInFlatmate.includes(keyword)) {
-                            score += 1;
-                        }
-                    });
-
+                    const score = calculateMatchScore(searcher, wg);
                     return { wg, score };
                 }).filter(match => match.score > 0); // Nur Matches mit positivem Score anzeigen
 
-                // Sortiere die passenden WGs nach Score für diesen Suchenden
                 matchingWGs.sort((a, b) => b.score - a.score);
 
                 if (matchingWGs.length > 0) {
-                    newMatches.push({
+                    newSeekerToWGMatches.push({
                         searcher: searcher,
                         matchingWGs: matchingWGs
                     });
                 }
             });
-            setMatches(newMatches);
+            setMatches(newSeekerToWGMatches);
+
+            // NEU: Matches aus Sicht der WG-Profile
+            const newWGToSeekerMatches = [];
+            wgProfiles.forEach(wg => {
+                const matchingSeekers = searcherProfiles.map(searcher => {
+                    // Score wird aus WG-Sicht berechnet, d.h. wie gut der Suchende zur WG passt
+                    const score = calculateMatchScore(searcher, wg); // Dieselbe Funktion kann verwendet werden
+                    return { searcher, score };
+                }).filter(match => match.score > 0);
+
+                matchingSeekers.sort((a, b) => b.score - a.score);
+
+                if (matchingSeekers.length > 0) {
+                    newWGToSeekerMatches.push({
+                        wg: wg,
+                        matchingSeekers: matchingSeekers
+                    });
+                }
+            });
+            setReverseMatches(newWGToSeekerMatches);
         };
 
         if (searcherProfiles.length > 0 || wgProfiles.length > 0) {
-            calculateMatches();
+            calculateAllMatches();
         } else {
             setMatches([]);
+            setReverseMatches([]);
         }
     }, [searcherProfiles, wgProfiles]);
 
@@ -678,7 +715,7 @@ function App() {
             </div>
 
             <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches</h2>
+                <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: Suchender findet WG</h2>
                 {matches.length === 0 ? (
                     <p className="text-center text-gray-600 text-lg">
                         Keine Matches gefunden. Erstellen Sie Profile, um Übereinstimmungen zu sehen!
@@ -690,7 +727,6 @@ function App() {
                                 <h3 className="text-xl font-semibold text-blue-700 mb-3">
                                     Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                 </h3>
-                                {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
                                 <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
                                 <p className="text-gray-700 mb-4">Interessen: {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
                                 <p className="text-gray-700 mb-4">Persönlichkeit: {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
@@ -702,9 +738,43 @@ function App() {
                                         <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-blue-100">
                                             <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
                                             <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                            {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
                                             <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                             <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* NEU: Matches aus Sicht der WG-Profile */}
+            <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
+                <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: WG findet Suchenden</h2>
+                {reverseMatches.length === 0 ? (
+                    <p className="text-center text-gray-600 text-lg">
+                        Keine Matches gefunden. Erstellen Sie Profile, um Übereinstimmungen zu sehen!
+                    </p>
+                ) : (
+                    <div className="space-y-8">
+                        {reverseMatches.map((wgMatch, index) => (
+                            <div key={index} className="bg-green-50 p-6 rounded-lg shadow-inner border border-green-200">
+                                <h3 className="text-xl font-semibold text-green-700 mb-3">
+                                    WG-Name: <span className="font-bold">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
+                                </h3>
+                                <p className="text-gray-700 mb-2">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
+                                <p className="text-gray-700 mb-4">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                <p className="text-gray-700 mb-4">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+
+                                <h4 className="text-lg font-semibold text-green-600 mb-2">Passende Suchende:</h4>
+                                <div className="space-y-4">
+                                    {wgMatch.matchingSeekers.map(seekerMatch => (
+                                        <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-green-100">
+                                            <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
+                                            <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
+                                            <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -725,7 +795,6 @@ function App() {
                                 <p className="font-semibold text-purple-700">Name: {profile.name}</p>
                                 <p className="text-sm text-gray-600">Alter: {profile.age}</p>
                                 <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
-                                {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
                                 <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                 <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
@@ -747,7 +816,6 @@ function App() {
                                 <p className="font-semibold text-green-700">WG-Name: {profile.name}</p> {/* Name der WG */}
                                 <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
                                 <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
-                                {/* GEÄNDERT: Robusterer Umgang mit interests/personalityTraits */}
                                 <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                 <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>

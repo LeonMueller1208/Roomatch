@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc } from 'firebase/firestore'; // Importiere doc und deleteDoc
 
 // Firebase-Konfiguration
 // DEINE ECHTEN FIREBASE-KONFIGURATIONSDATEN SIND HIER EINGEFÜGT!
@@ -218,16 +218,17 @@ function App() {
                 const matchingWGs = wgProfiles.map(wg => {
                     const score = calculateMatchScore(searcher, wg);
                     return { wg, score };
-                }).filter(match => match.score > 0); // Nur Matches mit positivem Score anzeigen
+                }); // Filter für Score > 0 entfernt, um alle Matches anzuzeigen
 
                 matchingWGs.sort((a, b) => b.score - a.score);
 
-                if (matchingWGs.length > 0) {
-                    newSeekerToWGMatches.push({
-                        searcher: searcher,
-                        matchingWGs: matchingWGs
-                    });
-                }
+                // Füge nur hinzu, wenn es überhaupt WGs gibt, auch wenn der Score negativ ist
+                // Hier wurde ein Bug behoben: newSeekerToWGMatches.push sollte immer ausgeführt werden,
+                // wenn der searcherProfiles-Array WGs enthält, sonst wurden die Matches nicht angezeigt
+                newSeekerToWGMatches.push({
+                    searcher: searcher,
+                    matchingWGs: matchingWGs
+                });
             });
             setMatches(newSeekerToWGMatches);
 
@@ -235,30 +236,32 @@ function App() {
             const newWGToSeekerMatches = [];
             wgProfiles.forEach(wg => {
                 const matchingSeekers = searcherProfiles.map(searcher => {
-                    // Score wird aus WG-Sicht berechnet, d.h. wie gut der Suchende zur WG passt
-                    const score = calculateMatchScore(searcher, wg); // Dieselbe Funktion kann verwendet werden
+                    const score = calculateMatchScore(searcher, wg);
                     return { searcher, score };
-                }).filter(match => match.score > 0);
+                }); // Filter für Score > 0 entfernt, um alle Matches anzuzeigen
 
                 matchingSeekers.sort((a, b) => b.score - a.score);
 
-                if (matchingSeekers.length > 0) {
-                    newWGToSeekerMatches.push({
-                        wg: wg,
-                        matchingSeekers: matchingSeekers
-                    });
-                }
+                // Füge nur hinzu, wenn es überhaupt Suchende gibt, auch wenn der Score negativ ist
+                // Hier wurde ein Bug behoben: newWGToSeekerMatches.push sollte immer ausgeführt werden,
+                // wenn der wgProfiles-Array Suchende enthält, sonst wurden die Matches nicht angezeigt
+                newWGToSeekerMatches.push({
+                    wg: wg,
+                    matchingSeekers: matchingSeekers
+                });
             });
             setReverseMatches(newWGToSeekerMatches);
         };
 
+        // Trigger Match-Berechnung, wenn Profile geladen sind
         if (searcherProfiles.length > 0 || wgProfiles.length > 0) {
             calculateAllMatches();
-        } else {
+        } else if (searcherProfiles.length === 0 && wgProfiles.length === 0 && !loading) {
+            // Wenn keine Profile vorhanden sind und fertig geladen, setze Matches auf leer
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [searcherProfiles, wgProfiles]);
+    }, [searcherProfiles, wgProfiles, loading]); // 'loading' als Abhängigkeit hinzugefügt
 
 
     // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
@@ -298,6 +301,28 @@ function App() {
         } catch (e) {
             console.error("Fehler beim Hinzufügen des WG-Profils: ", e);
             setError("Fehler beim Speichern des WG-Profils.");
+        }
+    };
+
+    // NEU: Funktion zum Löschen eines Profils
+    const handleDeleteProfile = async (collectionName, docId, profileName) => {
+        if (!db) {
+            setError("Datenbank nicht bereit zum Löschen.");
+            return;
+        }
+        // Bestätigungsdialog (da alert() nicht funktioniert, simulieren wir hier eine Bestätigung)
+        // In einer echten App würde hier ein Modal oder ein bestätigter UI-Flow verwendet.
+        const confirmDelete = window.confirm(`Möchtest du das Profil "${profileName}" wirklich löschen?`);
+
+        if (confirmDelete) {
+            try {
+                await deleteDoc(doc(db, collectionName, docId));
+                setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
+                setTimeout(() => setSaveMessage(''), 3000);
+            } catch (e) {
+                console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
+                setError(`Fehler beim Löschen von Profil "${profileName}".`);
+            }
         }
     };
 
@@ -791,7 +816,7 @@ function App() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {searcherProfiles.map(profile => (
-                            <div key={profile.id} className="bg-purple-50 p-5 rounded-lg shadow-inner border border-purple-200">
+                            <div key={profile.id} className="bg-purple-50 p-5 rounded-lg shadow-inner border border-purple-200 flex flex-col">
                                 <p className="font-semibold text-purple-700">Name: {profile.name}</p>
                                 <p className="text-sm text-gray-600">Alter: {profile.age}</p>
                                 <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
@@ -799,6 +824,12 @@ function App() {
                                 <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                <button
+                                    onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name)}
+                                    className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
+                                >
+                                    Löschen
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -812,7 +843,7 @@ function App() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {wgProfiles.map(profile => (
-                            <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200">
+                            <div key={profile.id} className="bg-green-50 p-5 rounded-lg shadow-inner border border-green-200 flex flex-col">
                                 <p className="font-semibold text-green-700">WG-Name: {profile.name}</p> {/* Name der WG */}
                                 <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
                                 <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
@@ -820,6 +851,12 @@ function App() {
                                 <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                 <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                 <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                <button
+                                    onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name)}
+                                    className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
+                                >
+                                    Löschen
+                                </button>
                             </div>
                         ))}
                     </div>

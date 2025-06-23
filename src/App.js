@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { Search, Home, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle } from 'lucide-react'; // Importiere Lucide Icons
+import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle } from 'lucide-react'; // 'Home' entfernt
 
 // Firebase-Konfiguration
 const firebaseConfig = {
@@ -984,8 +984,9 @@ function App() {
                                         </div>
                                     </div>
                                 ))}
-                        </div>
-                    )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

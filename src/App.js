@@ -6,13 +6,13 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase-Konfiguration
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
+    apiKey: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg",
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
     messagingSenderId: "190918526277",
     appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
-    measurementId: "G-5JPWLDD0ZC"
+    measurementId: "G-5JPWDD0ZC"
 };
 
 // Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
@@ -393,6 +393,21 @@ function App() {
             setCurrentStep((prev) => Math.max(prev - 1, 1));
         };
 
+        const handleCancel = () => {
+            setFormState({ // Formular vollständig zurücksetzen
+                name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
+                genderPreference: 'egal', personalityTraits: [], interests: [],
+                maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
+                roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
+                lookingForInFlatmate: '', location: '',
+                communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
+            });
+            setCurrentStep(1); // Zurück zum ersten Schritt
+            // Optional: Wenn das Formular von der Hauptseite aus geöffnet wird, könnte man auch zur Hauptseite zurückkehren:
+            // setShowSeekerForm(true); // Oder eine andere Logik, die dich zur Hauptansicht bringt
+        };
+
+
         const handleSubmit = (e) => {
             e.preventDefault();
             if (currentStep === totalSteps) {
@@ -749,6 +764,13 @@ function App() {
                 )}
 
                 <div className="flex justify-between mt-8">
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                    >
+                        <XCircle size={20} className="mr-2" /> Abbrechen
+                    </button>
                     {currentStep > 1 && (
                         <button
                             type="button"

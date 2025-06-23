@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore'; // Import 'where'
+import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { Search, Home, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle } from 'lucide-react'; // Importiere Lucide Icons
 
 // Firebase-Konfiguration
-// YOUR ACTUAL FIREBASE CONFIG DATA IS INSERTED HERE!
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- DEIN API KEY
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -15,25 +15,23 @@ const firebaseConfig = {
     measurementId: "G-5JPWLDD0ZC"
 };
 
-// Predefined lists for personality traits and interests
+// Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
 const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher'];
 const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming'];
 
-// **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID DISPLAYED IN THE APP!
-// Copy it directly from the app to avoid errors.
+// **WICHTIG:** ERSETZE DIESEN WERT EXAKT MIT DEINER ADMIN-ID, DIE IN DER APP ANGEZEIGT WIRD!
 const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
 
-// Function to calculate the match score between a seeker and a flatshare profile
+// Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
 const calculateMatchScore = (seeker, wg) => {
     let score = 0;
 
-    // Helper to get consistent data access for array fields
     const getArrayValue = (profile, field) => {
         const value = profile[field];
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
-    // 1. Age match (seeker age vs. flatshare age range)
+    // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
     if (seeker.age && wg.minAge && wg.maxAge) {
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
             score += 20;
@@ -42,7 +40,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 2. Gender preference
+    // 2. Geschlechtspräferenz
     if (seeker.gender && wg.genderPreference) {
         if (wg.genderPreference === 'egal' || seeker.gender === wg.genderPreference) {
             score += 10;
@@ -51,7 +49,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 3. Personality traits (match)
+    // 3. Persönlichkeitsmerkmale (Übereinstimmung)
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     seekerTraits.forEach(trait => {
@@ -60,7 +58,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 4. Interests (overlap)
+    // 4. Interessen (Überlappung)
     const seekerInterests = getArrayValue(seeker, 'interests');
     const wgInterests = getArrayValue(wg, 'interests');
     seekerInterests.forEach(interest => {
@@ -69,7 +67,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 5. Rent price (seeker max rent >= flatshare rent)
+    // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
     if (seeker.maxRent && wg.rent) {
         if (seeker.maxRent >= wg.rent) {
             score += 15;
@@ -78,7 +76,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 6. Pets (match)
+    // 6. Haustiere (Match)
     if (seeker.pets && wg.petsAllowed) {
         if (seeker.pets === 'ja' && wg.petsAllowed === 'ja') {
             score += 8;
@@ -87,7 +85,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (flatshare)
+    // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
     const wgDescription = (wg.description || '').toLowerCase();
     const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
@@ -99,7 +97,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 8. Average age of flatshare residents compared to seeker age
+    // 8. Durchschnittsalter der WG-Bewohner im Vergleich zum Suchendenalter
     if (seeker.age && wg.avgAge) {
         score -= Math.abs(seeker.age - wg.avgAge);
     }
@@ -108,18 +106,14 @@ const calculateMatchScore = (seeker, wg) => {
 };
 
 
-// Main component of the flatshare match application
+// Hauptkomponente der WG-Match-Anwendung
 function App() {
-    // States for the *own* profiles of the logged-in user
     const [mySearcherProfiles, setMySearcherProfiles] = useState([]);
     const [myWgProfiles, setMyWgProfiles] = useState([]);
-    
-    // States for *all* profiles (for match calculations and admin view)
     const [allSearcherProfilesGlobal, setAllSearcherProfilesGlobal] = useState([]);
     const [allWgProfilesGlobal, setAllWgProfilesGlobal] = useState([]);
-
-    const [matches, setMatches] = useState([]); // Matches: Seeker finds flatshare
-    const [reverseMatches, setReverseMatches] = useState([]); // Reverse matches: Flatshare finds seeker
+    const [matches, setMatches] = useState([]);
+    const [reverseMatches, setReverseMatches] = useState([]);
     
     const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
@@ -127,9 +121,9 @@ function App() {
     const [error, setError] = useState(null);
     const [showSeekerForm, setShowSeekerForm] = useState(true);
     const [saveMessage, setSaveMessage] = useState('');
-    const [adminMode, setAdminMode] = useState(false); // State for admin mode
+    const [adminMode, setAdminMode] = useState(false);
 
-    // Firebase initialization and authentication
+    // Firebase-Initialisierung und Authentifizierung
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
 
@@ -145,8 +139,8 @@ function App() {
                     try {
                         await signInAnonymously(authInstance);
                     } catch (signInError) {
-                        console.error("Error during Firebase anonymous authentication:", signInError);
-                        setError("Error logging in. Please try again later.");
+                        console.error("Fehler bei der Firebase-Anonym-Authentifizierung:", signInError);
+                        setError("Fehler bei der Anmeldung. Bitte versuchen Sie es später erneut.");
                         setLoading(false);
                         return;
                     }
@@ -154,104 +148,77 @@ function App() {
                 const currentUid = authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2);
                 setUserId(currentUid);
                 setAdminMode(currentUid === ADMIN_UID); 
-                setLoading(false); // Set loading to false after successful authentication
+                setLoading(false);
             });
 
             return () => {
                 unsubscribeAuth();
             };
         } catch (initError) {
-            console.error("Error during Firebase initialization:", initError);
-            setError("Firebase could not be initialized. Please check your Firebase configuration and internet connection.");
+            console.error("Fehler bei der Firebase-Initialisierung:", initError);
+            setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
             setLoading(false);
         }
     }, []);
 
-    // Real-time data retrieval for *own* seeker profiles from Firestore
+    // Echtzeit-Datenabruf für *eigene* Suchende-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
-
         const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
-
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMySearcherProfiles(profiles);
         }, (err) => {
-            console.error("Error retrieving own seeker profiles:", err);
-            setError("Error loading own seeker profiles.");
+            console.error("Fehler beim Abrufen der eigenen Suchenden-Profile:", err);
+            setError("Fehler beim Laden der eigenen Suchenden-Profile.");
         });
-
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // Real-time data retrieval for *own* flatshare profiles from Firestore
+    // Echtzeit-Datenabruf für *eigene* WG-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
-
         const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
-
         const unsubscribeMyWGs = onSnapshot(myWgsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMyWgProfiles(profiles);
         }, (err) => {
-            console.error("Error retrieving own flatshare profiles:", err);
-            setError("Error loading own flatshare profiles.");
+            console.error("Fehler beim Abrufen der eigenen WG-Profile:", err);
+            setError("Fehler beim Laden der eigenen WG-Profile.");
         });
-
         return () => unsubscribeMyWGs();
     }, [db, userId]);
 
-
-    // Real-time data retrieval for *all* seeker profiles (for match calculation)
+    // Echtzeit-Datenabruf für *alle* Suchende-Profile (für Match-Berechnung)
     useEffect(() => {
-        if (!db) return; // No userId filter, as all are retrieved
-
+        if (!db) return;
         const allSearchersQuery = query(collection(db, `searcherProfiles`));
         const unsubscribeAllSearchers = onSnapshot(allSearchersQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllSearcherProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Error retrieving all seeker profiles (global):", err);
+            console.error("Fehler beim Abrufen aller Suchenden-Profile (global):", err);
         });
-
         return () => unsubscribeAllSearchers();
-    }, [db]); // Dependency only on 'db'
+    }, [db]);
 
-    // Real-time data retrieval for *all* flatshare profiles (for match calculation)
+    // Echtzeit-Datenabruf für *alle* WG-Profile (für Match-Berechnung)
     useEffect(() => {
-        if (!db) return; // No userId filter, as all are retrieved
-
+        if (!db) return;
         const allWgsQuery = query(collection(db, `wgProfiles`));
         const unsubscribeAllWGs = onSnapshot(allWgsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllWgProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Error retrieving all flatshare profiles (global):", err);
+            console.error("Fehler beim Abrufen aller WG-Profile (global):", err);
         });
-
         return () => unsubscribeAllWGs();
-    }, [db]); // Dependency only on 'db'
+    }, [db]);
 
-
-    // Match calculation for both directions
+    // Match-Berechnung für beide Richtungen
     useEffect(() => {
         const calculateAllMatches = () => {
-            // For seeker-finds-flatshare matches
             const newSeekerToWGMatches = [];
-            // Normal users match their own seeker profiles against ALL flatshare profiles
-            // Admins match all seeker profiles against ALL flatshare profiles
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
@@ -259,20 +226,12 @@ function App() {
                     const score = calculateMatchScore(searcher, wg);
                     return { wg, score };
                 });
-
                 matchingWGs.sort((a, b) => b.score - a.score);
-
-                newSeekerToWGMatches.push({
-                    searcher: searcher,
-                    matchingWGs: matchingWGs
-                });
+                newSeekerToWGMatches.push({ searcher: searcher, matchingWGs: matchingWGs });
             });
             setMatches(newSeekerToWGMatches);
 
-            // For flatshare-finds-seeker matches
             const newWGToSeekerMatches = [];
-            // Normal users match their own flatshare profiles against ALL seeker profiles
-            // Admins match all flatshare profiles against ALL seeker profiles
             const wgsForMatching = adminMode ? allWgProfilesGlobal : myWgProfiles;
 
             wgsForMatching.forEach(wg => {
@@ -280,99 +239,89 @@ function App() {
                     const score = calculateMatchScore(searcher, wg);
                     return { searcher, score };
                 });
-
                 matchingSeekers.sort((a, b) => b.score - a.score);
-
-                newWGToSeekerMatches.push({
-                    wg: wg,
-                    matchingSeekers: matchingSeekers
-                });
+                newWGToSeekerMatches.push({ wg: wg, matchingSeekers: matchingSeekers });
             });
             setReverseMatches(newWGToSeekerMatches);
         };
 
-        // Calculate matches once all relevant data is loaded
-        // and only if db and userId are present and loading is false.
-        if (!loading && db && userId) { 
+        if (!loading && db && userId) {
             calculateAllMatches();
         } else if (mySearcherProfiles.length === 0 && myWgProfiles.length === 0 && !loading) {
-            // Set matches to empty if no own profiles exist and everything is loaded
             setMatches([]);
             setReverseMatches([]);
         }
     }, [mySearcherProfiles, myWgProfiles, allSearcherProfilesGlobal, allWgProfilesGlobal, loading, adminMode, userId, db]);
 
 
-    // Function to add a seeker profile to Firestore
+    // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Database not ready. Please wait or log in.");
+            setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
             return;
         }
         try {
             await addDoc(collection(db, `searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId, // Profile is assigned to the current user
+                createdBy: userId,
             });
-            setSaveMessage('Seeker profile successfully saved!');
+            setSaveMessage('Suchenden-Profil erfolgreich gespeichert!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Error adding seeker profile: ", e);
-            setError("Error saving seeker profile.");
+            console.error("Fehler beim Hinzufügen des Suchenden-Profils: ", e);
+            setError("Fehler beim Speichern des Suchenden-Profils.");
         }
     };
 
-    // Function to add a flatshare profile to Firestore
+    // Funktion zum Hinzufügen eines WG-Profils zu Firestore
     const addWGProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Database not ready. Please wait or log in.");
+            setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
             return;
         }
         try {
             await addDoc(collection(db, `wgProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId, // Profile is assigned to the current user
+                createdBy: userId,
             });
-            setSaveMessage('Flatshare profile successfully saved!');
+            setSaveMessage('WG-Profil erfolgreich gespeichert!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Error adding flatshare profile: ", e);
-            setError("Error saving flatshare profile.");
+            console.error("Fehler beim Hinzufügen des WG-Profils: ", e);
+            setError("Fehler beim Speichern des WG-Profils.");
         }
     };
 
-    // Function to delete a profile
+    // Funktion zum Löschen eines Profils
     const handleDeleteProfile = async (collectionName, docId, profileName, profileCreatorId) => {
         if (!db || !userId) {
-            setError("Database not ready for deletion.");
+            setError("Datenbank nicht bereit zum Löschen.");
             return;
         }
 
-        // Check if the user is authorized to delete
-        // THIS LOGIC CONTROLS THE VISIBILITY OF THE DELETE BUTTON AND THE AUTHORIZATION
         if (!adminMode && userId !== profileCreatorId) {
-            setError("You are not authorized to delete this profile.");
+            setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
             setTimeout(() => setError(''), 3000);
             return;
         }
 
-        const confirmDelete = window.confirm(`Do you really want to delete the profile "${profileName}"?`);
+        const confirmDelete = window.confirm(`Möchtest du das Profil "${profileName}" wirklich löschen?`);
 
         if (confirmDelete) {
             try {
                 await deleteDoc(doc(db, collectionName, docId));
-                setSaveMessage(`Profile "${profileName}" successfully deleted!`);
+                setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
                 setTimeout(() => setSaveMessage(''), 3000);
             } catch (e) {
-                console.error(`Error deleting profile ${profileName}: `, e);
-                setError(`Error deleting profile "${profileName}".`);
+                console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
+                setError(`Fehler beim Löschen von Profil "${profileName}".`);
             }
         }
     };
 
-    // Unified profile form component
+    // Vereinheitlichte Profilformular-Komponente
     const ProfileForm = ({ onSubmit, type }) => {
         const [formState, setFormState] = useState({
             name: '',
@@ -421,297 +370,297 @@ function App() {
         };
 
         return (
-            <form onSubmit={handleSubmit} className="p-6 bg-white rounded-xl shadow-lg space-y-4 w-full max-w-xl">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+            <form onSubmit={handleSubmit} className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
+                <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
                     {type === 'seeker' ? 'Suchenden-Profil erstellen' : 'WG-Angebot erstellen'}
                 </h2>
 
-                {/* Name / WG-Name */}
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">
-                        {type === 'seeker' ? 'Dein Name:' : 'Name der WG:'}
-                    </label>
-                    <input
-                        type="text"
-                        name="name"
-                        value={formState.name}
-                        onChange={handleChange}
-                        required
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
-                </div>
-
-                {/* Alter (Suchender) / Altersbereich (Anbieter) */}
-                {type === 'seeker' && (
+                <div className="space-y-4">
+                    {/* Name / WG-Name */}
                     <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Dein Alter:</label>
+                        <label className="block text-gray-700 text-base font-semibold mb-2">
+                            {type === 'seeker' ? 'Dein Name:' : 'Name der WG:'}
+                        </label>
                         <input
-                            type="number"
-                            name="age"
-                            value={formState.age}
+                            type="text"
+                            name="name"
+                            value={formState.name}
                             onChange={handleChange}
                             required
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                         />
                     </div>
-                )}
-                {type === 'provider' && (
-                    <div className="flex space-x-4">
-                        <div className="flex-1">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">Mindestalter Mitbewohner:</label>
+
+                    {/* Alter (Suchender) / Altersbereich (Anbieter) */}
+                    {type === 'seeker' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Dein Alter:</label>
                             <input
                                 type="number"
-                                name="minAge"
-                                value={formState.minAge}
+                                name="age"
+                                value={formState.age}
                                 onChange={handleChange}
                                 required
-                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                             />
                         </div>
-                        <div className="flex-1">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">Höchstalter Mitbewohner:</label>
+                    )}
+                    {type === 'provider' && (
+                        <div className="flex space-x-4">
+                            <div className="flex-1">
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Mindestalter Mitbewohner:</label>
+                                <input
+                                    type="number"
+                                    name="minAge"
+                                    value={formState.minAge}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Höchstalter Mitbewohner:</label>
+                                <input
+                                    type="number"
+                                    name="maxAge"
+                                    value={formState.maxAge}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
+                    {type === 'seeker' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Dein Geschlecht:</label>
+                            <select
+                                name="gender"
+                                value={formState.gender}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            >
+                                <option value="männlich">Männlich</option>
+                                <option value="weiblich">Weiblich</option>
+                                <option value="divers">Divers</option>
+                            </select>
+                        </div>
+                    )}
+                    {type === 'provider' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Geschlechtspräferenz Mitbewohner:</label>
+                            <select
+                                name="genderPreference"
+                                value={formState.genderPreference}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            >
+                                <option value="egal">Egal</option>
+                                <option value="männlich">Männlich</option>
+                                <option value="weiblich">Weiblich</option>
+                                <option value="divers">Divers</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Persönlichkeitsmerkmale (für beide) */}
+                    <div>
+                        <label className="block text-gray-700 text-base font-semibold mb-2">
+                            {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
+                        </label>
+                        <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            {allPersonalityTraits.map(trait => (
+                                <label key={trait} className="inline-flex items-center text-gray-800 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="personalityTraits"
+                                        value={trait}
+                                        checked={formState.personalityTraits.includes(trait)}
+                                        onChange={handleChange}
+                                        className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                    />
+                                    <span className="ml-2 text-sm">{trait}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Interessen (für beide) */}
+                    <div>
+                        <label className="block text-gray-700 text-base font-semibold mb-2">
+                            {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
+                        </label>
+                        <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            {allInterests.map(interest => (
+                                <label key={interest} className="inline-flex items-center text-gray-800 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="interests"
+                                        value={interest}
+                                        checked={formState.interests.includes(interest)}
+                                        onChange={handleChange}
+                                        className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                    />
+                                    <span className="ml-2 text-sm">{interest}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
+                    {type === 'seeker' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Maximale Miete (€):</label>
                             <input
                                 type="number"
-                                name="maxAge"
-                                value={formState.maxAge}
+                                name="maxRent"
+                                value={formState.maxRent}
                                 onChange={handleChange}
-                                required
-                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                             />
                         </div>
-                    </div>
-                )}
-
-                {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
-                {type === 'seeker' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Dein Geschlecht:</label>
-                        <select
-                            name="gender"
-                            value={formState.gender}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        >
-                            <option value="männlich">Männlich</option>
-                            <option value="weiblich">Weiblich</option>
-                            <option value="divers">Divers</option>
-                        </select>
-                    </div>
-                )}
-                {type === 'provider' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Geschlechtspräferenz Mitbewohner:</label>
-                        <select
-                            name="genderPreference"
-                            value={formState.genderPreference}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        >
-                            <option value="egal">Egal</option>
-                            <option value="männlich">Männlich</option>
-                            <option value="weiblich">Weiblich</option>
-                            <option value="divers">Divers</option>
-                        </select>
-                    </div>
-                )}
-
-                {/* Personality traits (for both) */}
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">
-                        {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 p-2 border rounded-xl bg-gray-50">
-                        {allPersonalityTraits.map(trait => (
-                            <label key={trait} className="inline-flex items-center text-gray-800">
-                                <input
-                                    type="checkbox"
-                                    name="personalityTraits"
-                                    value={trait}
-                                    checked={formState.personalityTraits.includes(trait)}
-                                    onChange={handleChange}
-                                    className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded"
-                                />
-                                <span className="ml-2">{trait}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Interests (for both) */}
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">
-                        {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 p-2 border rounded-xl bg-gray-50">
-                        {allInterests.map(interest => (
-                            <label key={interest} className="inline-flex items-center text-gray-800">
-                                <input
-                                    type="checkbox"
-                                    name="interests"
-                                    value={interest}
-                                    checked={formState.interests.includes(interest)}
-                                    onChange={handleChange}
-                                    className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded"
-                                />
-                                <span className="ml-2">{interest}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Maximum rent (seeker) / Rent (provider) */}
-                {type === 'seeker' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Maximale Miete (€):</label>
-                        <input
-                            type="number"
-                            name="maxRent"
-                            value={formState.maxRent}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        />
-                    </div>
-                )}
-                {type === 'provider' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Miete (€):</label>
-                        <input
-                            type="number"
-                            name="rent"
-                            value={formState.rent}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        />
-                    </div>
-                )}
-
-                {/* Pets (seeker) / Pets allowed (provider) */}
-                {type === 'seeker' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Haustiere:</label>
-                        <select
-                            name="pets"
-                            value={formState.pets}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        >
-                            <option value="egal">Egal</option>
-                            <option value="ja">Ja</option>
-                            <option value="nein">Nein</option>
-                        </select>
-                    </div>
-                )}
-                {type === 'provider' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Haustiere erlaubt:</label>
-                        <select
-                            name="petsAllowed"
-                            value={formState.petsAllowed}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        >
-                            <option value="egal">Egal</option>
-                            <option value="ja">Ja</option>
-                            <option value="nein">Nein</option>
-                        </select>
-                    </div>
-                )}
-
-                {/* What is being searched for (seeker) / Flatshare description (provider) */}
-                {type === 'seeker' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Was suchst du in einer WG?:</label>
-                        <textarea
-                            name="lookingFor"
-                            value={formState.lookingFor}
-                            onChange={handleChange}
-                            rows="3"
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        ></textarea>
-                    </div>
-                )}
-                {type === 'provider' && (
-                    <>
+                    )}
+                    {type === 'provider' && (
                         <div>
-                            <label className="block text-gray-700 text-sm font-bold mb-2">Beschreibung der WG:</label>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Miete (€):</label>
+                            <input
+                                type="number"
+                                name="rent"
+                                value={formState.rent}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            />
+                        </div>
+                    )}
+
+                    {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
+                    {type === 'seeker' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere:</label>
+                            <select
+                                name="pets"
+                                value={formState.pets}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            >
+                                <option value="egal">Egal</option>
+                                <option value="ja">Ja</option>
+                                <option value="nein">Nein</option>
+                            </select>
+                        </div>
+                    )}
+                    {type === 'provider' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere erlaubt:</label>
+                            <select
+                                name="petsAllowed"
+                                value={formState.petsAllowed}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            >
+                                <option value="egal">Egal</option>
+                                <option value="ja">Ja</option>
+                                <option value="nein">Nein</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}
+                    {type === 'seeker' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Was suchst du in einer WG?:</label>
                             <textarea
-                                name="description"
-                                value={formState.description}
+                                name="lookingFor"
+                                value={formState.lookingFor}
                                 onChange={handleChange}
                                 rows="3"
-                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                             ></textarea>
                         </div>
+                    )}
+                    {type === 'provider' && (
+                        <>
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Beschreibung der WG:</label>
+                                <textarea
+                                    name="description"
+                                    value={formState.description}
+                                    onChange={handleChange}
+                                    rows="3"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                ></textarea>
+                            </div>
+                            <div>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Was sucht ihr im neuen Mitbewohner?:</label>
+                                <textarea
+                                    name="lookingForInFlatmate"
+                                    value={formState.lookingForInFlatmate}
+                                    onChange={handleChange}
+                                    rows="3"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                ></textarea>
+                            </div>
+                        </>
+                    )}
+                    {type === 'provider' && (
                         <div>
-                            <label className="block text-gray-700 text-sm font-bold mb-2">Was sucht ihr im neuen Mitbewohner?:</label>
-                            <textarea
-                                name="lookingForInFlatmate"
-                                value={formState.lookingForInFlatmate}
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Zimmertyp:</label>
+                            <select
+                                name="roomType"
+                                value={formState.roomType}
                                 onChange={handleChange}
-                                rows="3"
-                                className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            ></textarea>
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            >
+                                <option value="Einzelzimmer">Einzelzimmer</option>
+                                <option value="Doppelzimmer">Doppelzimmer</option>
+                            </select>
                         </div>
-                    </>
-                )}
-                {type === 'provider' && (
+                    )}
+                    {type === 'provider' && (
+                        <div>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Durchschnittsalter der Bewohner:</label>
+                            <input
+                                type="number"
+                                name="avgAge"
+                                value={formState.avgAge}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                            />
+                        </div>
+                    )}
+
+                    {/* Ort/Stadtteil (für beide) */}
                     <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Zimmertyp:</label>
-                        <select
-                            name="roomType"
-                            value={formState.roomType}
-                            onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        >
-                            <option value="Einzelzimmer">Einzelzimmer</option>
-                            <option value="Doppelzimmer">Doppelzimmer</option>
-                        </select>
-                    </div>
-                )}
-                {type === 'provider' && (
-                    <div>
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Durchschnittsalter der Bewohner:</label>
+                        <label className="block text-gray-700 text-base font-semibold mb-2">Ort / Stadtteil:</label>
                         <input
-                            type="number"
-                            name="avgAge"
-                            value={formState.avgAge}
+                            type="text"
+                            name="location"
+                            value={formState.location}
                             onChange={handleChange}
-                            className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                         />
                     </div>
-                )}
-
-                {/* Location / District (for both) */}
-                <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">Ort / Stadtteil:</label>
-                    <input
-                        type="text"
-                        name="location"
-                        value={formState.location}
-                        onChange={handleChange}
-                        className="shadow appearance-none border rounded-xl w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    />
                 </div>
 
-
-                <div className="flex justify-between mt-6">
+                <div className="flex justify-between mt-8">
                     <button
                         type="button"
-                        onClick={() => setShowSeekerForm(true)} // Back to form selection
-                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
+                        onClick={() => setShowSeekerForm(true)}
+                        className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
                     >
-                        Abbrechen
+                        <XCircle size={20} className="mr-2" /> Abbrechen
                     </button>
-                    {/* Submit button color adjusted based on profile type */}
                     <button
                         type="submit"
-                        className={`font-bold py-2 px-4 rounded-xl focus:outline-none focus:shadow-outline transition duration-150 ease-in-out ${
+                        className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
                             type === 'seeker'
-                                ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]' // Seeker color scheme
-                                : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]' // Provider color scheme
+                                ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
+                                : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
                         }`}
                     >
-                        Profil speichern
+                        <CheckCircle size={20} className="mr-2" /> Profil speichern
                     </button>
                 </div>
             </form>
@@ -720,8 +669,8 @@ function App() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-100">
-                <p className="text-gray-700 text-lg">Lade App und Daten...</p>
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#3fd5c1] to-[#e0f7f4]">
+                <p className="text-gray-700 text-lg animate-pulse">Lade App und Daten...</p>
             </div>
         );
     }
@@ -734,59 +683,64 @@ function App() {
         );
     }
 
-    // Determine which dashboards should be displayed
     const showMySeekerDashboard = mySearcherProfiles.length > 0 && !adminMode;
     const showMyWgDashboard = myWgProfiles.length > 0 && !adminMode;
     const showAdminDashboard = adminMode;
 
     return (
-        <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center"> {/* App general background */}
-            <h1 className="text-5xl font-extrabold text-gray-900 mb-6 text-center">WG-Match App</h1>
+        <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center relative overflow-hidden">
+            {/* Hintergrund-Kreise für visuelle Dynamik */}
+            <div className="absolute top-[-50px] left-[-50px] w-48 h-48 bg-white opacity-10 rounded-full animate-blob-slow"></div>
+            <div className="absolute bottom-[-50px] right-[-50px] w-64 h-64 bg-white opacity-10 rounded-full animate-blob-medium"></div>
+            <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
+
+
+            <h1 className="text-5xl font-extrabold text-white mb-8 text-center drop-shadow-lg">WG-Match App</h1>
+            
             {userId && (
-                <div className="bg-[#c3efe8] text-[#0a665a] text-sm px-4 py-2 rounded-full mb-6 shadow"> {/* User ID badge */}
-                    Ihre Benutzer-ID: <span className="font-mono font-semibold">{userId}</span>
-                    {/* Toggle for admin mode, only visible for ADMIN_UID */}
+                <div className="bg-[#c3efe8] text-[#0a665a] text-sm px-6 py-3 rounded-full mb-8 shadow-md flex items-center transform transition-all duration-300 hover:scale-[1.02]">
+                    <User size={18} className="mr-2" /> Ihre Benutzer-ID: <span className="font-mono font-semibold ml-1">{userId}</span>
                     {userId === ADMIN_UID && (
-                        <label className="ml-4 inline-flex items-center">
+                        <label className="ml-6 inline-flex items-center cursor-pointer">
                             <input
                                 type="checkbox"
-                                className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded"
+                                className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded-md transition-all duration-200 focus:ring-2 focus:ring-[#3fd5c1]"
                                 checked={adminMode}
                                 onChange={() => setAdminMode(!adminMode)}
                             />
-                            <span className="ml-2 text-[#0a665a] font-bold">Admin-Modus</span>
+                            <span className="ml-2 text-[#0a665a] font-bold select-none">Admin-Modus</span>
                         </label>
                     )}
                 </div>
             )}
             {saveMessage && (
-                <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg mb-4 shadow-md transition-all duration-300">
+                <div className="bg-green-100 text-green-700 px-5 py-3 rounded-lg mb-6 shadow-xl transition-all duration-300 scale-100 animate-fade-in-down">
                     {saveMessage}
                 </div>
             )}
 
             {/* Form selection buttons only displayed if neither admin nor user dashboard is active AND not in admin mode */}
             {!showAdminDashboard && !showMySeekerDashboard && !showMyWgDashboard && !adminMode && (
-                <div className="w-full max-w-4xl flex justify-center space-x-4 mb-8">
+                <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12">
                     <button
                         onClick={() => setShowSeekerForm(true)}
-                        className={`px-6 py-3 rounded-full text-lg font-semibold shadow-md transition-all duration-200 ${
+                        className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
                             showSeekerForm
-                                ? 'bg-[#9adfaa] text-[#333333] transform scale-105' // Seeker selected
-                                : 'bg-white text-[#9adfaa] hover:bg-gray-50' // Seeker unselected
+                                ? 'bg-[#9adfaa] text-[#333333]'
+                                : 'bg-white text-[#9adfaa] hover:bg-gray-50'
                         }`}
                     >
-                        Suchenden-Profil
+                        <Search size={24} className="mr-3" /> Suchenden-Profil
                     </button>
                     <button
                         onClick={() => setShowSeekerForm(false)}
-                        className={`px-6 py-3 rounded-full text-lg font-semibold shadow-md transition-all duration-200 ${
+                        className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
                             !showSeekerForm
-                                ? 'bg-[#fecd82] text-[#333333] transform scale-105' // Provider selected
-                                : 'bg-white text-[#fecd82] hover:bg-gray-50' // Provider unselected
+                                ? 'bg-[#fecd82] text-[#333333]'
+                                : 'bg-white text-[#fecd82] hover:bg-gray-50'
                         }`}
                     >
-                        WG-Angebot
+                        <HomeIcon size={24} className="mr-3" /> WG-Angebot
                     </button>
                 </div>
             )}
@@ -806,33 +760,40 @@ function App() {
 
             {/* Admin Dashboard */}
             {showAdminDashboard && (
-                <>
-                    <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: Suchender findet WG (Admin-Ansicht)</h2>
+                <div className="w-full max-w-7xl flex flex-col gap-12">
+                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Suchender findet WG (Admin-Ansicht)</h2>
                         {matches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg">Keine Matches gefunden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">Keine Matches gefunden.</p>
                         ) : (
                             <div className="space-y-8">
                                 {matches.map((match, index) => (
-                                    <div key={index} className="bg-[#f0f8f0] p-6 rounded-lg shadow-inner border border-[#9adfaa]"> {/* Seeker match card */}
-                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Seeker name text */}
-                                            Suchender: <span className="font-bold">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
+                                    <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Suchender: <span className="font-extrabold ml-2">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                         </h3>
-                                        <p className="text-gray-700 mb-2">Alter: {match.searcher.age}, Geschlecht: {match.searcher.gender}</p>
-                                        <p className="text-gray-700 mb-4">Interessen: {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
-                                        <p className="text-gray-700 mb-4">Persönlichkeit: {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 text-base mb-6">
+                                            <p><span className="font-semibold">Alter:</span> {match.searcher.age}</p>
+                                            <p><span className="font-semibold">Geschlecht:</span> {match.searcher.gender}</p>
+                                            <p><span className="font-semibold">Interessen:</span> {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
+                                            <p><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
+                                        </div>
 
-                                        <h4 className="text-lg font-semibold text-[#5a9c68] mb-2">Passende WG-Angebote:</h4> {/* Matching WGs title */}
+                                        <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
+                                            <Heart size={20} className="mr-2" /> Passende WG-Angebote:
+                                        </h4>
                                         <div className="space-y-4">
                                             {match.matchingWGs.length === 0 ? (
-                                                <p className="text-gray-600 text-sm">Keine passenden WGs.</p>
+                                                <p className="text-gray-600 text-base">Keine passenden WGs.</p>
                                             ) : (
                                                 match.matchingWGs.map(wgMatch => (
-                                                    <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-[#9adfaa]"> {/* Inner WG card */}
-                                                        <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score}) (ID: {wgMatch.wg.id.substring(0, 8)}...)</p>
-                                                        <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                                        <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                        <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                    <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 text-lg">WG-Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                        </div>
                                                     </div>
                                                 ))
                                             )}
@@ -843,32 +804,39 @@ function App() {
                         )}
                     </div>
 
-                    <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Matches: WG findet Suchenden (Admin-Ansicht)</h2>
+                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: WG findet Suchenden (Admin-Ansicht)</h2>
                         {reverseMatches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg">Keine Matches gefunden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">Keine Matches gefunden.</p>
                         ) : (
                             <div className="space-y-8">
                                 {reverseMatches.map((wgMatch, index) => (
-                                    <div key={index} className="bg-[#fff8f0] p-6 rounded-lg shadow-inner border border-[#fecd82]"> {/* Provider match card */}
-                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Provider name text */}
-                                            WG-Name: <span className="font-bold">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
+                                    <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> WG-Name: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
                                         </h3>
-                                        <p className="text-gray-700 mb-2">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                        <p className="text-gray-700 mb-4">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                        <p className="text-gray-700 mb-4">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 text-base mb-6">
+                                            <p><span className="font-semibold">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}</p>
+                                            <p><span className="font-semibold">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
+                                            <p><span className="font-semibold">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                            <p><span className="font-semibold">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                        </div>
 
-                                        <h4 className="text-lg font-semibold text-[#cc8a2f] mb-2">Passende Suchende:</h4> {/* Matching Seekers title */}
+                                        <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
+                                            <Users size={20} className="mr-2" /> Passende Suchende:
+                                        </h4>
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-sm">Keine passenden Suchenden.</p>
+                                                <p className="text-gray-600 text-base">Keine passenden Suchenden.</p>
                                             ) : (
                                                 wgMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-[#fecd82]"> {/* Inner Seeker card */}
-                                                        <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score}) (ID: {seekerMatch.searcher.id.substring(0, 8)}...)</p>
-                                                        <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
-                                                        <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                        <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                        </div>
                                                     </div>
                                                 ))
                                             )}
@@ -879,26 +847,26 @@ function App() {
                         )}
                     </div>
 
-                    <div className="w-full max-w-6xl mt-12 bg-white p-8 rounded-xl shadow-2xl">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Alle Suchenden-Profile (Admin-Ansicht)</h2>
+                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Alle Suchenden-Profile (Admin-Ansicht)</h2>
                         {allSearcherProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg">Noch keine Suchenden-Profile vorhanden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">Noch keine Suchenden-Profile vorhanden.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#f0f8f0] p-5 rounded-lg shadow-inner border border-[#9adfaa] flex flex-col"> {/* All Seeker Profiles Card */}
-                                        <p className="font-semibold text-[#333333]">Name: {profile.name}</p>
-                                        <p className="text-sm text-gray-600">Alter: {profile.age}</p>
-                                        <p className="text-sm text-gray-600">Geschlecht: {profile.gender}</p>
-                                        <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                    <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <p className="font-bold text-[#333333] text-lg mb-2">Name: {profile.name}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Alter:</span> {profile.age}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Geschlecht:</span> {profile.gender}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
-                                            className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
+                                            className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
-                                            Löschen
+                                            <Trash2 size={16} className="mr-2" /> Löschen
                                         </button>
                                     </div>
                                 ))}
@@ -906,63 +874,67 @@ function App() {
                         )}
                     </div>
 
-                    <div className="w-full max-w-6xl mt-8 bg-white p-8 rounded-xl shadow-2xl">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Alle WG-Angebote (Admin-Ansicht)</h2>
+                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Alle WG-Angebote (Admin-Ansicht)</h2>
                         {allWgProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg">Noch keine WG-Angebote vorhanden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">Noch keine WG-Angebote vorhanden.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allWgProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#fff8f0] p-5 rounded-lg shadow-inner border border-[#fecd82] flex flex-col"> {/* All WG Profiles Card */}
-                                        <p className="font-semibold text-[#333333]">WG-Name: {profile.name}</p>
-                                        <p className="text-sm text-gray-600">Gesuchtes Alter: {profile.minAge}-{profile.maxAge}</p>
-                                        <p className="text-sm text-gray-600">Geschlechtspräferenz: {profile.genderPreference}</p>
-                                        <p className="text-sm text-gray-600">Interessen: {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-2">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                    <div key={profile.id} className="bg-[#fff8f0] p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <p className="font-bold text-[#333333] text-lg mb-2">WG-Name: {profile.name}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Gesuchtes Alter:</span> {profile.minAge}-{profile.maxAge}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Geschlechtspräferenz:</span> {profile.genderPreference}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Persönlichkeit der Bewohner:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
-                                            className="mt-4 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end"
+                                            className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
-                                            Löschen
+                                            <Trash2 size={16} className="mr-2" /> Löschen
                                         </button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-                </>
+                </div>
             )}
 
             {/* Seeker Dashboard (for normal user) */}
             {showMySeekerDashboard && (
-                <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Meine Matches: Suchender findet WG</h2>
+                <div className="w-full max-w-7xl bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
+                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Meine Matches: Suchender findet WG</h2>
                     {matches.filter(match => match.searcher.createdBy === userId).length === 0 ? (
-                        <p className="text-center text-gray-600 text-lg">
+                        <p className="text-center text-gray-600 text-lg py-4">
                             Sie haben noch keine Suchenden-Profile erstellt oder es wurden keine Matches gefunden.
                         </p>
                     ) : (
                         <div className="space-y-8">
                             {matches
-                                .filter(match => match.searcher.createdBy === userId) // Only show matches for own seeker profiles
+                                .filter(match => match.searcher.createdBy === userId)
                                 .map((match, index) => (
-                                    <div key={index} className="bg-[#f0f8f0] p-6 rounded-lg shadow-inner border border-[#9adfaa]"> {/* Seeker match card */}
-                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Seeker name text */}
-                                            Ihr Profil: <span className="font-bold">{match.searcher.name}</span>
+                                    <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Ihr Profil: <span className="font-extrabold ml-2">{match.searcher.name}</span>
                                         </h3>
-                                        <h4 className="text-lg font-semibold text-[#5a9c68] mb-2">Passende WG-Angebote:</h4> {/* Matching WGs title */}
+                                        <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
+                                            <Heart size={20} className="mr-2" /> Passende WG-Angebote:
+                                        </h4>
                                         <div className="space-y-4">
                                             {match.matchingWGs.length === 0 ? (
-                                                <p className="text-gray-600 text-sm">Keine passenden WGs zu Ihrem Profil.</p>
+                                                <p className="text-gray-600 text-base">Keine passenden WGs zu Ihrem Profil.</p>
                                             ) : (
                                                 match.matchingWGs.map(wgMatch => (
-                                                    <div key={wgMatch.wg.id} className="bg-white p-4 rounded-lg shadow border border-[#9adfaa]"> {/* Inner WG card */}
-                                                        <p className="font-bold text-gray-800">WG-Name: {wgMatch.wg.name} (Score: {wgMatch.score})</p>
-                                                        <p className="text-sm text-gray-600">Gesuchtes Alter: {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, Geschlechtspräferenz: {wgMatch.wg.genderPreference}</p>
-                                                        <p className="text-sm text-gray-600">Interessen: {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                        <p className="text-sm text-gray-600">Persönlichkeit der Bewohner: {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                    <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 text-lg">WG-Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                        </div>
                                                     </div>
                                                 ))
                                             )}
@@ -976,32 +948,36 @@ function App() {
 
             {/* WG Dashboard (for normal user) */}
             {showMyWgDashboard && (
-                <div className="w-full max-w-6xl bg-white p-8 rounded-xl shadow-2xl mt-8">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Meine Matches: WG findet Suchenden</h2>
+                <div className="w-full max-w-7xl bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
+                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Meine Matches: WG findet Suchenden</h2>
                     {reverseMatches.filter(wgMatch => wgMatch.wg.createdBy === userId).length === 0 ? (
-                        <p className="text-center text-gray-600 text-lg">
+                        <p className="text-center text-gray-600 text-lg py-4">
                             Sie haben noch keine WG-Angebote erstellt oder es wurden keine Matches gefunden.
                         </p>
                     ) : (
                         <div className="space-y-8">
                             {reverseMatches
-                                .filter(wgMatch => wgMatch.wg.createdBy === userId) // Only show matches for own flatshare profiles
+                                .filter(wgMatch => wgMatch.wg.createdBy === userId)
                                 .map((wgMatch, index) => (
-                                    <div key={index} className="bg-[#fff8f0] p-6 rounded-lg shadow-inner border border-[#fecd82]"> {/* Provider match card */}
-                                        <h3 className="text-xl font-semibold text-[#333333] mb-3"> {/* Provider name text */}
-                                            Ihr WG-Profil: <span className="font-bold">{wgMatch.wg.name}</span>
+                                    <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Ihr WG-Profil: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span>
                                         </h3>
-                                        <h4 className="text-lg font-semibold text-[#cc8a2f] mb-2">Passende Suchende:</h4> {/* Matching Seekers title */}
+                                        <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
+                                            <Users size={20} className="mr-2" /> Passende Suchende:
+                                        </h4>
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-sm">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
+                                                <p className="text-gray-600 text-base">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
                                             ) : (
                                                 wgMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 rounded-lg shadow border border-[#fecd82]"> {/* Inner Seeker card */}
-                                                        <p className="font-bold text-gray-800">Suchender: {seekerMatch.searcher.name} (Score: {seekerMatch.score})</p>
-                                                        <p className="text-sm text-gray-600">Alter: {seekerMatch.searcher.age}, Geschlecht: {seekerMatch.searcher.gender}</p>
-                                                        <p className="text-sm text-gray-600">Interessen: {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                        <p className="text-sm text-gray-600">Persönlichkeit: {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                        </div>
                                                     </div>
                                                 ))
                                             )}

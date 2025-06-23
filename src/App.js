@@ -397,7 +397,7 @@ function App() {
             e.preventDefault();
             if (currentStep === totalSteps) {
                 const dataToSubmit = { ...formState };
-                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); // Korrektur hier
+                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
                 if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
                 if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
                 if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
@@ -911,9 +911,9 @@ function App() {
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
                                                 <p className="text-gray-600 text-base">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
-                                            ) : (
-                                                wgMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            ) : (
+                                                                wgMatch.matchingSeekers.map(seekerMatch => (
+                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>

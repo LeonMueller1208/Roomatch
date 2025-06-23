@@ -424,32 +424,36 @@ function App() {
             e.preventDefault(); // Verhindert die Standard-Formularübermittlung des Browsers
             console.log(`handleSubmit aufgerufen. Aktueller Schritt: ${currentStep}`);
 
-            if (currentStep === totalSteps) { // Formular wird nur im letzten Schritt abgeschickt
-                console.log("handleSubmit: Im letzten Schritt, Daten werden übermittelt.");
-                const dataToSubmit = { ...formState };
-                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
-                if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
-                if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
-                if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
-                if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
-                if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
-
-                await onSubmit(dataToSubmit); // Warten, bis die Daten gespeichert sind
-                console.log("handleSubmit: Daten übermittelt, Formular wird zurückgesetzt.");
-                setFormState({ // Formular zurücksetzen nach dem Speichern
-                    name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
-                    genderPreference: 'egal', personalityTraits: [], interests: [],
-                    maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
-                    roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
-                    lookingForInFlatmate: '', location: '',
-                    communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
-                });
-                setCurrentStep(1); // Zurück zum ersten Schritt
-            } else {
-                console.log("handleSubmit: Nicht im letzten Schritt, gehe zum nächsten Schritt.");
-                nextStep(); // Gehe zum nächsten Schritt
-                return; // Wichtig: Hier wird die Funktion beendet, um weitere Ausführungen zu verhindern
+            // NEUE LOGIK: Wenn der aktuelle Schritt NICHT der letzte Schritt ist,
+            // und das Formular dennoch übermittelt wurde (z.B. durch Enter-Taste),
+            // dann verhindern wir die Speicherung und tun nichts.
+            // Der "Weiter"-Button (type="button") sollte das nextStep() separat auslösen.
+            if (currentStep !== totalSteps) {
+                console.log("handleSubmit: Formular wurde vorzeitig übermittelt (nicht im letzten Schritt). Speicherung wird ignoriert.");
+                return; // Funktion hier beenden, wenn nicht der letzte Schritt
             }
+
+            // Wenn wir hier ankommen, sind wir im letzten Schritt und können speichern.
+            console.log("handleSubmit: Im letzten Schritt, Daten werden übermittelt.");
+            const dataToSubmit = { ...formState };
+            if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
+            if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
+            if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
+            if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
+            if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
+            if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
+
+            await onSubmit(dataToSubmit); // Warten, bis die Daten gespeichert sind
+            console.log("handleSubmit: Daten übermittelt, Formular wird zurückgesetzt.");
+            setFormState({ // Formular zurücksetzen nach dem Speichern
+                name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
+                genderPreference: 'egal', personalityTraits: [], interests: [],
+                maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
+                roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
+                lookingForInFlatmate: '', location: '',
+                communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
+            });
+            setCurrentStep(1); // Zurück zum ersten Schritt
         };
 
         return (

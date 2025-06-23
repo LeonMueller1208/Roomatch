@@ -397,7 +397,7 @@ function App() {
             e.preventDefault();
             if (currentStep === totalSteps) {
                 const dataToSubmit = { ...formState };
-                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToToJson.age);
+                if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); // Korrektur hier
                 if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
                 if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
                 if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
@@ -693,7 +693,7 @@ function App() {
                                         onChange={handleChange}
                                         rows="3"
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                                    ></textarea>
+                                ></textarea>
                                 </div>
                             </>
                         )}

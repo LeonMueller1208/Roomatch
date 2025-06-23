@@ -22,7 +22,7 @@ const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'L
 // **WICHTIG:** Ersetze 'DEINE_ADMIN_UID_HIER' durch deine tatsächliche Benutzer-ID (UID) von Firebase Auth.
 // Du findest deine UID in der Browser-Konsole (F12 -> Console) nachdem du dich einmal angemeldet hast.
 // Suche nach der Zeile "Ihre Benutzer-ID: ..." in der App-Oberfläche.
-const ADMIN_UID = "H9jtz5aHKcNc7JCjtTPL7t32rtE3"; 
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Hier ist deine korrigierte Admin-ID eingefügt!
 
 // Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
 const calculateMatchScore = (seeker, wg) => {
@@ -172,7 +172,6 @@ function App() {
     useEffect(() => {
         if (!db || !userId) return;
 
-        // setLoading(true); // ENTFERNT: Dies hat den loading-Zustand blockiert
         const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
 
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
@@ -181,11 +180,9 @@ function App() {
                 ...doc.data()
             }));
             setMySearcherProfiles(profiles);
-            // Kein setLoading(false) hier, da der auth-Hook es bereits handhabt
         }, (err) => {
             console.error("Fehler beim Abrufen der eigenen Suchenden-Profile:", err);
             setError("Fehler beim Laden der eigenen Suchenden-Profile.");
-            // Kein setLoading(false) hier, da der auth-Hook es bereits handhabt
         });
 
         return () => unsubscribeMySearchers();
@@ -195,7 +192,6 @@ function App() {
     useEffect(() => {
         if (!db || !userId) return;
 
-        // setLoading(true); // ENTFERNT: Dies hat den loading-Zustand blockiert
         const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
 
         const unsubscribeMyWGs = onSnapshot(myWgsQuery, (snapshot) => {
@@ -204,11 +200,9 @@ function App() {
                 ...doc.data()
             }));
             setMyWgProfiles(profiles);
-            // Kein setLoading(false) hier
         }, (err) => {
             console.error("Fehler beim Abrufen der eigenen WG-Profile:", err);
             setError("Fehler beim Laden der eigenen WG-Profile.");
-            // Kein setLoading(false) hier
         });
 
         return () => unsubscribeMyWGs();

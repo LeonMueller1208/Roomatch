@@ -13,7 +13,7 @@ const firebaseConfig = {
     storageBucket: "mvp-roomatch.firebasestorage.app",
     messagingSenderId: "190918526277",
     appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
-    measurementId: "G-5JPWLDD0ZC"
+    measurementId: "G-5JPWLD0ZC"
 };
 
 // Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
@@ -333,23 +333,21 @@ function App() {
             return;
         }
 
+        // Überprüfen der Berechtigung vor dem Löschen
         if (!adminMode && userId !== profileCreatorId) {
             setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
-            setTimeout(() => setError(''), 3000);
+            setTimeout(() => setError(''), 3000); // Nachricht nach 3 Sekunden ausblenden
             return;
         }
 
-        const confirmDelete = window.confirm(`Möchtest du das Profil "${profileName}" wirklich löschen?`);
-
-        if (confirmDelete) {
-            try {
-                await deleteDoc(doc(db, collectionName, docId));
-                setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
-                setTimeout(() => setSaveMessage(''), 3000);
-            } catch (e) {
-                console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
-                setError(`Fehler beim Löschen von Profil "${profileName}".`);
-            }
+        // Direkte Löschung ohne Bestätigungsdialog (gemäß Anweisung)
+        try {
+            await deleteDoc(doc(db, collectionName, docId));
+            setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
+            setTimeout(() => setSaveMessage(''), 3000); // Nachricht nach 3 Sekunden ausblenden
+        } catch (e) {
+            console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
+            setError(`Fehler beim Löschen von Profil "${profileName}".`);
         }
     };
 
@@ -412,7 +410,8 @@ function App() {
 
 
         const handleSubmit = (e) => {
-            e.preventDefault();
+            e.preventDefault(); // Verhindert die Standard-Formularübermittlung des Browsers
+
             if (currentStep === totalSteps) { // Formular wird nur im letzten Schritt abgeschickt
                 const dataToSubmit = { ...formState };
                 if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 

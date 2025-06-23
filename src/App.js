@@ -13,7 +13,7 @@ const firebaseConfig = {
     storageBucket: "mvp-roomatch.firebasestorage.app",
     messagingSenderId: "190918526277",
     appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
-    measurementId: "G-5JPWDD0ZC"
+    measurementId: "G-5JPWLDD0ZC"
 };
 
 // Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
@@ -356,7 +356,7 @@ function App() {
     // Vereinheitlichte Profilformular-Komponente
     const ProfileForm = ({ onSubmit, type }) => {
         const [currentStep, setCurrentStep] = useState(1);
-        const totalSteps = 3; 
+        const totalSteps = 3; // Hier ist die Anzahl der Schritte definiert
 
         const [formState, setFormState] = useState({
             name: '',
@@ -413,7 +413,7 @@ function App() {
 
         const handleSubmit = (e) => {
             e.preventDefault();
-            if (currentStep === totalSteps) {
+            if (currentStep === totalSteps) { // Formular wird nur im letzten Schritt abgeschickt
                 const dataToSubmit = { ...formState };
                 if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
                 if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
@@ -433,7 +433,7 @@ function App() {
                 });
                 setCurrentStep(1); // Zurück zum ersten Schritt
             } else {
-                nextStep();
+                nextStep(); // Gehe zum nächsten Schritt
             }
         };
 
@@ -443,6 +443,7 @@ function App() {
                     {type === 'seeker' ? `Suchenden-Profil erstellen (Schritt ${currentStep}/${totalSteps})` : `WG-Angebot erstellen (Schritt ${currentStep}/${totalSteps})`}
                 </h2>
 
+                {/* --- SCHRITT 1 --- */}
                 {currentStep === 1 && (
                     <div className="space-y-4">
                         {/* Name / WG-Name */}
@@ -548,6 +549,7 @@ function App() {
                     </div>
                 )}
 
+                {/* --- SCHRITT 2 --- */}
                 {currentStep === 2 && (
                     <div className="space-y-4">
                         {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
@@ -676,6 +678,7 @@ function App() {
                     </div>
                 )}
 
+                {/* --- SCHRITT 3 --- */}
                 {currentStep === 3 && (
                     <div className="space-y-4">
                         {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}

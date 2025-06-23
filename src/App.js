@@ -4,10 +4,10 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle } from 'lucide-react';
 
-// Firebase-Konfiguration
+// Firebase Configuration
 const firebaseConfig = {
-    // ERSETZE DIESEN API-KEY MIT DEINEM EIGENEN AUS DER FIREBASE-KONSOLE!
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // Beispiel: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg"
+    // REPLACE THIS API KEY WITH YOUR OWN FROM THE FIREBASE CONSOLE!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // Example: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg"
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -16,17 +16,17 @@ const firebaseConfig = {
     measurementId: "G-5JPWLD0ZC"
 };
 
-// Vordefinierte Listen für Persönlichkeitsmerkmale und Interessen
-const allPersonalityTraits = ['ordentlich', 'ruhig', 'gesellig', 'kreativ', 'sportlich', 'nachtaktiv', 'frühaufsteher', 'tolerant', 'tierlieb', 'flexibel', 'strukturiert'];
-const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'Lesen', 'Reisen', 'Feiern', 'Gaming', 'Pflanzen', 'Kultur', 'Kunst'];
-const allCommunalLivingPreferences = ['sehr ordentlich', 'eher entspannt', 'wöchentliche Putzpläne bevorzugt', 'spontanes Aufräumen', 'oft zusammen kochen', 'manchmal zusammen kochen', 'selten zusammen kochen'];
-const allWGValues = ['Nachhaltigkeit wichtig', 'offene Kommunikation bevorzugt', 'Respekt vor Privatsphäre', 'gemeinsame Aktivitäten wichtig', 'ruhiges Zuhause bevorzugt', 'lebhaftes Zuhause bevorzugt', 'politisch engagiert', 'kulturell interessiert'];
+// Predefined lists for personality traits and interests
+const allPersonalityTraits = ['tidy', 'calm', 'social', 'creative', 'sporty', 'night owl', 'early bird', 'tolerant', 'animal lover', 'flexible', 'structured'];
+const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art'];
+const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
+const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
 
-// **WICHTIG:** ERSETZE DIESEN WERT EXAKT MIT DEINER ADMIN-ID, DIE IN DER APP ANGEZEIGT WIRD!
+// **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID SHOWN IN THE APP!
 const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
 
-// Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
+// Function to calculate the match score between a seeker and a WG profile
 const calculateMatchScore = (seeker, wg) => {
     let score = 0;
 
@@ -35,7 +35,7 @@ const calculateMatchScore = (seeker, wg) => {
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
-    // 1. Alter Match (Suchender-Alter vs. WG-Altersbereich)
+    // 1. Age Match (Seeker age vs. WG age range)
     if (seeker.age && wg.minAge && wg.maxAge) {
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
             score += 20;
@@ -44,16 +44,16 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 2. Geschlechtspräferenz
+    // 2. Gender Preference
     if (seeker.gender && wg.genderPreference) {
-        if (wg.genderPreference === 'egal' || seeker.gender === wg.genderPreference) {
+        if (wg.genderPreference === 'any' || seeker.gender === wg.genderPreference) {
             score += 10;
         } else {
             score -= 10;
         }
     }
 
-    // 3. Persönlichkeitsmerkmale (Übereinstimmung)
+    // 3. Personality Traits (Overlap)
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     seekerTraits.forEach(trait => {
@@ -62,7 +62,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 4. Interessen (Überlappung)
+    // 4. Interests (Overlap)
     const seekerInterests = getArrayValue(seeker, 'interests');
     const wgInterests = getArrayValue(wg, 'interests');
     seekerInterests.forEach(interest => {
@@ -71,7 +71,7 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 5. Mietpreis (Suchender Max. Miete >= WG Miete)
+    // 5. Rent (Seeker Max Rent >= WG Rent)
     if (seeker.maxRent && wg.rent) {
         if (seeker.maxRent >= wg.rent) {
             score += 15;
@@ -80,16 +80,16 @@ const calculateMatchScore = (seeker, wg) => {
         }
     }
 
-    // 6. Haustiere (Match)
+    // 6. Pets (Match)
     if (seeker.pets && wg.petsAllowed) {
-        if (seeker.pets === 'ja' && wg.petsAllowed === 'ja') {
+        if (seeker.pets === 'yes' && wg.petsAllowed === 'yes') {
             score += 8;
-        } else if (seeker.pets === 'ja' && wg.petsAllowed === 'nein') {
+        } else if (seeker.pets === 'yes' && wg.petsAllowed === 'no') {
             score -= 8;
         }
     }
 
-    // 7. Freitext 'lookingFor' (Suchender) vs. 'description'/'lookingForInFlatmate' (WG)
+    // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (WG)
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
     const wgDescription = (wg.description || '').toLowerCase();
     const wgLookingForInFlatmate = (wg.lookingForInFlatmate || '').toLowerCase();
@@ -101,26 +101,26 @@ const calculateMatchScore = (seeker, wg) => {
         }
     });
 
-    // 8. Durchschnittsalter der WG-Bewohner im Vergleich zum Suchendenalter
+    // 8. Average age of WG residents compared to seeker's age
     if (seeker.age && wg.avgAge) {
         score -= Math.abs(seeker.age - wg.avgAge);
     }
 
-    // 9. Neue: Präferenzen zum Zusammenleben (Communal Living Preferences)
+    // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
     const wgCommunalPrefs = getArrayValue(wg, 'wgCommunalLiving');
     seekerCommunalPrefs.forEach(pref => {
         if (wgCommunalPrefs.includes(pref)) {
-            score += 7; // Hoher Wert für Übereinstimmung bei Lebensgewohnheiten
+            score += 7; // High value for lifestyle agreement
         }
     });
 
-    // 10. Neue: Werte (Values)
+    // 10. New: Values
     const seekerValues = getArrayValue(seeker, 'values');
     const wgValues = getArrayValue(wg, 'wgValues');
     seekerValues.forEach(val => {
         if (wgValues.includes(val)) {
-            score += 10; // Sehr hoher Wert für Übereinstimmung bei Werten
+            score += 10; // Very high value for value agreement
         }
     });
 
@@ -128,7 +128,7 @@ const calculateMatchScore = (seeker, wg) => {
 };
 
 
-// Hauptkomponente der WG-Match-Anwendung
+// Main component of the WG match application
 function App() {
     const [mySearcherProfiles, setMySearcherProfiles] = useState([]);
     const [myWgProfiles, setMyWgProfiles] = useState([]);
@@ -141,11 +141,11 @@ function App() {
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showSeekerForm, setShowSeekerForm] = useState(true); // Standardmäßig Suchenden-Formular anzeigen
+    const [showSeekerForm, setShowSeekerForm] = useState(true); // Display seeker form by default
     const [saveMessage, setSaveMessage] = useState('');
     const [adminMode, setAdminMode] = useState(false);
 
-    // Firebase-Initialisierung und Authentifizierung
+    // Firebase initialization and authentication
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
 
@@ -161,8 +161,8 @@ function App() {
                     try {
                         await signInAnonymously(authInstance);
                     } catch (signInError) {
-                        console.error("Fehler bei der Firebase-Anonym-Authentifizierung:", signInError);
-                        setError("Fehler bei der Anmeldung. Bitte versuchen Sie es später erneut.");
+                        console.error("Error during Firebase anonymous authentication:", signInError);
+                        setError("Error signing in. Please try again later.");
                         setLoading(false);
                         return;
                     }
@@ -177,37 +177,37 @@ function App() {
                 unsubscribeAuth();
             };
         } catch (initError) {
-            console.error("Fehler bei der Firebase-Initialisierung:", initError);
-            setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
+            console.error("Error during Firebase initialization:", initError);
+            setError("Firebase could not be initialized. Please check your Firebase configuration and internet connection.");
             setLoading(false);
         }
     }, []);
 
-    // Wenn der Admin-Modus umgeschaltet wird, stelle sicher, dass das Formular standardmäßig auf 'Suchenden-Profil' zurückgesetzt wird
+    // When admin mode is toggled, ensure the form defaults back to 'Seeker Profile'
     useEffect(() => {
         if (!adminMode) {
-            setShowSeekerForm(true); // Setzt es auf Suchenden-Formular, wenn Admin-Modus deaktiviert ist
+            setShowSeekerForm(true); // Sets it to seeker form when admin mode is deactivated
         }
     }, [adminMode]);
 
 
-    // Echtzeit-Datenabruf für *eigene* Suchende-Profile von Firestore
+    // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-        // Aktualisierter Pfad für öffentliche Daten, wenn Sie die Firestore-Sicherheitsregeln auf "public" ändern.
-        // Wenn Sie private Daten nach Benutzer-ID speichern wollen, wäre der Pfad `users/${userId}/searcherProfiles`
+        // Updated path for public data if you change Firestore security rules to "public".
+        // If you want to store private data by user ID, the path would be `users/${userId}/searcherProfiles`
         const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMySearcherProfiles(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen der eigenen Suchenden-Profile:", err);
-            setError("Fehler beim Laden der eigenen Suchenden-Profile.");
+            console.error("Error fetching own seeker profiles:", err);
+            setError("Error loading own seeker profiles.");
         });
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // Echtzeit-Datenabruf für *eigene* WG-Profile von Firestore
+    // Real-time data retrieval for *own* WG profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
         const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
@@ -215,13 +215,13 @@ function App() {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMyWgProfiles(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen der eigenen WG-Profile:", err);
-            setError("Fehler beim Laden der eigenen WG-Profile.");
+            console.error("Error fetching own WG profiles:", err);
+            setError("Error loading own WG profiles.");
         });
         return () => unsubscribeMyWGs();
     }, [db, userId]);
 
-    // Echtzeit-Datenabruf für *alle* Suchende-Profile (für Match-Berechnung)
+    // Real-time data retrieval for *all* seeker profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
         const allSearchersQuery = query(collection(db, `searcherProfiles`));
@@ -229,12 +229,12 @@ function App() {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllSearcherProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen aller Suchenden-Profile (global):", err);
+            console.error("Error fetching all seeker profiles (global):", err);
         });
         return () => unsubscribeAllSearchers();
     }, [db]);
 
-    // Echtzeit-Datenabruf für *alle* WG-Profile (für Match-Berechnung)
+    // Real-time data retrieval for *all* WG profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
         const allWgsQuery = query(collection(db, `wgProfiles`));
@@ -242,12 +242,12 @@ function App() {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllWgProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Fehler beim Abrufen aller WG-Profile (global):", err);
+            console.error("Error fetching all WG profiles (global):", err);
         });
         return () => unsubscribeAllWGs();
     }, [db]);
 
-    // Match-Berechnung für beide Richtungen
+    // Match calculation for both directions
     useEffect(() => {
         const calculateAllMatches = () => {
             const newSeekerToWGMatches = [];
@@ -286,10 +286,10 @@ function App() {
     }, [mySearcherProfiles, myWgProfiles, allSearcherProfilesGlobal, allWgProfilesGlobal, loading, adminMode, userId, db]);
 
 
-    // Funktion zum Hinzufügen eines Suchenden-Profils zu Firestore
+    // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
+            setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
@@ -298,18 +298,18 @@ function App() {
                 createdAt: new Date(),
                 createdBy: userId,
             });
-            setSaveMessage('Suchenden-Profil erfolgreich gespeichert!');
+            setSaveMessage('Seeker profile successfully saved!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Fehler beim Hinzufügen des Suchenden-Profils: ", e);
-            setError("Fehler beim Speichern des Suchenden-Profils.");
+            console.error("Error adding seeker profile: ", e);
+            setError("Error saving seeker profile.");
         }
     };
 
-    // Funktion zum Hinzufügen eines WG-Profils zu Firestore
+    // Function to add a WG profile to Firestore
     const addWGProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit. Bitte warten Sie oder melden Sie sich an.");
+            setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
@@ -318,58 +318,58 @@ function App() {
                 createdAt: new Date(),
                 createdBy: userId,
             });
-            setSaveMessage('WG-Profil erfolgreich gespeichert!');
+            setSaveMessage('WG profile successfully saved!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Fehler beim Hinzufügen des WG-Profils: ", e);
-            setError("Fehler beim Speichern des WG-Profils.");
+            console.error("Error adding WG profile: ", e);
+            setError("Error saving WG profile.");
         }
     };
 
-    // Funktion zum Löschen eines Profils
+    // Function to delete a profile
     const handleDeleteProfile = async (collectionName, docId, profileName, profileCreatorId) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit zum Löschen.");
+            setError("Database not ready for deletion.");
             return;
         }
 
-        // Überprüfen der Berechtigung vor dem Löschen
+        // Check permission before deletion
         if (!adminMode && userId !== profileCreatorId) {
-            setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
-            setTimeout(() => setError(''), 3000); // Nachricht nach 3 Sekunden ausblenden
+            setError("You are not authorized to delete this profile.");
+            setTimeout(() => setError(''), 3000); // Hide message after 3 seconds
             return;
         }
 
-        // Direkte Löschung ohne Bestätigungsdialog (gemäß Anweisung)
+        // Direct deletion without confirmation dialog
         try {
             await deleteDoc(doc(db, collectionName, docId));
-            setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
-            setTimeout(() => setSaveMessage(''), 3000); // Nachricht nach 3 Sekunden ausblenden
+            setSaveMessage(`Profile "${profileName}" successfully deleted!`);
+            setTimeout(() => setSaveMessage(''), 3000); // Hide message after 3 seconds
         } catch (e) {
-            console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
-            setError(`Fehler beim Löschen von Profil "${profileName}".`);
+            console.error(`Error deleting profile ${profileName}: `, e);
+            setError(`Error deleting profile "${profileName}".`);
         }
     };
 
-    // Vereinheitlichte Profilformular-Komponente
+    // Unified Profile Form Component
     const ProfileForm = ({ onSubmit, type }) => {
         const [currentStep, setCurrentStep] = useState(1);
-        const totalSteps = 3; // Hier ist die Anzahl der Schritte definiert
+        const totalSteps = 3; // Number of steps defined here
 
         const [formState, setFormState] = useState({
             name: '',
             age: '', minAge: '', maxAge: '',
-            gender: 'männlich', genderPreference: 'egal',
+            gender: 'male', genderPreference: 'any',
             personalityTraits: [],
             interests: [],
-            maxRent: '', pets: 'egal', lookingFor: '',
-            description: '', rent: '', roomType: 'Einzelzimmer', petsAllowed: 'egal',
+            maxRent: '', pets: 'any', lookingFor: '',
+            description: '', rent: '', roomType: 'Single Room', petsAllowed: 'any',
             avgAge: '', lookingForInFlatmate: '',
             location: '',
-            communalLivingPreferences: [], // Neu für Suchende
-            wgCommunalLiving: [],          // Neu für Anbieter
-            values: [],                    // Neu für Suchende
-            wgValues: [],                  // Neu für Anbieter
+            communalLivingPreferences: [], // New for seekers
+            wgCommunalLiving: [],          // New for providers
+            values: [],                    // New for seekers
+            wgValues: [],                  // New for providers
         });
 
         const handleChange = (e) => {
@@ -387,50 +387,48 @@ function App() {
         };
 
         const nextStep = () => {
-            console.log(`nextStep aufgerufen: currentStep war ${currentStep}`);
+            console.log(`nextStep called: currentStep was ${currentStep}`);
             setCurrentStep((prev) => {
                 const newStep = Math.min(prev + 1, totalSteps);
-                console.log(`nextStep: currentStep wird zu ${newStep}`);
+                console.log(`nextStep: currentStep becomes ${newStep}`);
                 return newStep;
             });
         };
 
         const prevStep = () => {
-            console.log(`prevStep aufgerufen: currentStep war ${currentStep}`);
+            console.log(`prevStep called: currentStep was ${currentStep}`);
             setCurrentStep((prev) => {
                 const newStep = Math.max(prev - 1, 1);
-                console.log(`prevStep: currentStep wird zu ${newStep}`);
+                console.log(`prevStep: currentStep becomes ${newStep}`);
                 return newStep;
             });
         };
 
         const handleCancel = () => {
-            console.log("handleCancel aufgerufen");
-            setFormState({ // Formular vollständig zurücksetzen
-                name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
-                genderPreference: 'egal', personalityTraits: [], interests: [],
-                maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
-                roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
+            console.log("handleCancel called");
+            setFormState({ // Reset form completely
+                name: '', age: '', minAge: '', maxAge: '', gender: 'male',
+                genderPreference: 'any', personalityTraits: [], interests: [],
+                maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
+                roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
                 lookingForInFlatmate: '', location: '',
                 communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
             });
-            setCurrentStep(1); // Zurück zum ersten Schritt
-            // Optional: Wenn das Formular von der Hauptseite aus geöffnet wird, könnte man auch zur Hauptseite zurückkehren:
-            // setShowSeekerForm(true); // Oder eine andere Logik, die dich zur Hauptansicht bringt
+            setCurrentStep(1); // Go back to first step
         };
 
 
-        const handleSubmit = async () => { // Kein Event-Objekt mehr direkt von onSubmit
-            console.log(`handleSubmit aufgerufen. Aktueller Schritt: ${currentStep}`);
+        const handleSubmit = async () => { // No event object directly from onSubmit
+            console.log(`handleSubmit called. Current step: ${currentStep}`);
 
-            // Diese Überprüfung sollte nun redundant sein, da handleSubmit nur vom finalen Button aufgerufen wird,
-            // aber zur Sicherheit belassen wir sie.
+            // This check should now be redundant, as handleSubmit is only called by the final button,
+            // but we leave it for safety.
             if (currentStep !== totalSteps) {
-                console.log("handleSubmit: Wird nicht ausgeführt, da nicht im letzten Schritt.");
+                console.log("handleSubmit: Not executed as not in the last step.");
                 return;
             }
 
-            console.log("handleSubmit: Im letzten Schritt, Daten werden übermittelt.");
+            console.log("handleSubmit: In the last step, data is being submitted.");
             const dataToSubmit = { ...formState };
             if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
             if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
@@ -439,32 +437,32 @@ function App() {
             if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
             if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
 
-            await onSubmit(dataToSubmit); // Warten, bis die Daten gespeichert sind
-            console.log("handleSubmit: Daten übermittelt, Formular wird zurückgesetzt.");
-            setFormState({ // Formular zurücksetzen nach dem Speichern
-                name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
-                genderPreference: 'egal', personalityTraits: [], interests: [],
-                maxRent: '', pets: 'egal', lookingFor: '', description: '', rent: '',
-                roomType: 'Einzelzimmer', petsAllowed: 'egal', avgAge: '',
+            await onSubmit(dataToSubmit); // Wait until data is saved
+            console.log("handleSubmit: Data submitted, form is being reset.");
+            setFormState({ // Reset form after saving
+                name: '', age: '', minAge: '', maxAge: '', gender: 'male',
+                genderPreference: 'any', personalityTraits: [], interests: [],
+                maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
+                roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
                 lookingForInFlatmate: '', location: '',
                 communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
             });
-            setCurrentStep(1); // Zurück zum ersten Schritt
+            setCurrentStep(1); // Go back to first step
         };
 
         return (
             <form className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
-                    {type === 'seeker' ? `Suchenden-Profil erstellen (Schritt ${currentStep}/${totalSteps})` : `WG-Angebot erstellen (Schritt ${currentStep}/${totalSteps})`}
+                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create WG Offer (Step ${currentStep}/${totalSteps})`}
                 </h2>
 
-                {/* --- SCHRITT 1 --- */}
+                {/* --- STEP 1 --- */}
                 {currentStep === 1 && (
                     <div className="space-y-4">
-                        {/* Name / WG-Name */}
+                        {/* Name / WG Name */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Dein Name:' : 'Name der WG:'}
+                                {type === 'seeker' ? 'Your Name:' : 'WG Name:'}
                             </label>
                             <input
                                 type="text"
@@ -476,10 +474,10 @@ function App() {
                             />
                         </div>
 
-                        {/* Alter (Suchender) / Altersbereich (Anbieter) */}
+                        {/* Age (Seeker) / Age Range (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Dein Alter:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Your Age:</label>
                                 <input
                                     type="number"
                                     name="age"
@@ -493,7 +491,7 @@ function App() {
                         {type === 'provider' && (
                             <div className="flex space-x-4">
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Mindestalter Mitbewohner:</label>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Min Flatmate Age:</label>
                                     <input
                                         type="number"
                                         name="minAge"
@@ -504,7 +502,7 @@ function App() {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Höchstalter Mitbewohner:</label>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Max Flatmate Age:</label>
                                     <input
                                         type="number"
                                         name="maxAge"
@@ -517,42 +515,42 @@ function App() {
                             </div>
                         )}
 
-                        {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
+                        {/* Gender (Seeker) / Gender Preference (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Dein Geschlecht:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Your Gender:</label>
                                 <select
                                     name="gender"
                                     value={formState.gender}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 >
-                                    <option value="männlich">Männlich</option>
-                                    <option value="weiblich">Weiblich</option>
-                                    <option value="divers">Divers</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="diverse">Diverse</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Geschlechtspräferenz Mitbewohner:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Flatmate Gender Preference:</label>
                                 <select
                                     name="genderPreference"
                                     value={formState.genderPreference}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 >
-                                    <option value="egal">Egal</option>
-                                    <option value="männlich">Männlich</option>
-                                    <option value="weiblich">Weiblich</option>
-                                    <option value="divers">Divers</option>
+                                    <option value="any">Any</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="diverse">Diverse</option>
                                 </select>
                             </div>
                         )}
 
-                        {/* Ort/Stadtteil (für beide) */}
+                        {/* Location / City District (for both) */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Ort / Stadtteil:</label>
+                            <label className="block text-gray-700 text-base font-semibold mb-2">Location / City District:</label>
                             <input
                                 type="text"
                                 name="location"
@@ -564,13 +562,13 @@ function App() {
                     </div>
                 )}
 
-                {/* --- SCHRITT 2 --- */}
+                {/* --- STEP 2 --- */}
                 {currentStep === 2 && (
                     <div className="space-y-4">
-                        {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
+                        {/* Maximum Rent (Seeker) / Rent (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Maximale Miete (€):</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Maximum Rent (€):</label>
                                 <input
                                     type="number"
                                     name="maxRent"
@@ -582,7 +580,7 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Miete (€):</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Rent (€):</label>
                                 <input
                                     type="number"
                                     name="rent"
@@ -593,42 +591,42 @@ function App() {
                             </div>
                         )}
 
-                        {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
+                        {/* Pets (Seeker) / Pets Allowed (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Pets:</label>
                                 <select
                                     name="pets"
                                     value={formState.pets}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 >
-                                    <option value="egal">Egal</option>
-                                    <option value="ja">Ja</option>
-                                    <option value="nein">Nein</option>
+                                    <option value="any">Any</option>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Haustiere erlaubt:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Pets Allowed:</label>
                                 <select
                                     name="petsAllowed"
                                     value={formState.petsAllowed}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 >
-                                    <option value="egal">Egal</option>
-                                    <option value="ja">Ja</option>
-                                    <option value="nein">Nein</option>
+                                    <option value="any">Any</option>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
                                 </select>
                             </div>
                         )}
 
-                        {/* Persönlichkeitsmerkmale (für beide) */}
+                        {/* Personality Traits (for both) */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Deine Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
+                                {type === 'seeker' ? 'Your Personality Traits:' : 'Current Residents\' Personality Traits:'}
                             </label>
                             <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allPersonalityTraits.map(trait => (
@@ -647,10 +645,10 @@ function App() {
                             </div>
                         </div>
 
-                        {/* Interessen (für beide) */}
+                        {/* Interests (for both) */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Deine Interessen:' : 'Interessen der aktuellen Bewohner:'}
+                                {type === 'seeker' ? 'Your Interests:' : 'Current Residents\' Interests:'}
                             </label>
                             <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allInterests.map(interest => (
@@ -669,10 +667,10 @@ function App() {
                             </div>
                         </div>
 
-                        {/* Neue: Präferenzen zum WG-Leben (Communal Living Preferences) */}
+                        {/* New: Communal Living Preferences */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Deine Präferenzen zum WG-Leben:' : 'Präferenzen der WG zum Zusammenleben:'}
+                                {type === 'seeker' ? 'Your Communal Living Preferences:' : 'WG Communal Living Preferences:'}
                             </label>
                             <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allCommunalLivingPreferences.map(pref => (
@@ -693,13 +691,13 @@ function App() {
                     </div>
                 )}
 
-                {/* --- SCHRITT 3 --- */}
+                {/* --- STEP 3 --- */}
                 {currentStep === 3 && (
                     <div className="space-y-4">
-                        {/* Was gesucht wird (Suchender) / Beschreibung der WG (Anbieter) */}
+                        {/* What is being sought (Seeker) / Description of the WG (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Was suchst du in einer WG?:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">What are you looking for in a WG?:</label>
                                 <textarea
                                     name="lookingFor"
                                     value={formState.lookingFor}
@@ -712,7 +710,7 @@ function App() {
                         {type === 'provider' && (
                             <>
                                 <div>
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Beschreibung der WG:</label>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Description of the WG:</label>
                                     <textarea
                                         name="description"
                                         value={formState.description}
@@ -722,7 +720,7 @@ function App() {
                                     ></textarea>
                                 </div>
                                 <div>
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Was sucht ihr im neuen Mitbewohner?:</label>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">What are you looking for in a new flatmate?:</label>
                                     <textarea
                                         name="lookingForInFlatmate"
                                         value={formState.lookingForInFlatmate}
@@ -735,21 +733,21 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Zimmertyp:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Room Type:</label>
                                 <select
                                     name="roomType"
                                     value={formState.roomType}
                                     onChange={handleChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
                                 >
-                                    <option value="Einzelzimmer">Einzelzimmer</option>
-                                    <option value="Doppelzimmer">Doppelzimmer</option>
+                                    <option value="Single Room">Single Room</option>
+                                    <option value="Double Room">Double Room</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Durchschnittsalter der Bewohner:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">Average Age of Residents:</label>
                                 <input
                                     type="number"
                                     name="avgAge"
@@ -760,10 +758,10 @@ function App() {
                             </div>
                         )}
 
-                        {/* Neue: Werte (Values) */}
+                        {/* New: Values */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Deine Werte und Erwartungen an das WG-Leben:' : 'Werte und Erwartungen der WG:'}
+                                {type === 'seeker' ? 'Your Values and Expectations for WG life:' : 'WG Values and Expectations:'}
                             </label>
                             <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allWGValues.map(val => (
@@ -790,7 +788,7 @@ function App() {
                         onClick={handleCancel}
                         className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
                     >
-                        <XCircle size={20} className="mr-2" /> Abbrechen
+                        <XCircle size={20} className="mr-2" /> Cancel
                     </button>
                     {currentStep > 1 && (
                         <button
@@ -798,7 +796,7 @@ function App() {
                             onClick={prevStep}
                             className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
                         >
-                            Zurück
+                            Back
                         </button>
                     )}
                     {currentStep < totalSteps ? (
@@ -807,19 +805,19 @@ function App() {
                             onClick={nextStep}
                             className="flex items-center px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"
                         >
-                            Weiter
+                            Next
                         </button>
                     ) : (
                         <button
-                            type="button" // Geändert zu type="button"
-                            onClick={handleSubmit} // handleSubmit wird jetzt direkt hier aufgerufen
+                            type="button" // Changed to type="button"
+                            onClick={handleSubmit} // handleSubmit is now called directly here
                             className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
                                 type === 'seeker'
                                     ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
                                     : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
                             }`}
                         >
-                            <CheckCircle size={20} className="mr-2" /> Profil speichern
+                            <CheckCircle size={20} className="mr-2" /> Save Profile
                         </button>
                     )}
                 </div>
@@ -830,7 +828,7 @@ function App() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#3fd5c1] to-[#e0f7f4]">
-                <p className="text-gray-700 text-lg animate-pulse">Lade App und Daten...</p>
+                <p className="text-gray-700 text-lg animate-pulse">Loading App and Data...</p>
             </div>
         );
     }
@@ -838,7 +836,7 @@ function App() {
     if (error) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-red-100 text-red-700 p-4 rounded-lg">
-                <p>Fehler: {error}</p>
+                <p>Error: {error}</p>
             </div>
         );
     }
@@ -848,7 +846,7 @@ function App() {
 
     return (
         <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center relative overflow-hidden">
-            {/* Hintergrund-Kreise für visuelle Dynamik */}
+            {/* Background circles for visual dynamism */}
             <div className="absolute top-[-50px] left-[-50px] w-48 h-48 bg-white opacity-10 rounded-full animate-blob-slow"></div>
             <div className="absolute bottom-[-50px] right-[-50px] w-64 h-64 bg-white opacity-10 rounded-full animate-blob-medium"></div>
             <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
@@ -858,7 +856,7 @@ function App() {
             
             {userId && (
                 <div className="bg-[#c3efe8] text-[#0a665a] text-sm px-6 py-3 rounded-full mb-8 shadow-md flex items-center transform transition-all duration-300 hover:scale-[1.02]">
-                    <User size={18} className="mr-2" /> Ihre Benutzer-ID: <span className="font-mono font-semibold ml-1">{userId}</span>
+                    <User size={18} className="mr-2" /> Your User ID: <span className="font-mono font-semibold ml-1">{userId}</span>
                     {userId === ADMIN_UID && (
                         <label className="ml-6 inline-flex items-center cursor-pointer">
                             <input
@@ -867,7 +865,7 @@ function App() {
                                 checked={adminMode}
                                 onChange={() => setAdminMode(!adminMode)}
                             />
-                            <span className="ml-2 text-[#0a665a] font-bold select-none">Admin-Modus</span>
+                            <span className="ml-2 text-[#0a665a] font-bold select-none">Admin Mode</span>
                         </label>
                     )}
                 </div>
@@ -878,46 +876,46 @@ function App() {
                 </div>
             )}
 
-            {/* --- HAUPTANSICHTEN (Admin-Modus vs. Normaler Modus) --- */}
+            {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
             {adminMode ? (
-                // ADMIN-MODUS AN: Zeige alle Admin-Dashboards
+                // ADMIN MODE ON: Show all admin dashboards
                 <div className="w-full max-w-7xl flex flex-col gap-12">
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Suchender findet WG (Admin-Ansicht)</h2>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Seeker finds WG (Admin View)</h2>
                         {matches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">Keine Matches gefunden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">No matches found.</p>
                         ) : (
                             <div className="space-y-8">
                                 {matches.map((match, index) => (
                                     <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Suchender: <span className="font-extrabold ml-2">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
+                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-2">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                         </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 text-base mb-6">
-                                            <p><span className="font-semibold">Alter:</span> {match.searcher.age}</p>
-                                            <p><span className="font-semibold">Geschlecht:</span> {match.searcher.gender}</p>
-                                            <p><span className="font-semibold">Interessen:</span> {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
-                                            <p><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
-                                            <p><span className="font-semibold">WG-Präferenzen:</span> {Array.isArray(match.searcher.communalLivingPreferences) ? match.searcher.communalLivingPreferences.join(', ') : (match.searcher.communalLivingPreferences || 'N/A')}</p>
-                                            <p><span className="font-semibold">Werte:</span> {Array.isArray(match.searcher.values) ? match.searcher.values.join(', ') : (match.searcher.values || 'N/A')}</p>
+                                            <p><span className="font-semibold">Age:</span> {match.searcher.age}</p>
+                                            <p><span className="font-semibold">Gender:</span> {match.searcher.gender}</p>
+                                            <p><span className="font-semibold">Interests:</span> {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
+                                            <p><span className="font-semibold">Personality:</span> {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
+                                            <p><span className="font-semibold">WG Preferences:</span> {Array.isArray(match.searcher.communalLivingPreferences) ? match.searcher.communalLivingPreferences.join(', ') : (match.searcher.communalLivingPreferences || 'N/A')}</p>
+                                            <p><span className="font-semibold">Values:</span> {Array.isArray(match.searcher.values) ? match.searcher.values.join(', ') : (match.searcher.values || 'N/A')}</p>
                                         </div>
 
                                         <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
-                                            <Heart size={20} className="mr-2" /> Passende WG-Angebote:
+                                            <Heart size={20} className="mr-2" /> Matching WG Offers:
                                         </h4>
                                         <div className="space-y-4">
                                             {match.matchingWGs.length === 0 ? (
-                                                <p className="text-gray-600 text-base">Keine passenden WGs.</p>
+                                                <p className="text-gray-600 text-base">No matching WGs.</p>
                                             ) : (
                                                 match.matchingWGs.map(wgMatch => (
                                                     <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">WG-Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Zusammenleben:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Werte:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                                            <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -930,41 +928,41 @@ function App() {
                     </div>
 
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: WG findet Suchenden (Admin-Ansicht)</h2>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: WG finds Seeker (Admin View)</h2>
                         {reverseMatches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">Keine Matches gefunden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">No matches found.</p>
                         ) : (
                             <div className="space-y-8">
                                 {reverseMatches.map((wgMatch, index) => (
                                     <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> WG-Name: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
+                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> WG Name: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
                                         </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 text-base mb-6">
-                                            <p><span className="font-semibold">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}</p>
-                                            <p><span className="font-semibold">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
-                                            <p><span className="font-semibold">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600"><span className="font-semibold">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG-Zusammenleben:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG-Werte:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                            <p><span className="font-semibold">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}</p>
+                                            <p><span className="font-semibold">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
+                                            <p><span className="font-semibold">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                         </div>
 
                                         <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
-                                            <Users size={20} className="mr-2" /> Passende Suchende:
+                                            <Users size={20} className="mr-2" /> Matching Seekers:
                                         </h4>
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-base">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
+                                                <p className="text-gray-600 text-base">No matching seekers for your WG profile.</p>
                                                             ) : (
                                                                 wgMatch.matchingSeekers.map(seekerMatch => (
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Präferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -977,27 +975,27 @@ function App() {
                     </div>
 
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Alle Suchenden-Profile (Admin-Ansicht)</h2>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">All Seeker Profiles (Admin View)</h2>
                         {allSearcherProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">Noch keine Suchenden-Profile vorhanden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">No seeker profiles available yet.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <p className="font-bold text-[#333333] text-lg mb-2">Name: {profile.name}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Alter:</span> {profile.age}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Geschlecht:</span> {profile.gender}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG-Präferenzen:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Werte:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
-                                        <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
+                                        <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                             className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
-                                            <Trash2 size={16} className="mr-2" /> Löschen
+                                            <Trash2 size={16} className="mr-2" /> Delete
                                         </button>
                                     </div>
                                 ))}
@@ -1006,27 +1004,27 @@ function App() {
                     </div>
 
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Alle WG-Angebote (Admin-Ansicht)</h2>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">All WG Offers (Admin View)</h2>
                         {allWgProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">Noch keine WG-Angebote vorhanden.</p>
+                            <p className="text-center text-gray-600 text-lg py-4">No WG offers available yet.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allWgProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#fff8f0] p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-lg mb-2">WG-Name: {profile.name}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Gesuchtes Alter:</span> {profile.minAge}-{profile.maxAge}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Geschlechtspräferenz:</span> {profile.genderPreference}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Persönlichkeit der Bewohner:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG-Zusammenleben:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG-Werte:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
-                                        <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                        <p className="font-bold text-[#333333] text-lg mb-2">WG Name: {profile.name}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
+                                        <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
                                             className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
-                                            <Trash2 size={16} className="mr-2" /> Löschen
+                                            <Trash2 size={16} className="mr-2" /> Delete
                                         </button>
                                     </div>
                                 ))}
@@ -1035,9 +1033,9 @@ function App() {
                     </div>
                 </div>
             ) : (
-                // NORMALER MODUS: Zeige Formularauswahl + Formulare und dann Dashboards (falls vorhanden)
+                // NORMAL MODE: Show form selection + forms and then dashboards (if available)
                 <div className="w-full max-w-7xl flex flex-col gap-12">
-                    {/* Formularauswahl-Buttons */}
+                    {/* Form Selection Buttons */}
                     <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12 mx-auto">
                         <button
                             onClick={() => setShowSeekerForm(true)}
@@ -1047,7 +1045,7 @@ function App() {
                                     : 'bg-white text-[#9adfaa] hover:bg-gray-50'
                             }`}
                         >
-                            <Search size={24} className="mr-3" /> Suchenden-Profil
+                            <Search size={24} className="mr-3" /> Seeker Profile
                         </button>
                         <button
                             onClick={() => setShowSeekerForm(false)}
@@ -1057,25 +1055,25 @@ function App() {
                                     : 'bg-white text-[#fecd82] hover:bg-gray-50'
                             }`}
                         >
-                            <HomeIcon size={24} className="mr-3" /> WG-Angebot
+                            <HomeIcon size={24} className="mr-3" /> WG Offer
                         </button>
                     </div>
 
-                    {/* Aktuelles Formular */}
+                    {/* Current Form */}
                     <div className="w-full max-w-xl mb-12 mx-auto">
                         <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addWGProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
                     </div>
 
-                    {/* Benutzer-Dashboards (falls Profile vorhanden) */}
+                    {/* User Dashboards (if profiles exist) */}
                     {(showMySeekerDashboard || showMyWgDashboard) ? (
-                        // Umschließendes Div, um Adjacent JSX zu vermeiden, wenn beide Dashboards existieren
+                        // Wrapping Div to avoid Adjacent JSX if both dashboards exist
                         <div className="flex flex-col gap-12 w-full"> 
                             {showMySeekerDashboard && (
                                 <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Meine Matches: Suchender findet WG</h2>
+                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Matches: Seeker finds WG</h2>
                                     {matches.filter(match => match.searcher.createdBy === userId).length === 0 ? (
                                         <p className="text-center text-gray-600 text-lg py-4">
-                                            Sie haben noch keine Suchenden-Profile erstellt oder es wurden keine Matches gefunden.
+                                            You haven't created any seeker profiles yet or no matches were found.
                                         </p>
                                     ) : (
                                         <div className="space-y-8">
@@ -1084,24 +1082,24 @@ function App() {
                                                 .map((match, index) => (
                                                     <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                                         <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Ihr Profil: <span className="font-extrabold ml-2">{match.searcher.name}</span>
+                                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-2">{match.searcher.name}</span>
                                                         </h3>
                                                         <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
-                                                            <Heart size={20} className="mr-2" /> Passende WG-Angebote:
+                                                            <Heart size={20} className="mr-2" /> Matching WG Offers:
                                                         </h4>
                                                         <div className="space-y-4">
                                                             {match.matchingWGs.length === 0 ? (
-                                                                <p className="text-gray-600 text-base">Keine passenden WGs zu Ihrem Profil.</p>
+                                                                <p className="text-gray-600 text-base">No matching WGs for your profile.</p>
                                                             ) : (
                                                                 match.matchingWGs.map(wgMatch => (
                                                                     <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                         <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">WG-Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Gesuchtes Alter:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {wgMatch.wg.genderPreference}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit der Bewohner:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Zusammenleben:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Werte:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                                                            <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                                                         </div>
                                                                     </div>
                                                                 ))
@@ -1116,10 +1114,10 @@ function App() {
 
                             {showMyWgDashboard && (
                                 <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Meine Matches: WG findet Suchenden</h2>
+                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Matches: WG finds Seeker</h2>
                                     {reverseMatches.filter(wgMatch => wgMatch.wg.createdBy === userId).length === 0 ? (
                                         <p className="text-center text-gray-600 text-lg py-4">
-                                            Sie haben noch keine WG-Angebote erstellt oder es wurden keine Matches gefunden.
+                                            You haven't created any WG offers yet or no matches were found.
                                         </p>
                                     ) : (
                                         <div className="space-y-8">
@@ -1128,24 +1126,24 @@ function App() {
                                                 .map((wgMatch, index) => (
                                                     <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                                         <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Ihr WG-Profil: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span>
+                                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your WG Profile: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span>
                                                         </h3>
                                                         <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
-                                                            <Users size={20} className="mr-2" /> Passende Suchende:
+                                                            <Users size={20} className="mr-2" /> Matching Seekers:
                                                         </h4>
                                                         <div className="space-y-4">
                                                             {wgMatch.matchingSeekers.length === 0 ? (
-                                                                <p className="text-gray-600 text-base">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
+                                                                <p className="text-gray-600 text-base">No matching seekers for your WG profile.</p>
                                                             ) : (
                                                                 wgMatch.matchingSeekers.map(seekerMatch => (
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                         <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG-Präferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                                         </div>
                                                                     </div>
                                                                 ))
@@ -1159,14 +1157,14 @@ function App() {
                             )}
                         </div> 
                     ) : (
-                        // Meldung, wenn keine eigenen Profile erstellt wurden und nicht im Admin-Modus
+                        // Message when no own profiles have been created and not in admin mode
                         <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-12 mx-auto">
-                            <p className="text-lg">Bitte erstellen Sie ein Suchenden-Profil oder ein WG-Angebot, um Ihre Matches zu sehen.</p>
+                            <p className="text-lg">Please create a Seeker Profile or a WG Offer to see your matches.</p>
                             <button
                                 onClick={() => setShowSeekerForm(true)}
                                 className="mt-6 px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"
                             >
-                                <span className="flex items-center"><Search size={20} className="mr-2" /> Profil erstellen</span>
+                                <span className="flex items-center"><Search size={20} className="mr-2" /> Create Profile</span>
                             </button>
                         </div>
                     )}

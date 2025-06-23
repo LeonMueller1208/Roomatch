@@ -420,20 +420,16 @@ function App() {
         };
 
 
-        const handleSubmit = async (e) => { // handleSubmit ist jetzt async
-            e.preventDefault(); // Verhindert die Standard-Formularübermittlung des Browsers
+        const handleSubmit = async () => { // Kein Event-Objekt mehr direkt von onSubmit
             console.log(`handleSubmit aufgerufen. Aktueller Schritt: ${currentStep}`);
 
-            // NEUE LOGIK: Wenn der aktuelle Schritt NICHT der letzte Schritt ist,
-            // und das Formular dennoch übermittelt wurde (z.B. durch Enter-Taste),
-            // dann verhindern wir die Speicherung und tun nichts.
-            // Der "Weiter"-Button (type="button") sollte das nextStep() separat auslösen.
+            // Diese Überprüfung sollte nun redundant sein, da handleSubmit nur vom finalen Button aufgerufen wird,
+            // aber zur Sicherheit belassen wir sie.
             if (currentStep !== totalSteps) {
-                console.log("handleSubmit: Formular wurde vorzeitig übermittelt (nicht im letzten Schritt). Speicherung wird ignoriert.");
-                return; // Funktion hier beenden, wenn nicht der letzte Schritt
+                console.log("handleSubmit: Wird nicht ausgeführt, da nicht im letzten Schritt.");
+                return;
             }
 
-            // Wenn wir hier ankommen, sind wir im letzten Schritt und können speichern.
             console.log("handleSubmit: Im letzten Schritt, Daten werden übermittelt.");
             const dataToSubmit = { ...formState };
             if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
@@ -457,7 +453,7 @@ function App() {
         };
 
         return (
-            <form onSubmit={handleSubmit} className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
+            <form className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
                     {type === 'seeker' ? `Suchenden-Profil erstellen (Schritt ${currentStep}/${totalSteps})` : `WG-Angebot erstellen (Schritt ${currentStep}/${totalSteps})`}
                 </h2>
@@ -815,7 +811,8 @@ function App() {
                         </button>
                     ) : (
                         <button
-                            type="submit"
+                            type="button" // Geändert zu type="button"
+                            onClick={handleSubmit} // handleSubmit wird jetzt direkt hier aufgerufen
                             className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
                                 type === 'seeker'
                                     ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'

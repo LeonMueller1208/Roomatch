@@ -448,6 +448,7 @@ function App() {
             } else {
                 console.log("handleSubmit: Nicht im letzten Schritt, gehe zum nächsten Schritt.");
                 nextStep(); // Gehe zum nächsten Schritt
+                return; // Wichtig: Hier wird die Funktion beendet, um weitere Ausführungen zu verhindern
             }
         };
 

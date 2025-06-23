@@ -6,7 +6,8 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase-Konfiguration
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg",
+    // ERSETZE DIESEN API-KEY MIT DEINEM EIGENEN AUS DER FIREBASE-KONSOLE!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // Beispiel: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg"
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -193,6 +194,8 @@ function App() {
     // Echtzeit-Datenabruf für *eigene* Suchende-Profile von Firestore
     useEffect(() => {
         if (!db || !userId) return;
+        // Aktualisierter Pfad für öffentliche Daten, wenn Sie die Firestore-Sicherheitsregeln auf "public" ändern.
+        // Wenn Sie private Daten nach Benutzer-ID speichern wollen, wäre der Pfad `users/${userId}/searcherProfiles`
         const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

@@ -387,14 +387,25 @@ function App() {
         };
 
         const nextStep = () => {
-            setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+            console.log(`nextStep aufgerufen: currentStep war ${currentStep}`);
+            setCurrentStep((prev) => {
+                const newStep = Math.min(prev + 1, totalSteps);
+                console.log(`nextStep: currentStep wird zu ${newStep}`);
+                return newStep;
+            });
         };
 
         const prevStep = () => {
-            setCurrentStep((prev) => Math.max(prev - 1, 1));
+            console.log(`prevStep aufgerufen: currentStep war ${currentStep}`);
+            setCurrentStep((prev) => {
+                const newStep = Math.max(prev - 1, 1);
+                console.log(`prevStep: currentStep wird zu ${newStep}`);
+                return newStep;
+            });
         };
 
         const handleCancel = () => {
+            console.log("handleCancel aufgerufen");
             setFormState({ // Formular vollständig zurücksetzen
                 name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
                 genderPreference: 'egal', personalityTraits: [], interests: [],
@@ -409,10 +420,12 @@ function App() {
         };
 
 
-        const handleSubmit = (e) => {
+        const handleSubmit = async (e) => { // handleSubmit ist jetzt async
             e.preventDefault(); // Verhindert die Standard-Formularübermittlung des Browsers
+            console.log(`handleSubmit aufgerufen. Aktueller Schritt: ${currentStep}`);
 
             if (currentStep === totalSteps) { // Formular wird nur im letzten Schritt abgeschickt
+                console.log("handleSubmit: Im letzten Schritt, Daten werden übermittelt.");
                 const dataToSubmit = { ...formState };
                 if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
                 if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
@@ -421,7 +434,8 @@ function App() {
                 if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
                 if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
 
-                onSubmit(dataToSubmit);
+                await onSubmit(dataToSubmit); // Warten, bis die Daten gespeichert sind
+                console.log("handleSubmit: Daten übermittelt, Formular wird zurückgesetzt.");
                 setFormState({ // Formular zurücksetzen nach dem Speichern
                     name: '', age: '', minAge: '', maxAge: '', gender: 'männlich',
                     genderPreference: 'egal', personalityTraits: [], interests: [],
@@ -432,6 +446,7 @@ function App() {
                 });
                 setCurrentStep(1); // Zurück zum ersten Schritt
             } else {
+                console.log("handleSubmit: Nicht im letzten Schritt, gehe zum nächsten Schritt.");
                 nextStep(); // Gehe zum nächsten Schritt
             }
         };

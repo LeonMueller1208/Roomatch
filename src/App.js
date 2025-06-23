@@ -797,18 +797,20 @@ function App() {
                                         </h4>
                                         <div className="space-y-4">
                                             {wgMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-base">Keine passenden Suchenden.</p>
+                                                <p className="text-gray-600 text-base">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
                                             ) : (
-                                                wgMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                        <div>
-                                                            <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                <> {/* Added a fragment here */}
+                                                    {wgMatch.matchingSeekers.map(seekerMatch => (
+                                                        <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            <div>
+                                                                <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                                <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
+                                                                <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))
+                                                    ))}
+                                                </> {/* Fragment closes here */}
                                             )}
                                         </div>
                                     </div>
@@ -973,16 +975,18 @@ function App() {
                                                             {wgMatch.matchingSeekers.length === 0 ? (
                                                                 <p className="text-gray-600 text-base">Keine passenden Suchenden zu Ihrem WG-Profil.</p>
                                                             ) : (
-                                                                wgMatch.matchingSeekers.map(seekerMatch => (
-                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                                        <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                <> {/* Added a fragment here */}
+                                                                    {wgMatch.matchingSeekers.map(seekerMatch => (
+                                                                        <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                                            <div>
+                                                                                <p className="font-bold text-gray-800 text-lg">Suchender: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                                                <p className="text-sm text-gray-600"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {seekerMatch.searcher.gender}</p>
+                                                                                <p className="text-sm text-gray-600"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                                <p className="text-sm text-gray-600"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                ))
+                                                                    ))}
+                                                                </> {/* Fragment closes here */}
                                                             )}
                                                         </div>
                                                     </div>

@@ -22,7 +22,7 @@ const allInterests = ['Kochen', 'Filme', 'Musik', 'Spiele', 'Natur', 'Sport', 'L
 // **WICHTIG:** Ersetze 'DEINE_ADMIN_UID_HIER' durch deine tatsächliche Benutzer-ID (UID) von Firebase Auth.
 // Du findest deine UID in der Browser-Konsole (F12 -> Console) nachdem du dich einmal angemeldet hast.
 // Suche nach der Zeile "Ihre Benutzer-ID: ..." in der App-Oberfläche.
-const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; 
+const ADMIN_UID = "H9jtz5aHKcNc7JCjtTPL7t32rtE3"; 
 
 // Funktion zur Berechnung des Match-Scores zwischen einem Suchenden und einem WG-Profil
 const calculateMatchScore = (seeker, wg) => {

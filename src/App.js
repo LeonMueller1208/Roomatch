@@ -42,6 +42,11 @@ const ADMIN_UID = "H9jtz5aHKcM7JCjtTPL7t32rtE3";
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
 
+// Helper to capitalize first letter for display
+const capitalizeFirstLetter = (string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
 // Function to calculate the match score between a seeker and a WG profile
 // Now returns an object with total score and a detailed breakdown
 const calculateMatchScore = (seeker, wg) => {
@@ -752,7 +757,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{trait}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(trait)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -774,7 +779,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{interest}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(interest)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -796,7 +801,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{pref}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(pref)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -887,7 +892,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{val}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(val)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>

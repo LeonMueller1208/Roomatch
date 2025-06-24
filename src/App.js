@@ -47,9 +47,9 @@ const capitalizeFirstLetter = (string) => {
     return string.charAt(0).toUpperCase() + string.slice(1);
 };
 
-// Function to calculate the match score between a seeker and a WG profile
+// Function to calculate the match score between a seeker and a Room profile
 // Now returns an object with total score and a detailed breakdown
-const calculateMatchScore = (seeker, wg) => {
+const calculateMatchScore = (seeker, room) => {
     let totalScore = 0;
     // Initialize details with all possible categories and default values
     const details = {
@@ -70,19 +70,19 @@ const calculateMatchScore = (seeker, wg) => {
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
-    // 1. Age Match (Seeker age vs. WG age range)
+    // 1. Age Match (Seeker age vs. Room age range)
     const seekerAge = safeParseInt(seeker.age);
-    const wgMinAge = safeParseInt(wg?.minAge);
-    const wgMaxAge = safeParseInt(wg?.maxAge);
+    const roomMinAge = safeParseInt(room?.minAge);
+    const roomMaxAge = safeParseInt(room?.maxAge);
     let ageScore = 0;
-    let ageDescription = `Age match (Seeker: ${seeker.age || 'N/A'}, WG: ${wg?.minAge || 'N/A'}-${wg?.maxAge || 'N/A'})`;
+    let ageDescription = `Age match (Seeker: ${seeker.age || 'N/A'}, Room: ${room?.minAge || 'N/A'}-${room?.maxAge || 'N/A'})`;
 
-    if (seekerAge > 0 && wgMinAge > 0 && wgMaxAge > 0) { // Check if all valid numbers
-        if (seekerAge >= wgMinAge && seekerAge <= wgMaxAge) {
+    if (seekerAge > 0 && roomMinAge > 0 && roomMaxAge > 0) { // Check if all valid numbers
+        if (seekerAge >= roomMinAge && seekerAge <= roomMaxAge) {
             ageScore = 20 * MATCH_WEIGHTS.ageMatch;
         } else {
-            const ageDiffLow = Math.max(0, wgMinAge - seekerAge);
-            const ageDiffHigh = Math.max(0, seekerAge - wgMaxAge);
+            const ageDiffLow = Math.max(0, roomMinAge - seekerAge);
+            const ageDiffHigh = Math.max(0, seekerAge - roomMaxAge);
             ageScore = -(ageDiffLow + ageDiffHigh) * MATCH_WEIGHTS.ageMatch * 0.5;
         }
     }
@@ -91,9 +91,9 @@ const calculateMatchScore = (seeker, wg) => {
 
     // 2. Gender Preference
     let genderScore = 0;
-    let genderDescription = `Gender preference (Seeker: ${seeker.gender || 'N/A'}, WG: ${wg?.genderPreference || 'N/A'})`;
-    if (seeker.gender && wg?.genderPreference) {
-        if (wg.genderPreference === 'any' || seeker.gender === wg.genderPreference) {
+    let genderDescription = `Gender preference (Seeker: ${seeker.gender || 'N/A'}, Room: ${room?.genderPreference || 'N/A'})`;
+    if (seeker.gender && room?.genderPreference) {
+        if (room.genderPreference === 'any' || seeker.gender === room.genderPreference) {
             genderScore = 10 * MATCH_WEIGHTS.genderMatch;
         } else {
             genderScore = -10 * MATCH_WEIGHTS.genderMatch;
@@ -104,31 +104,31 @@ const calculateMatchScore = (seeker, wg) => {
 
     // 3. Personality Traits (Overlap)
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
-    const wgTraits = getArrayValue(wg, 'personalityTraits');
-    const commonTraits = seekerTraits.filter(trait => wgTraits.includes(trait));
+    const roomTraits = getArrayValue(room, 'personalityTraits');
+    const commonTraits = seekerTraits.filter(trait => roomTraits.includes(trait));
     let personalityScore = commonTraits.length * 5 * MATCH_WEIGHTS.personalityTraits;
     details.personalityTraits = { score: personalityScore, description: `Personality overlap (${commonTraits.join(', ') || 'None'})` };
     totalScore += personalityScore;
 
     // 4. Interests (Overlap)
     const seekerInterests = getArrayValue(seeker, 'interests');
-    const wgInterests = getArrayValue(wg, 'interests');
-    const commonInterests = seekerInterests.filter(interest => wgInterests.includes(interest));
+    const roomInterests = getArrayValue(room, 'interests');
+    const commonInterests = seekerInterests.filter(interest => roomInterests.includes(interest));
     let interestsScore = commonInterests.length * 3 * MATCH_WEIGHTS.interests;
     totalScore += interestsScore;
     details.interests = { score: interestsScore, description: `Interests overlap (${commonInterests.join(', ') || 'None'})` };
 
-    // 5. Rent (Seeker Max Rent >= WG Rent)
+    // 5. Rent (Seeker Max Rent >= Room Rent)
     const seekerMaxRent = safeParseInt(seeker.maxRent);
-    const wgRent = safeParseInt(wg?.rent);
+    const roomRent = safeParseInt(room?.rent);
     let rentScore = 0;
-    let rentDescription = `Rent match (Max: ${seeker.maxRent || 'N/A'}€, WG: ${wg?.rent || 'N/A'}€)`;
+    let rentDescription = `Rent match (Max: ${seeker.maxRent || 'N/A'}€, Room: ${room?.rent || 'N/A'}€)`;
 
-    if (seekerMaxRent > 0 && wgRent > 0) { // Check if valid numbers
-        if (seekerMaxRent >= wgRent) {
+    if (seekerMaxRent > 0 && roomRent > 0) { // Check if valid numbers
+        if (seekerMaxRent >= roomRent) {
             rentScore = 15 * MATCH_WEIGHTS.rentMatch;
         } else {
-            rentScore = -(wgRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
+            rentScore = -(roomRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
         }
     }
     details.rentMatch = { score: rentScore, description: rentDescription };
@@ -136,30 +136,30 @@ const calculateMatchScore = (seeker, wg) => {
 
     // 6. Pets (Match)
     let petsScore = 0;
-    let petsDescription = `Pets compatibility (Seeker: ${seeker.pets || 'N/A'}, WG: ${wg?.petsAllowed || 'N/A'})`;
-    if (seeker.pets && wg?.petsAllowed) {
-        if (seeker.pets === 'yes' && wg.petsAllowed === 'yes') {
+    let petsDescription = `Pets compatibility (Seeker: ${seeker.pets || 'N/A'}, Room: ${room?.petsAllowed || 'N/A'})`;
+    if (seeker.pets && room?.petsAllowed) {
+        if (seeker.pets === 'yes' && room.petsAllowed === 'yes') {
             petsScore = 8 * MATCH_WEIGHTS.petsMatch;
-        } else if (seeker.pets === 'yes' && wg.petsAllowed === 'no') {
+        } else if (seeker.pets === 'yes' && room.petsAllowed === 'no') {
             petsScore = -20 * MATCH_WEIGHTS.petsMatch; // Strong penalty
-        } else if (seeker.pets === 'no' && wg.petsAllowed === 'yes') {
-            petsScore = 0; // No penalty if seeker doesn't have pets but WG allows (it's optional)
-        } else if (seeker.pets === 'no' && wg.petsAllowed === 'no') {
+        } else if (seeker.pets === 'no' && room.petsAllowed === 'yes') {
+            petsScore = 0; // No penalty if seeker doesn't have pets but Room allows (it's optional)
+        } else if (seeker.pets === 'no' && room.petsAllowed === 'no') {
             petsScore = 5 * MATCH_WEIGHTS.petsMatch; // Positive if both explicitly don't want pets
         }
     }
     details.petsMatch = { score: petsScore, description: petsDescription };
     totalScore += petsScore;
 
-    // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (WG)
+    // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (Room)
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
-    const wgDescription = (wg?.description || '').toLowerCase();
-    const wgLookingForInFlatmate = (wg?.lookingForInFlatmate || '').toLowerCase();
+    const roomDescription = (room?.description || '').toLowerCase();
+    const roomLookingForInFlatmate = (room?.lookingForInFlatmate || '').toLowerCase();
 
     const seekerKeywords = seekerLookingFor.split(' ').filter(word => word.length > 2);
     const matchedKeywords = [];
     seekerKeywords.forEach(keyword => {
-        if (wgDescription.includes(keyword) || wgLookingForInFlatmate.includes(keyword)) {
+        if (roomDescription.includes(keyword) || roomLookingForInFlatmate.includes(keyword)) {
             matchedKeywords.push(keyword);
         }
     });
@@ -168,29 +168,29 @@ const calculateMatchScore = (seeker, wg) => {
     details.freeTextMatch = { score: freeTextScore, description: `Free text keywords (${matchedKeywords.join(', ') || 'None'})` };
     
 
-    // 8. Average age of WG residents compared to seeker's age
+    // 8. Average age of Room residents compared to seeker's age
     const seekerAgeAvg = safeParseInt(seeker.age);
-    const wgAvgAge = safeParseInt(wg?.avgAge);
+    const roomAvgAge = safeParseInt(room?.avgAge);
     let avgAgeDiffScore = 0;
-    let avgAgeDescription = `Average age difference (Seeker: ${seeker.age || 'N/A'}, WG Avg: ${wg?.avgAge || 'N/A'})`;
-    if (seekerAgeAvg > 0 && wgAvgAge > 0) {
-        avgAgeDiffScore = -Math.abs(seekerAgeAvg - wgAvgAge) * MATCH_WEIGHTS.avgAgeDifference;
+    let avgAgeDescription = `Average age difference (Seeker: ${seeker.age || 'N/A'}, Room Avg: ${room?.avgAge || 'N/A'})`;
+    if (seekerAgeAvg > 0 && roomAvgAge > 0) {
+        avgAgeDiffScore = -Math.abs(seekerAgeAvg - roomAvgAge) * MATCH_WEIGHTS.avgAgeDifference;
     }
     details.avgAgeDifference = { score: avgAgeDiffScore, description: avgAgeDescription };
     totalScore += avgAgeDiffScore;
 
     // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
-    const wgCommunalPrefs = getArrayValue(wg, 'wgCommunalLiving');
-    const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => wgCommunalPrefs.includes(pref));
+    const roomCommunalPrefs = getArrayValue(room, 'wgCommunalLiving'); // Changed from wgCommunalLiving to roomCommunalLiving to keep internal structure the same but reflect new naming
+    const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => roomCommunalPrefs.includes(pref));
     let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
     details.communalLiving = { score: communalLivingScore, description: `Communal living preferences (${commonCommunalPrefs.join(', ') || 'None'})` };
 
     // 10. New: Values
     const seekerValues = getArrayValue(seeker, 'values');
-    const wgValues = getArrayValue(wg, 'wgValues');
-    const commonValues = seekerValues.filter(val => wgValues.includes(val));
+    const roomValues = getArrayValue(room, 'wgValues'); // Changed from wgValues to roomValues to keep internal structure the same but reflect new naming
+    const commonValues = seekerValues.filter(val => roomValues.includes(val));
     let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;
     details.values = { score: valuesScore, description: `Shared values (${commonValues.join(', ') || 'None'})` };
@@ -212,8 +212,8 @@ const getScoreColorClass = (score) => {
 };
 
 // Modal component to display match details
-const MatchDetailsModal = ({ isOpen, onClose, seeker, wg, matchDetails }) => {
-    if (!isOpen || !seeker || !wg || !matchDetails) return null;
+const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
+    if (!isOpen || !seeker || !room || !matchDetails) return null;
 
     // Defensive checks for matchDetails.details
     const detailsEntries = matchDetails.details ? Object.entries(matchDetails.details) : [];
@@ -232,7 +232,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, wg, matchDetails }) => {
                     <span className="text-[#5a9c68]">Seeker:</span> {seeker.name}
                 </p>
                 <p className="text-lg font-semibold mb-4">
-                    <span className="text-[#cc8a2f]">WG Offer:</span> {wg.name}
+                    <span className="text-[#cc8a2f]">Room Offer:</span> {room.name}
                 </p>
 
                 <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-lg font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}>
@@ -265,12 +265,12 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, wg, matchDetails }) => {
     );
 };
 
-// Main component of the WG match application
+// Main component of the Room match application
 function App() {
     const [mySearcherProfiles, setMySearcherProfiles] = useState([]);
-    const [myWgProfiles, setMyWgProfiles] = useState([]);
+    const [myRoomProfiles, setMyRoomProfiles] = useState([]);
     const [allSearcherProfilesGlobal, setAllSearcherProfilesGlobal] = useState([]);
-    const [allWgProfilesGlobal, setAllWgProfilesGlobal] = useState([]);
+    const [allRoomProfilesGlobal, setAllRoomProfilesGlobal] = useState([]);
     const [matches, setMatches] = useState([]);
     const [reverseMatches, setReverseMatches] = useState([]);
     
@@ -343,18 +343,18 @@ function App() {
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // Real-time data retrieval for *own* WG profiles from Firestore
+    // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-        const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMyWGs = onSnapshot(myWgsQuery, (snapshot) => {
+        const myRoomsQuery = query(collection(db, `roomProfiles`), where('createdBy', '==', userId));
+        const unsubscribeMyRooms = onSnapshot(myRoomsQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMyWgProfiles(profiles);
+            setMyRoomProfiles(profiles);
         }, (err) => {
-            console.error("Error fetching own WG profiles:", err);
-            setError("Error loading own WG profiles.");
+            console.error("Error fetching own Room profiles:", err);
+            setError("Error loading own Room profiles.");
         });
-        return () => unsubscribeMyWGs();
+        return () => unsubscribeMyRooms();
     }, [db, userId]);
 
     // Real-time data retrieval for *all* seeker profiles (for match calculation)
@@ -370,58 +370,58 @@ function App() {
         return () => unsubscribeAllSearchers();
     }, [db]);
 
-    // Real-time data retrieval for *all* WG profiles (for match calculation)
+    // Real-time data retrieval for *all* Room profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
-        const allWgsQuery = query(collection(db, `wgProfiles`));
-        const unsubscribeAllWGs = onSnapshot(allWgsQuery, (snapshot) => {
+        const allRoomsQuery = query(collection(db, `roomProfiles`));
+        const unsubscribeAllRooms = onSnapshot(allRoomsQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllWgProfilesGlobal(profiles);
+            setAllRoomProfilesGlobal(profiles);
         }, (err) => {
-            console.error("Error fetching all WG profiles (global):", err);
+            console.error("Error fetching all Room profiles (global):", err);
         });
-        return () => unsubscribeAllWGs();
+        return () => unsubscribeAllRooms();
     }, [db]);
 
     // Match calculation for both directions
     useEffect(() => {
         const calculateAllMatches = () => {
-            const newSeekerToWGMatches = [];
+            const newSeekerToRoomMatches = [];
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
-                const matchingWGs = allWgProfilesGlobal.map(wg => {
+                const matchingRooms = allRoomProfilesGlobal.map(room => {
                     // Get the full match result object
-                    const matchResult = calculateMatchScore(searcher, wg); 
-                    return { wg, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
+                    const matchResult = calculateMatchScore(searcher, room); 
+                    return { room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
                 });
-                matchingWGs.sort((a, b) => b.score - a.score);
-                newSeekerToWGMatches.push({ searcher: searcher, matchingWGs: matchingWGs });
+                matchingRooms.sort((a, b) => b.score - a.score);
+                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms });
             });
-            setMatches(newSeekerToWGMatches);
+            setMatches(newSeekerToRoomMatches);
 
-            const newWGToSeekerMatches = [];
-            const wgsForMatching = adminMode ? allWgProfilesGlobal : myWgProfiles;
+            const newRoomToSeekerMatches = [];
+            const roomsForMatching = adminMode ? allRoomProfilesGlobal : myRoomProfiles;
 
-            wgsForMatching.forEach(wg => {
+            roomsForMatching.forEach(room => {
                 const matchingSeekers = allSearcherProfilesGlobal.map(searcher => {
                     // Get the full match result object
-                    const matchResult = calculateMatchScore(searcher, wg);
+                    const matchResult = calculateMatchScore(searcher, room);
                     return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
                 });
                 matchingSeekers.sort((a, b) => b.score - a.score);
-                newWGToSeekerMatches.push({ wg: wg, matchingSeekers: matchingSeekers });
+                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers });
             });
-            setReverseMatches(newWGToSeekerMatches);
+            setReverseMatches(newRoomToSeekerMatches);
         };
 
         if (!loading && db && userId) {
             calculateAllMatches();
-        } else if (mySearcherProfiles.length === 0 && myWgProfiles.length === 0 && !loading) {
+        } else if (mySearcherProfiles.length === 0 && myRoomProfiles.length === 0 && !loading) {
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [mySearcherProfiles, myWgProfiles, allSearcherProfilesGlobal, allWgProfilesGlobal, loading, adminMode, userId, db]);
+    }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db]);
 
 
     // Function to add a seeker profile to Firestore
@@ -444,23 +444,23 @@ function App() {
         }
     };
 
-    // Function to add a WG profile to Firestore
-    const addWGProfile = async (profileData) => {
+    // Function to add a Room profile to Firestore
+    const addRoomProfile = async (profileData) => {
         if (!db || !userId) {
             setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
-            await addDoc(collection(db, `wgProfiles`), {
+            await addDoc(collection(db, `roomProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
             });
-            setSaveMessage('WG profile successfully saved!');
+            setSaveMessage('Room profile successfully saved!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
-            console.error("Error adding WG profile: ", e);
-            setError("Error saving WG profile.");
+            console.error("Error adding Room profile: ", e);
+            setError("Error saving Room profile.");
         }
     };
 
@@ -505,9 +505,9 @@ function App() {
             avgAge: '', lookingForInFlatmate: '',
             location: 'Cologne', // Default to Cologne
             communalLivingPreferences: [], // New for seekers
-            wgCommunalLiving: [],          // New for providers
+            roomCommunalLiving: [],          // New for providers
             values: [],                    // New for seekers
-            wgValues: [],                  // New for providers
+            roomValues: [],                  // New for providers
         });
 
         const handleChange = (e) => {
@@ -539,7 +539,7 @@ function App() {
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
                 lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
-                communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
+                communalLivingPreferences: [], roomCommunalLiving: [], values: [], roomValues: []
             });
             setCurrentStep(1); // Go back to first step
         };
@@ -561,7 +561,7 @@ function App() {
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
                 lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
-                communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
+                communalLivingPreferences: [], roomCommunalLiving: [], values: [], roomValues: []
             });
             setCurrentStep(1); // Go back to first step
         };
@@ -569,16 +569,16 @@ function App() {
         return (
             <form className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
-                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create WG Offer (Step ${currentStep}/${totalSteps})`}
+                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSteps})`}
                 </h2>
 
                 {/* --- STEP 1 --- */}
                 {currentStep === 1 && (
                     <div className="space-y-4">
-                        {/* Name / WG Name */}
+                        {/* Name / Room Name */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Your Name:' : 'WG Name:'}
+                                {type === 'seeker' ? 'Your Name:' : 'Room Name:'}
                             </label>
                             <input
                                 type="text"
@@ -788,16 +788,16 @@ function App() {
                         {/* New: Communal Living Preferences */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Your Communal Living Preferences:' : 'WG Communal Living Preferences:'}
+                                {type === 'seeker' ? 'Your Communal Living Preferences:' : 'Room Communal Living Preferences:'}
                             </label>
                             <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allCommunalLivingPreferences.map(pref => (
                                     <label key={pref} className="inline-flex items-center text-gray-800 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            name={type === 'seeker' ? 'communalLivingPreferences' : 'wgCommunalLiving'}
+                                            name={type === 'seeker' ? 'communalLivingPreferences' : 'roomCommunalLiving'}
                                             value={pref}
-                                            checked={(formState[type === 'seeker' ? 'communalLivingPreferences' : 'wgCommunalLiving'] || []).includes(pref)}
+                                            checked={(formState[type === 'seeker' ? 'communalLivingPreferences' : 'roomCommunalLiving'] || []).includes(pref)}
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
@@ -812,10 +812,10 @@ function App() {
                 {/* --- STEP 3 --- */}
                 {currentStep === 3 && (
                     <div className="space-y-4">
-                        {/* What is being sought (Seeker) / Description of the WG (Provider) */}
+                        {/* What is being sought (Seeker) / Description of the Room (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">What are you looking for in a WG?:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2">What are you looking for in a Room?:</label>
                                 <textarea
                                     name="lookingFor"
                                     value={formState.lookingFor}
@@ -828,7 +828,7 @@ function App() {
                         {type === 'provider' && (
                             <>
                                 <div>
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Description of the WG:</label>
+                                    <label className="block text-gray-700 text-base font-semibold mb-2">Description of the Room:</label>
                                     <textarea
                                         name="description"
                                         value={formState.description}
@@ -879,16 +879,16 @@ function App() {
                         {/* New: Values */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">
-                                {type === 'seeker' ? 'Your Values and Expectations for WG life:' : 'WG Values and Expectations:'}
+                                {type === 'seeker' ? 'Your Values and Expectations for Room life:' : 'Room Values and Expectations:'}
                             </label>
                             <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allWGValues.map(val => (
                                     <label key={val} className="inline-flex items-center text-gray-800 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            name={type === 'seeker' ? 'values' : 'wgValues'}
+                                            name={type === 'seeker' ? 'values' : 'roomValues'}
                                             value={val}
-                                            checked={(formState[type === 'seeker' ? 'values' : 'wgValues'] || []).includes(val)}
+                                            checked={(formState[type === 'seeker' ? 'values' : 'roomValues'] || []).includes(val)}
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
@@ -960,7 +960,7 @@ function App() {
     }
 
     const showMySeekerDashboard = mySearcherProfiles.length > 0 && !adminMode;
-    const showMyWgDashboard = myWgProfiles.length > 0 && !adminMode;
+    const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode;
 
     return (
         <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center relative overflow-hidden">
@@ -998,7 +998,7 @@ function App() {
                 // ADMIN MODE ON: Show all admin dashboards
                 <div className="w-full max-w-7xl flex flex-col gap-12">
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Seeker finds WG (Admin View)</h2>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
                         {matches.length === 0 ? (
                             <p className="text-center text-gray-600 text-lg py-4">No matches found.</p>
                         ) : (
@@ -1009,34 +1009,34 @@ function App() {
                                             <Search size={22} className="mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-2">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                         </h3>
                                         <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
-                                            <Heart size={20} className="mr-2" /> Matching WG Offers:
+                                            <Heart size={20} className="mr-2" /> Matching Room Offers:
                                         </h4>
                                         <div className="space-y-4">
-                                            {match.matchingWGs.length === 0 ? (
-                                                <p className="text-gray-600 text-base">No matching WGs.</p>
+                                            {match.matchingRooms.length === 0 ? (
+                                                <p className="text-gray-600 text-base">No matching Rooms.</p>
                                             ) : (
-                                                match.matchingWGs.map(wgMatch => (
-                                                    <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                match.matchingRooms.map(roomMatch => (
+                                                    <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
+                                                            <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name} <span className="text-sm font-normal text-gray-600">(Score: {roomMatch.score})</span></p>
                                                             {/* Enhanced Score Display */}
                                                             <div className="flex items-center mt-2">
-                                                                <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(wgMatch.score)}`}>
-                                                                    Score: {wgMatch.score.toFixed(0)}
+                                                                <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
+                                                                    Score: {roomMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.fullMatchResult })}
+                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
                                                                     <Info size={18} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.wgCommunalLiving) ? roomMatch.room.wgCommunalLiving.join(', ') : (roomMatch.room.wgCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.wgValues) ? roomMatch.room.wgValues.join(', ') : (roomMatch.room.wgValues || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -1049,24 +1049,24 @@ function App() {
                     </div>
 
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: WG finds Seeker (Admin View)</h2>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Room finds Seeker (Admin View)</h2>
                         {reverseMatches.length === 0 ? (
                             <p className="text-center text-gray-600 text-lg py-4">No matches found.</p>
                         ) : (
                             <div className="space-y-8">
-                                {reverseMatches.map((wgMatch, index) => (
+                                {reverseMatches.map((roomMatch, index) => (
                                     <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> WG Name: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span> (ID: {wgMatch.wg.id.substring(0, 8)}...)
+                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-2">{roomMatch.room.name}</span> (ID: {roomMatch.room.id.substring(0, 8)}...)
                                         </h3>
                                         <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
                                             <Users size={20} className="mr-2" /> Matching Seekers:
                                         </h4>
                                         <div className="space-y-4">
-                                            {wgMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-base">No matching seekers for your WG profile.</p>
+                                            {roomMatch.matchingSeekers.length === 0 ? (
+                                                <p className="text-gray-600 text-base">No matching seekers for your Room profile.</p>
                                                             ) : (
-                                                                wgMatch.matchingSeekers.map(seekerMatch => (
+                                                                roomMatch.matchingSeekers.map(seekerMatch => (
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
@@ -1076,7 +1076,7 @@ function App() {
                                                                     Score: {seekerMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.fullMatchResult })}
+                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
@@ -1086,7 +1086,7 @@ function App() {
                                                             <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                         </div>
                                                     </div>
@@ -1112,7 +1112,7 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
@@ -1129,20 +1129,20 @@ function App() {
                     </div>
 
                     <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">All WG Offers (Admin View)</h2>
-                        {allWgProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">No WG offers available yet.</p>
+                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">All Room Offers (Admin View)</h2>
+                        {allRoomProfilesGlobal.length === 0 ? (
+                            <p className="text-center text-gray-600 text-lg py-4">No Room offers available yet.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {allWgProfilesGlobal.map(profile => (
+                                {allRoomProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#fff8f0] p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-lg mb-2">WG Name: {profile.name}</p>
+                                        <p className="font-bold text-[#333333] text-lg mb-2">Room Name: {profile.name}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-medium">WG Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-medium">WG Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
@@ -1180,17 +1180,17 @@ function App() {
                                     : 'bg-white text-[#fecd82] hover:bg-gray-50'
                             }`}
                         >
-                            <HomeIcon size={24} className="mr-3" /> WG Offer
+                            <HomeIcon size={24} className="mr-3" /> Room Offer
                         </button>
                     </div>
 
                     {/* Current Form */}
                     <div className="w-full max-w-xl mb-12 mx-auto">
-                        <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addWGProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
+                        <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addRoomProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
                     </div>
 
                     {/* User Dashboards (if profiles exist) */}
-                    {(showMySeekerDashboard || showMyWgDashboard) ? (
+                    {(showMySeekerDashboard || showMyRoomDashboard) ? (
                         <div className="flex flex-col gap-12 w-full"> 
                             {mySearcherProfiles.length > 0 && (
                                 <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
@@ -1220,36 +1220,36 @@ function App() {
 
                                                 {/* Matches for this specific Seeker Profile */}
                                                 <h4 className="text-xl font-bold text-[#5a9c68] mt-8 mb-4 flex items-center">
-                                                    <Heart size={20} className="mr-2" /> Matching WG Offers for {profile.name}:
+                                                    <Heart size={20} className="mr-2" /> Matching Room Offers for {profile.name}:
                                                 </h4>
                                                 <div className="space-y-4">
-                                                    {profileMatches && profileMatches.matchingWGs.length > 0 ? (
-                                                        profileMatches.matchingWGs.slice(0, 10).map(wgMatch => ( // Limit to 10 matches
-                                                            <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                    {profileMatches && profileMatches.matchingRooms.length > 0 ? (
+                                                        profileMatches.matchingRooms.slice(0, 10).map(roomMatch => (
+                                                            <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name}</p>
+                                                                    <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name}</p>
                                                                     <div className="flex items-center mt-2">
-                                                                        <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(wgMatch.score)}`}>
-                                                                            Score: {wgMatch.score.toFixed(0)}
+                                                                        <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
+                                                                            Score: {roomMatch.score.toFixed(0)}
                                                                         </div>
                                                                         <button
-                                                                            onClick={() => setSelectedMatchDetails({ seeker: profile, wg: wgMatch.wg, matchDetails: wgMatch.fullMatchResult })}
+                                                                            onClick={() => setSelectedMatchDetails({ seeker: profile, wg: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                             className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
                                                                             <Info size={18} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.wgCommunalLiving) ? roomMatch.room.wgCommunalLiving.join(', ') : (roomMatch.room.wgCommunalLiving || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.wgValues) ? roomMatch.room.wgValues.join(', ') : (roomMatch.room.wgValues || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-gray-600 text-base">No matching WGs for this profile.</p>
+                                                        <p className="text-gray-600 text-base">No matching Rooms for this profile.</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1258,16 +1258,16 @@ function App() {
                                 </div>
                             )}
 
-                            {myWgProfiles.length > 0 && (
+                            {myRoomProfiles.length > 0 && (
                                 <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My WG Offers & Matches</h2>
-                                    {myWgProfiles.map(profile => {
-                                        const profileMatches = reverseMatches.find(m => m.wg.id === profile.id);
+                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Room Offers & Matches</h2>
+                                    {myRoomProfiles.map(profile => {
+                                        const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
                                         return (
                                             <div key={profile.id} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-8">
-                                                {/* Own WG Profile Details */}
+                                                {/* Own Room Profile Details */}
                                                 <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                    <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your WG Profile: <span className="font-extrabold ml-2">{profile.name}</span>
+                                                    <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-2">{profile.name}</span>
                                                 </h3>
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Room Type:</span> {profile.roomType}</p>
@@ -1275,8 +1275,8 @@ function App() {
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">WG Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">WG Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
+                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
+                                                <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
                                                     onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
@@ -1284,13 +1284,13 @@ function App() {
                                                     <Trash2 size={16} className="mr-2" /> Delete Profile
                                                 </button>
 
-                                                {/* Matches for this specific WG Profile */}
+                                                {/* Matches for this specific Room Profile */}
                                                 <h4 className="text-xl font-bold text-[#cc8a2f] mt-8 mb-4 flex items-center">
                                                     <Users size={20} className="mr-2" /> Matching Seekers for {profile.name}:
                                                 </h4>
                                                 <div className="space-y-4">
                                                     {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
-                                                        profileMatches.matchingSeekers.slice(0, 10).map(seekerMatch => ( // Limit to 10 matches
+                                                        profileMatches.matchingSeekers.slice(0, 10).map(seekerMatch => (
                                                             <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
                                                                     <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
@@ -1309,13 +1309,13 @@ function App() {
                                                                     <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
                                                                     <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
                                                                     <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
                                                                     <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-gray-600 text-base">No matching seekers for this WG profile.</p>
+                                                        <p className="text-gray-600 text-base">No matching seekers for this Room profile.</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1327,7 +1327,7 @@ function App() {
                     ) : (
                         // Message when no own profiles have been created and not in admin mode
                         <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-12 mx-auto">
-                            <p className="text-lg">Please create a Seeker Profile or a WG Offer to see your matches.</p>
+                            <p className="text-lg">Please create a Seeker Profile or a Room Offer to see your matches.</p>
                             <button
                                 onClick={() => setShowSeekerForm(true)}
                                 className="mt-6 px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"

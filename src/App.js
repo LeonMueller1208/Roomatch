@@ -37,7 +37,7 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID SHOWN IN THE APP!
-const ADMIN_UID = "H9jtz5aHKcM7JCjtTPL7t32rtE3"; 
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
@@ -181,7 +181,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
-    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving'); // Changed field name
+    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving'); // Corrected field name
     const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => roomCommunalPrefs.includes(pref));
     let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
@@ -189,7 +189,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 10. New: Values
     const seekerValues = getArrayValue(seeker, 'values');
-    const roomValues = getArrayValue(room, 'roomValues'); // Changed field name
+    const roomValues = getArrayValue(room, 'roomValues'); // Corrected field name
     const commonValues = seekerValues.filter(val => roomValues.includes(val));
     let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;

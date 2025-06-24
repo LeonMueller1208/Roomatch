@@ -37,7 +37,7 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID SHOWN IN THE APP!
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
+const ADMIN_UID = "H9jtz5aHKcM7JCjtTPL7t32rtE3"; 
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
@@ -327,8 +327,6 @@ function App() {
     // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-        // Updated path for public data if you change Firestore security rules to "public".
-        // If you want to store private data by user ID, the path would be `users/${userId}/searcherProfiles`
         const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -966,7 +964,6 @@ function App() {
             <div className="absolute bottom-[-50px] right-[-50px] w-64 h-64 bg-white opacity-10 rounded-full animate-blob-medium"></div>
             <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
 
-
             <h1 className="text-5xl font-extrabold text-white mb-8 text-center drop-shadow-lg">Roomatch</h1>
             
             {userId && (
@@ -1194,114 +1191,140 @@ function App() {
                             {showMySeekerDashboard && (
                                 <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
                                     <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Matches: Seeker finds WG</h2>
-                                    {matches.filter(match => match.searcher.createdBy === userId).length === 0 ? (
-                                        <p className="text-center text-gray-600 text-lg py-4">
-                                            You haven't created any seeker profiles yet or no matches were found.
-                                        </p>
-                                    ) : (
-                                        <div className="space-y-8">
-                                            {matches
-                                                .filter(match => match.searcher.createdBy === userId)
-                                                .map((match, index) => (
-                                                    <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-2">{match.searcher.name}</span>
-                                                        </h3>
-                                                        <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
-                                                            <Heart size={20} className="mr-2" /> Matching WG Offers:
-                                                        </h4>
-                                                        <div className="space-y-4">
-                                                            {match.matchingWGs.length === 0 ? (
-                                                                <p className="text-gray-600 text-base">No matching WGs for your profile.</p>
-                                                            ) : (
-                                                                match.matchingWGs.map(wgMatch => (
-                                                                    <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                                        <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name}</p>
-                                                                            {/* Enhanced Score Display */}
-                                                                            <div className="flex items-center mt-2">
-                                                                                <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(wgMatch.score)}`}>
-                                                                                    Score: {wgMatch.score.toFixed(0)}
-                                                                                </div>
-                                                                                <button
-                                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.fullMatchResult })}
-                                                                                    className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                                    title="Show Match Details"
-                                                                                >
-                                                                                    <Info size={18} />
-                                                                                </button>
-                                                                            </div>
-                                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                    {mySearcherProfiles.map(profile => ( // Display own seeker profiles
+                                        <div key={profile.id} className="bg-[#e6f7e8] p-6 rounded-xl shadow-lg border border-[#c6e9c9] mb-8">
+                                            <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                                <Search size={22} className="mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-2">{profile.name}</span>
+                                            </h3>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Gender:</span> {profile.gender}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Pets:</span> {profile.pets === 'yes' ? 'Yes' : 'No'}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Communal Living Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
+                                            <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
+                                            <button
+                                                onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
+                                                className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
+                                            >
+                                                <Trash2 size={16} className="mr-2" /> Delete
+                                            </button>
                                         </div>
-                                    )}
+                                    ))}
+                                    {matches
+                                        .filter(match => match.searcher.createdBy === userId)
+                                        .map((match, index) => (
+                                            <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mt-8">
+                                                <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                                    <Search size={22} className="mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-2">{match.searcher.name}</span>
+                                                </h3>
+                                                <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
+                                                    <Heart size={20} className="mr-2" /> Matching WG Offers:
+                                                </h4>
+                                                <div className="space-y-4">
+                                                    {match.matchingWGs.length === 0 ? (
+                                                        <p className="text-gray-600 text-base">No matching WGs for your profile.</p>
+                                                    ) : (
+                                                        match.matchingWGs.map(wgMatch => (
+                                                            <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name}</p>
+                                                                    {/* Enhanced Score Display */}
+                                                                    <div className="flex items-center mt-2">
+                                                                        <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(wgMatch.score)}`}>
+                                                                            Score: {wgMatch.score.toFixed(0)}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.fullMatchResult })}
+                                                                            className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                            title="Show Match Details"
+                                                                        >
+                                                                            <Info size={18} />
+                                                                        </button>
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
                                 </div>
                             )}
 
                             {showMyWgDashboard && (
                                 <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
                                     <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Matches: WG finds Seeker</h2>
-                                    {reverseMatches.filter(wgMatch => wgMatch.wg.createdBy === userId).length === 0 ? (
-                                        <p className="text-center text-gray-600 text-lg py-4">
-                                            You haven't created any WG offers yet or no matches were found.
-                                        </p>
-                                    ) : (
-                                        <div className="space-y-8">
-                                            {reverseMatches
-                                                .filter(wgMatch => wgMatch.wg.createdBy === userId)
-                                                .map((wgMatch, index) => (
-                                                    <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your WG Profile: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span>
-                                                        </h3>
-                                                        <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
-                                                            <Users size={20} className="mr-2" /> Matching Seekers:
-                                                        </h4>
-                                                        <div className="space-y-4">
-                                                            {wgMatch.matchingSeekers.length === 0 ? (
-                                                                <p className="text-gray-600 text-base">No matching seekers for your WG profile.</p>
-                                                            ) : (
-                                                                wgMatch.matchingSeekers.map(seekerMatch => (
-                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                                        <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
-                                                                            {/* Enhanced Score Display */}
-                                                                            <div className="flex items-center mt-2">
-                                                                                <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
-                                                                                    Score: {seekerMatch.score.toFixed(0)}
-                                                                                </div>
-                                                                                <button
-                                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.fullMatchResult })}
-                                                                                    className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                                    title="Show Match Details"
-                                                                                >
-                                                                                    <Info size={18} />
-                                                                                </button>
-                                                                            </div>
-                                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                    {myWgProfiles.map(profile => ( // Display own WG profiles
+                                        <div key={profile.id} className="bg-[#f7f0e6] p-6 rounded-xl shadow-lg border border-[#e9c9c6] mb-8">
+                                            <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                                <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your WG Profile: <span className="font-extrabold ml-2">{profile.name}</span>
+                                            </h3>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Room Type:</span> {profile.roomType}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Pets Allowed:</span> {profile.petsAllowed === 'yes' ? 'Yes' : 'No'}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">WG Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
+                                            <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">WG Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
+                                            <button
+                                                onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
+                                                className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
+                                            >
+                                                <Trash2 size={16} className="mr-2" /> Delete
+                                            </button>
                                         </div>
-                                    )}
+                                    ))}
+                                    {reverseMatches
+                                        .filter(wgMatch => wgMatch.wg.createdBy === userId)
+                                        .map((wgMatch, index) => (
+                                            <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mt-8">
+                                                <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
+                                                    <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your WG Profile: <span className="font-extrabold ml-2">{wgMatch.wg.name}</span>
+                                                </h3>
+                                                <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
+                                                    <Users size={20} className="mr-2" /> Matching Seekers:
+                                                </h4>
+                                                <div className="space-y-4">
+                                                    {wgMatch.matchingSeekers.length === 0 ? (
+                                                        <p className="text-gray-600 text-base">No matching seekers for your WG profile.</p>
+                                                    ) : (
+                                                        wgMatch.matchingSeekers.map(seekerMatch => (
+                                                            <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                    {/* Enhanced Score Display */}
+                                                                    <div className="flex items-center mt-2">
+                                                                        <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                                            Score: {seekerMatch.score.toFixed(0)}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.fullMatchResult })}
+                                                                            className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                            title="Show Match Details"
+                                                                        >
+                                                                            <Info size={18} />
+                                                                        </button>
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
                                 </div>
                             )}
                         </div> 

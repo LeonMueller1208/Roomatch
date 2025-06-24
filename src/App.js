@@ -18,7 +18,7 @@ const firebaseConfig = {
 
 // Predefined lists for personality traits and interests
 const allPersonalityTraits = ['tidy', 'calm', 'social', 'creative', 'sporty', 'night owl', 'early bird', 'tolerant', 'animal lover', 'flexible', 'structured'];
-const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art'];
+const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Natur', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art'];
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
@@ -54,7 +54,10 @@ const calculateMatchScore = (seeker, wg) => {
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
             score += 20 * MATCH_WEIGHTS.ageMatch;
         } else {
-            score -= 15 * MATCH_WEIGHTS.ageMatch;
+            // Penalize if age is outside the preferred range
+            const ageDiffLow = Math.max(0, wg.minAge - seeker.age);
+            const ageDiffHigh = Math.max(0, seeker.age - wg.maxAge);
+            score -= (ageDiffLow + ageDiffHigh) * MATCH_WEIGHTS.ageMatch * 0.5; // Half penalty for being outside range
         }
     }
 
@@ -90,7 +93,8 @@ const calculateMatchScore = (seeker, wg) => {
         if (seeker.maxRent >= wg.rent) {
             score += 15 * MATCH_WEIGHTS.rentMatch;
         } else {
-            score -= 15 * MATCH_WEIGHTS.rentMatch;
+            // Strong penalty if seeker's max rent is less than WG's rent
+            score -= (wg.rent - seeker.maxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
         }
     }
 
@@ -99,7 +103,11 @@ const calculateMatchScore = (seeker, wg) => {
         if (seeker.pets === 'yes' && wg.petsAllowed === 'yes') {
             score += 8 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'yes' && wg.petsAllowed === 'no') {
-            score -= 8 * MATCH_WEIGHTS.petsMatch;
+            score -= 20 * MATCH_WEIGHTS.petsMatch; // Strong penalty if seeker has pets but WG doesn't allow
+        } else if (seeker.pets === 'no' && wg.petsAllowed === 'yes') {
+            // No penalty if seeker doesn't have pets but WG allows (it's optional)
+        } else if (seeker.pets === 'no' && wg.petsAllowed === 'no') {
+            score += 5 * MATCH_WEIGHTS.petsMatch; // Positive if both explicitly don't want pets
         }
     }
 
@@ -141,6 +149,18 @@ const calculateMatchScore = (seeker, wg) => {
     return score;
 };
 
+// Helper function to get color class based on score
+const getScoreColorClass = (score) => {
+    if (score >= 100) { // Very good match
+        return 'bg-green-200 text-green-800';
+    } else if (score >= 50) { // Good match
+        return 'bg-yellow-200 text-yellow-800';
+    } else if (score >= 0) { // Neutral/okay match
+        return 'bg-orange-200 text-orange-800';
+    } else { // Poor match
+        return 'bg-red-200 text-red-800';
+    }
+};
 
 // Main component of the WG match application
 function App() {
@@ -905,15 +925,6 @@ function App() {
                                         <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
                                             <Search size={22} className="mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-2">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
                                         </h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-700 text-base mb-6">
-                                            <p><span className="font-semibold">Age:</span> {match.searcher.age}</p>
-                                            <p><span className="font-semibold">Gender:</span> {match.searcher.gender}</p>
-                                            <p><span className="font-semibold">Interests:</span> {Array.isArray(match.searcher.interests) ? match.searcher.interests.join(', ') : (match.searcher.interests || 'N/A')}</p>
-                                            <p><span className="font-semibold">Personality:</span> {Array.isArray(match.searcher.personalityTraits) ? match.searcher.personalityTraits.join(', ') : (match.searcher.personalityTraits || 'N/A')}</p>
-                                            <p><span className="font-semibold">WG Preferences:</span> {Array.isArray(match.searcher.communalLivingPreferences) ? match.searcher.communalLivingPreferences.join(', ') : (match.searcher.communalLivingPreferences || 'N/A')}</p>
-                                            <p><span className="font-semibold">Values:</span> {Array.isArray(match.searcher.values) ? match.searcher.values.join(', ') : (match.searcher.values || 'N/A')}</p>
-                                        </div>
-
                                         <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
                                             <Heart size={20} className="mr-2" /> Matching WG Offers:
                                         </h4>
@@ -925,7 +936,11 @@ function App() {
                                                     <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
+                                                            {/* Enhanced Score Display */}
+                                                            <div className={`mt-2 px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(wgMatch.score)}`}>
+                                                                Score: {wgMatch.score.toFixed(0)}
+                                                            </div>
+                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
@@ -957,8 +972,8 @@ function App() {
                                             <p><span className="font-semibold">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
                                             <p><span className="font-semibold">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                             <p className="text-sm text-gray-600"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
-                                            <p className="text-sm text-gray-600"><span className="font-semibold">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
+                                            <p className="text-sm text-gray-600"><span className="font-medium">WG Values:</span> {Array.isArray(wgMatch.wg.wgValues) ? wgMatch.wg.wgValues.join(', ') : (wgMatch.wg.wgValues || 'N/A')}</p>
                                         </div>
 
                                         <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
@@ -972,7 +987,11 @@ function App() {
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                            {/* Enhanced Score Display */}
+                                                            <div className={`mt-2 px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                                Score: {seekerMatch.score.toFixed(0)}
+                                                            </div>
+                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
@@ -1030,8 +1049,8 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">WG Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-medium">WG Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-medium">WG Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
@@ -1108,8 +1127,12 @@ function App() {
                                                                 match.matchingWGs.map(wgMatch => (
                                                                     <div key={wgMatch.wg.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                         <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name} <span className="text-sm font-normal text-gray-600">(Score: {wgMatch.score})</span></p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
+                                                                            <p className="font-bold text-gray-800 text-lg">WG Name: {wgMatch.wg.name}</p>
+                                                                            {/* Enhanced Score Display */}
+                                                                            <div className={`mt-2 px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(wgMatch.score)}`}>
+                                                                                Score: {wgMatch.score.toFixed(0)}
+                                                                            </div>
+                                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {wgMatch.wg.minAge}-{wgMatch.wg.maxAge}, <span className="font-medium">Gender Preference:</span> {wgMatch.wg.genderPreference}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(wgMatch.wg.interests) ? wgMatch.wg.interests.join(', ') : (wgMatch.wg.interests || 'N/A')}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(wgMatch.wg.personalityTraits) ? wgMatch.wg.personalityTraits.join(', ') : (wgMatch.wg.personalityTraits || 'N/A')}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">WG Communal Living:</span> {Array.isArray(wgMatch.wg.wgCommunalLiving) ? wgMatch.wg.wgCommunalLiving.join(', ') : (wgMatch.wg.wgCommunalLiving || 'N/A')}</p>
@@ -1152,8 +1175,12 @@ function App() {
                                                                 wgMatch.matchingSeekers.map(seekerMatch => (
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                         <div>
-                                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                                            <p className="text-sm text-gray-600"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                            {/* Enhanced Score Display */}
+                                                                            <div className={`mt-2 px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                                                Score: {seekerMatch.score.toFixed(0)}
+                                                                            </div>
+                                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
                                                                             <p className="text-sm text-gray-600"><span className="font-medium">WG Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>

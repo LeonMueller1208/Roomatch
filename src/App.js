@@ -45,14 +45,14 @@ const calculateMatchScore = (seeker, wg) => {
     let totalScore = 0;
     // Initialize details with all possible categories and default values
     const details = {
-        ageMatch: { score: 0, description: `Age match (${seeker.age || 'N/A'} vs ${wg?.minAge || 'N/A'}-${wg?.maxAge || 'N/A'})` },
-        genderMatch: { score: 0, description: `Gender preference (${seeker.gender || 'N/A'} vs ${wg?.genderPreference || 'N/A'})` },
+        ageMatch: { score: 0, description: `Age match (N/A)` }, // Updated default description
+        genderMatch: { score: 0, description: `Gender preference (N/A)` },
         personalityTraits: { score: 0, description: `Personality overlap (None)` },
         interests: { score: 0, description: `Interests overlap (None)` },
-        rentMatch: { score: 0, description: `Rent match (Max: ${seeker.maxRent || 'N/A'}€, WG: ${wg?.rent || 'N/A'}€)` },
-        petsMatch: { score: 0, description: `Pets compatibility (Seeker: ${seeker.pets || 'N/A'}, WG: ${wg?.petsAllowed || 'N/A'})` },
+        rentMatch: { score: 0, description: `Rent match (N/A)` }, // Updated default description
+        petsMatch: { score: 0, description: `Pets compatibility (N/A)` },
         freeTextMatch: { score: 0, description: `Free text keywords (None)` },
-        avgAgeDifference: { score: 0, description: `Average age difference (Seeker: ${seeker.age || 'N/A'}, WG Avg: ${wg?.avgAge || 'N/A'})` },
+        avgAgeDifference: { score: 0, description: `Average age difference (N/A)` }, // Updated default description
         communalLiving: { score: 0, description: `Communal living preferences (None)` },
         values: { score: 0, description: `Shared values (None)` },
     };
@@ -62,40 +62,48 @@ const calculateMatchScore = (seeker, wg) => {
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
+    // Helper to safely parse numbers
+    const safeParseInt = (value) => parseInt(value) || 0;
+
     // 1. Age Match (Seeker age vs. WG age range)
-    if (seeker.age && wg?.minAge && wg?.maxAge) {
-        let ageScore = 0;
-        if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
+    const seekerAge = safeParseInt(seeker.age);
+    const wgMinAge = safeParseInt(wg?.minAge);
+    const wgMaxAge = safeParseInt(wg?.maxAge);
+    let ageScore = 0;
+    let ageDescription = `Age match (Seeker: ${seeker.age || 'N/A'}, WG: ${wg?.minAge || 'N/A'}-${wg?.maxAge || 'N/A'})`;
+
+    if (seekerAge > 0 && wgMinAge > 0 && wgMaxAge > 0) { // Check if all valid numbers
+        if (seekerAge >= wgMinAge && seekerAge <= wgMaxAge) {
             ageScore = 20 * MATCH_WEIGHTS.ageMatch;
         } else {
-            const ageDiffLow = Math.max(0, wg.minAge - seeker.age);
-            const ageDiffHigh = Math.max(0, seeker.age - wg.maxAge);
+            const ageDiffLow = Math.max(0, wgMinAge - seekerAge);
+            const ageDiffHigh = Math.max(0, seekerAge - wgMaxAge);
             ageScore = -(ageDiffLow + ageDiffHigh) * MATCH_WEIGHTS.ageMatch * 0.5;
         }
-        totalScore += ageScore;
-        details.ageMatch = { score: ageScore, description: `Age match (${seeker.age} vs ${wg.minAge}-${wg.maxAge})` };
     }
+    details.ageMatch = { score: ageScore, description: ageDescription };
+    totalScore += ageScore;
 
     // 2. Gender Preference
+    let genderScore = 0;
+    let genderDescription = `Gender preference (Seeker: ${seeker.gender || 'N/A'}, WG: ${wg?.genderPreference || 'N/A'})`;
     if (seeker.gender && wg?.genderPreference) {
-        let genderScore = 0;
         if (wg.genderPreference === 'any' || seeker.gender === wg.genderPreference) {
             genderScore = 10 * MATCH_WEIGHTS.genderMatch;
         } else {
             genderScore = -10 * MATCH_WEIGHTS.genderMatch;
         }
-        totalScore += genderScore;
-        details.genderMatch = { score: genderScore, description: `Gender preference (${seeker.gender} vs ${wg.genderPreference})` };
     }
+    details.genderMatch = { score: genderScore, description: genderDescription };
+    totalScore += genderScore;
 
     // 3. Personality Traits (Overlap)
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     const commonTraits = seekerTraits.filter(trait => wgTraits.includes(trait));
     let personalityScore = commonTraits.length * 5 * MATCH_WEIGHTS.personalityTraits;
-    totalScore += personalityScore;
     details.personalityTraits = { score: personalityScore, description: `Personality overlap (${commonTraits.join(', ') || 'None'})` };
-
+    totalScore += personalityScore;
 
     // 4. Interests (Overlap)
     const seekerInterests = getArrayValue(seeker, 'interests');
@@ -106,20 +114,25 @@ const calculateMatchScore = (seeker, wg) => {
     details.interests = { score: interestsScore, description: `Interests overlap (${commonInterests.join(', ') || 'None'})` };
 
     // 5. Rent (Seeker Max Rent >= WG Rent)
-    if (seeker.maxRent && wg?.rent) {
-        let rentScore = 0;
-        if (seeker.maxRent >= wg.rent) {
+    const seekerMaxRent = safeParseInt(seeker.maxRent);
+    const wgRent = safeParseInt(wg?.rent);
+    let rentScore = 0;
+    let rentDescription = `Rent match (Max: ${seeker.maxRent || 'N/A'}€, WG: ${wg?.rent || 'N/A'}€)`;
+
+    if (seekerMaxRent > 0 && wgRent > 0) { // Check if valid numbers
+        if (seekerMaxRent >= wgRent) {
             rentScore = 15 * MATCH_WEIGHTS.rentMatch;
         } else {
-            rentScore = -(wg.rent - seeker.maxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
+            rentScore = -(wgRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
         }
-        totalScore += rentScore;
-        details.rentMatch = { score: rentScore, description: `Rent match (Max: ${seeker.maxRent}€, WG: ${wg.rent}€)` };
     }
+    details.rentMatch = { score: rentScore, description: rentDescription };
+    totalScore += rentScore;
 
     // 6. Pets (Match)
+    let petsScore = 0;
+    let petsDescription = `Pets compatibility (Seeker: ${seeker.pets || 'N/A'}, WG: ${wg?.petsAllowed || 'N/A'})`;
     if (seeker.pets && wg?.petsAllowed) {
-        let petsScore = 0;
         if (seeker.pets === 'yes' && wg.petsAllowed === 'yes') {
             petsScore = 8 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'yes' && wg.petsAllowed === 'no') {
@@ -129,9 +142,9 @@ const calculateMatchScore = (seeker, wg) => {
         } else if (seeker.pets === 'no' && wg.petsAllowed === 'no') {
             petsScore = 5 * MATCH_WEIGHTS.petsMatch; // Positive if both explicitly don't want pets
         }
-        totalScore += petsScore;
-        details.petsMatch = { score: petsScore, description: `Pets compatibility (Seeker: ${seeker.pets}, WG: ${wg.petsAllowed})` };
     }
+    details.petsMatch = { score: petsScore, description: petsDescription };
+    totalScore += petsScore;
 
     // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (WG)
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
@@ -151,11 +164,15 @@ const calculateMatchScore = (seeker, wg) => {
     
 
     // 8. Average age of WG residents compared to seeker's age
-    if (seeker.age && wg?.avgAge) {
-        let avgAgeDiffScore = -Math.abs(seeker.age - wg.avgAge) * MATCH_WEIGHTS.avgAgeDifference;
-        totalScore += avgAgeDiffScore;
-        details.avgAgeDifference = { score: avgAgeDiffScore, description: `Average age difference (Seeker: ${seeker.age}, WG Avg: ${wg.avgAge})` };
+    const seekerAgeAvg = safeParseInt(seeker.age);
+    const wgAvgAge = safeParseInt(wg?.avgAge);
+    let avgAgeDiffScore = 0;
+    let avgAgeDescription = `Average age difference (Seeker: ${seeker.age || 'N/A'}, WG Avg: ${wg?.avgAge || 'N/A'})`;
+    if (seekerAgeAvg > 0 && wgAvgAge > 0) {
+        avgAgeDiffScore = -Math.abs(seekerAgeAvg - wgAvgAge) * MATCH_WEIGHTS.avgAgeDifference;
     }
+    details.avgAgeDifference = { score: avgAgeDiffScore, description: avgAgeDescription };
+    totalScore += avgAgeDiffScore;
 
     // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');

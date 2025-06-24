@@ -387,10 +387,10 @@ function App() {
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
-                // Re-calculate the score for each potential match to get the breakdown
                 const matchingWGs = allWgProfilesGlobal.map(wg => {
-                    const { totalScore: score, details: breakdownDetails } = calculateMatchScore(searcher, wg);
-                    return { wg, score, breakdownDetails }; // Store breakdownDetails here
+                    // Get the full match result object
+                    const matchResult = calculateMatchScore(searcher, wg); 
+                    return { wg, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
                 });
                 matchingWGs.sort((a, b) => b.score - a.score);
                 newSeekerToWGMatches.push({ searcher: searcher, matchingWGs: matchingWGs });
@@ -402,8 +402,9 @@ function App() {
 
             wgsForMatching.forEach(wg => {
                 const matchingSeekers = allSearcherProfilesGlobal.map(searcher => {
-                    const { totalScore: score, details: breakdownDetails } = calculateMatchScore(searcher, wg);
-                    return { searcher, score, breakdownDetails }; // Store breakdownDetails here
+                    // Get the full match result object
+                    const matchResult = calculateMatchScore(searcher, wg);
+                    return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
                 });
                 matchingSeekers.sort((a, b) => b.score - a.score);
                 newWGToSeekerMatches.push({ wg: wg, matchingSeekers: matchingSeekers });
@@ -521,25 +522,14 @@ function App() {
         };
 
         const nextStep = () => {
-            console.log(`nextStep called: currentStep was ${currentStep}`);
-            setCurrentStep((prev) => {
-                const newStep = Math.min(prev + 1, totalSteps);
-                console.log(`nextStep: currentStep becomes ${newStep}`);
-                return newStep;
-            });
+            setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
         };
 
         const prevStep = () => {
-            console.log(`prevStep called: currentStep was ${currentStep}`);
-            setCurrentStep((prev) => {
-                const newStep = Math.max(prev - 1, 1);
-                console.log(`prevStep: currentStep becomes ${newStep}`);
-                return newStep;
-            });
+            setCurrentStep((prev) => Math.max(prev - 1, 1));
         };
 
         const handleCancel = () => {
-            console.log("handleCancel called");
             setFormState({ // Reset form completely
                 name: '', age: '', minAge: '', maxAge: '', gender: 'male',
                 genderPreference: 'any', personalityTraits: [], interests: [],
@@ -552,27 +542,16 @@ function App() {
         };
 
 
-        const handleSubmit = async () => { // No event object directly from onSubmit
-            console.log(`handleSubmit called. Current step: ${currentStep}`);
-
-            // This check should now be redundant, as handleSubmit is only called by the final button,
-            // but we leave it for safety.
-            if (currentStep !== totalSteps) {
-                console.log("handleSubmit: Not executed as not in the last step.");
-                return;
-            }
-
-            console.log("handleSubmit: In the last step, data is being submitted.");
+        const handleSubmit = async () => {
             const dataToSubmit = { ...formState };
-            if (dataToSubmit.age) dataToSubmit.age = parseInt(dataToSubmit.age); 
-            if (dataToSubmit.minAge) dataToSubmit.minAge = parseInt(dataToSubmit.minAge);
-            if (dataToSubmit.maxAge) dataToSubmit.maxAge = parseInt(dataToSubmit.maxAge);
-            if (dataToSubmit.maxRent) dataToSubmit.maxRent = parseInt(dataToSubmit.maxRent);
-            if (dataToSubmit.rent) dataToSubmit.rent = parseInt(dataToSubmit.rent);
-            if (dataToSubmit.avgAge) dataToSubmit.avgAge = parseInt(dataToSubmit.avgAge);
+            dataToSubmit.age = safeParseInt(dataToSubmit.age); 
+            dataToSubmit.minAge = safeParseInt(dataToSubmit.minAge);
+            dataToSubmit.maxAge = safeParseInt(dataToSubmit.maxAge);
+            dataToSubmit.maxRent = safeParseInt(dataToSubmit.maxRent);
+            dataToSubmit.rent = safeParseInt(dataToSubmit.rent);
+            dataToSubmit.avgAge = safeParseInt(dataToSubmit.avgAge);
 
             await onSubmit(dataToSubmit); // Wait until data is saved
-            console.log("handleSubmit: Data submitted, form is being reset.");
             setFormState({ // Reset form after saving
                 name: '', age: '', minAge: '', maxAge: '', gender: 'male',
                 genderPreference: 'any', personalityTraits: [], interests: [],
@@ -1042,7 +1021,7 @@ function App() {
                                                                     Score: {wgMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.breakdownDetails })}
+                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.fullMatchResult })}
                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
@@ -1093,7 +1072,7 @@ function App() {
                                                                     Score: {seekerMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.breakdownDetails })}
+                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.fullMatchResult })}
                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
@@ -1243,7 +1222,7 @@ function App() {
                                                                                     Score: {wgMatch.score.toFixed(0)}
                                                                                 </div>
                                                                                 <button
-                                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.breakdownDetails })}
+                                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: wgMatch.wg, matchDetails: wgMatch.fullMatchResult })}
                                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                                     title="Show Match Details"
                                                                                 >
@@ -1300,7 +1279,7 @@ function App() {
                                                                                     Score: {seekerMatch.score.toFixed(0)}
                                                                                 </div>
                                                                                 <button
-                                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.breakdownDetails })}
+                                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: wgMatch.wg, matchDetails: seekerMatch.fullMatchResult })}
                                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                                     title="Show Match Details"
                                                                                 >

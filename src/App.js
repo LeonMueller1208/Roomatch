@@ -443,7 +443,7 @@ function App() {
                     return { room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
                 });
                 matchingRooms.sort((a, b) => b.score - a.score);
-                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms });
+                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms.slice(0, 10) }); // Limit to top 10 matches
             });
             setMatches(newSeekerToRoomMatches);
 
@@ -457,7 +457,7 @@ function App() {
                     return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
                 });
                 matchingSeekers.sort((a, b) => b.score - a.score);
-                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers });
+                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers.slice(0, 10) }); // Limit to top 10 matches
             });
             setReverseMatches(newRoomToSeekerMatches);
         };
@@ -1271,7 +1271,7 @@ function App() {
                                                 </h4>
                                                 <div className="space-y-4">
                                                     {profileMatches && profileMatches.matchingRooms.length > 0 ? (
-                                                        profileMatches.matchingRooms.slice(0, 10).map(roomMatch => ( // Limit to 10 matches
+                                                        profileMatches.matchingRooms.map(roomMatch => (
                                                             <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
                                                                     <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name}</p>
@@ -1337,7 +1337,7 @@ function App() {
                                                 </h4>
                                                 <div className="space-y-4">
                                                     {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
-                                                        profileMatches.matchingSeekers.slice(0, 10).map(seekerMatch => (
+                                                        profileMatches.matchingSeekers.map(seekerMatch => (
                                                             <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
                                                                     <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>

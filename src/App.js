@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Corrected syntax here
+import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
@@ -43,77 +43,83 @@ const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3";
 // Now returns an object with total score and a detailed breakdown
 const calculateMatchScore = (seeker, wg) => {
     let totalScore = 0;
-    const details = {}; // To store individual score contributions
+    // Initialize details with all possible categories and default values
+    const details = {
+        ageMatch: { score: 0, description: `Age match (${seeker.age || 'N/A'} vs ${wg?.minAge || 'N/A'}-${wg?.maxAge || 'N/A'})` },
+        genderMatch: { score: 0, description: `Gender preference (${seeker.gender || 'N/A'} vs ${wg?.genderPreference || 'N/A'})` },
+        personalityTraits: { score: 0, description: `Personality overlap (None)` },
+        interests: { score: 0, description: `Interests overlap (None)` },
+        rentMatch: { score: 0, description: `Rent match (Max: ${seeker.maxRent || 'N/A'}€, WG: ${wg?.rent || 'N/A'}€)` },
+        petsMatch: { score: 0, description: `Pets compatibility (Seeker: ${seeker.pets || 'N/A'}, WG: ${wg?.petsAllowed || 'N/A'})` },
+        freeTextMatch: { score: 0, description: `Free text keywords (None)` },
+        avgAgeDifference: { score: 0, description: `Average age difference (Seeker: ${seeker.age || 'N/A'}, WG Avg: ${wg?.avgAge || 'N/A'})` },
+        communalLiving: { score: 0, description: `Communal living preferences (None)` },
+        values: { score: 0, description: `Shared values (None)` },
+    };
 
     const getArrayValue = (profile, field) => {
         const value = profile[field];
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
 
-    // Note: If wg is not provided (e.g., when calling from a context where only seeker is available
-    // or for initial setup), this function should handle it gracefully, or the calling context
-    // should ensure valid 'wg' is always passed. For the purpose of getting breakdown details,
-    // 'wg' must be a valid object.
-
     // 1. Age Match (Seeker age vs. WG age range)
-    let ageScore = 0;
-    if (seeker.age && wg?.minAge && wg?.maxAge) { // Use optional chaining for wg properties
+    if (seeker.age && wg?.minAge && wg?.maxAge) {
+        let ageScore = 0;
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
             ageScore = 20 * MATCH_WEIGHTS.ageMatch;
         } else {
             const ageDiffLow = Math.max(0, wg.minAge - seeker.age);
             const ageDiffHigh = Math.max(0, seeker.age - wg.maxAge);
-            ageScore = -(ageDiffLow + ageDiffHigh) * MATCH_WEIGHTS.ageMatch * 0.5; // Half penalty for being outside range
+            ageScore = -(ageDiffLow + ageDiffHigh) * MATCH_WEIGHTS.ageMatch * 0.5;
         }
+        totalScore += ageScore;
+        details.ageMatch = { score: ageScore, description: `Age match (${seeker.age} vs ${wg.minAge}-${wg.maxAge})` };
     }
-    totalScore += ageScore;
-    details.ageMatch = { score: ageScore, description: `Age match (${seeker.age} vs ${wg?.minAge || 'N/A'}-${wg?.maxAge || 'N/A'})` };
 
     // 2. Gender Preference
-    let genderScore = 0;
     if (seeker.gender && wg?.genderPreference) {
+        let genderScore = 0;
         if (wg.genderPreference === 'any' || seeker.gender === wg.genderPreference) {
             genderScore = 10 * MATCH_WEIGHTS.genderMatch;
         } else {
             genderScore = -10 * MATCH_WEIGHTS.genderMatch;
         }
+        totalScore += genderScore;
+        details.genderMatch = { score: genderScore, description: `Gender preference (${seeker.gender} vs ${wg.genderPreference})` };
     }
-    totalScore += genderScore;
-    details.genderMatch = { score: genderScore, description: `Gender preference (${seeker.gender} vs ${wg?.genderPreference || 'N/A'})` };
 
     // 3. Personality Traits (Overlap)
-    let personalityScore = 0;
     const seekerTraits = getArrayValue(seeker, 'personalityTraits');
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     const commonTraits = seekerTraits.filter(trait => wgTraits.includes(trait));
-    personalityScore = commonTraits.length * 5 * MATCH_WEIGHTS.personalityTraits;
+    let personalityScore = commonTraits.length * 5 * MATCH_WEIGHTS.personalityTraits;
     totalScore += personalityScore;
     details.personalityTraits = { score: personalityScore, description: `Personality overlap (${commonTraits.join(', ') || 'None'})` };
 
+
     // 4. Interests (Overlap)
-    let interestsScore = 0;
     const seekerInterests = getArrayValue(seeker, 'interests');
     const wgInterests = getArrayValue(wg, 'interests');
     const commonInterests = seekerInterests.filter(interest => wgInterests.includes(interest));
-    interestsScore = commonInterests.length * 3 * MATCH_WEIGHTS.interests;
+    let interestsScore = commonInterests.length * 3 * MATCH_WEIGHTS.interests;
     totalScore += interestsScore;
     details.interests = { score: interestsScore, description: `Interests overlap (${commonInterests.join(', ') || 'None'})` };
 
     // 5. Rent (Seeker Max Rent >= WG Rent)
-    let rentScore = 0;
     if (seeker.maxRent && wg?.rent) {
+        let rentScore = 0;
         if (seeker.maxRent >= wg.rent) {
             rentScore = 15 * MATCH_WEIGHTS.rentMatch;
         } else {
             rentScore = -(wg.rent - seeker.maxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
         }
+        totalScore += rentScore;
+        details.rentMatch = { score: rentScore, description: `Rent match (Max: ${seeker.maxRent}€, WG: ${wg.rent}€)` };
     }
-    totalScore += rentScore;
-    details.rentMatch = { score: rentScore, description: `Rent match (Max: ${seeker.maxRent || 'N/A'}€, WG: ${wg?.rent || 'N/A'}€)` };
 
     // 6. Pets (Match)
-    let petsScore = 0;
     if (seeker.pets && wg?.petsAllowed) {
+        let petsScore = 0;
         if (seeker.pets === 'yes' && wg.petsAllowed === 'yes') {
             petsScore = 8 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'yes' && wg.petsAllowed === 'no') {
@@ -123,12 +129,11 @@ const calculateMatchScore = (seeker, wg) => {
         } else if (seeker.pets === 'no' && wg.petsAllowed === 'no') {
             petsScore = 5 * MATCH_WEIGHTS.petsMatch; // Positive if both explicitly don't want pets
         }
+        totalScore += petsScore;
+        details.petsMatch = { score: petsScore, description: `Pets compatibility (Seeker: ${seeker.pets}, WG: ${wg.petsAllowed})` };
     }
-    totalScore += petsScore;
-    details.petsMatch = { score: petsScore, description: `Pets compatibility (Seeker: ${seeker.pets || 'N/A'}, WG: ${wg?.petsAllowed || 'N/A'})` };
 
     // 7. Free text 'lookingFor' (seeker) vs. 'description'/'lookingForInFlatmate' (WG)
-    let freeTextScore = 0;
     const seekerLookingFor = (seeker.lookingFor || '').toLowerCase();
     const wgDescription = (wg?.description || '').toLowerCase();
     const wgLookingForInFlatmate = (wg?.lookingForInFlatmate || '').toLowerCase();
@@ -137,36 +142,34 @@ const calculateMatchScore = (seeker, wg) => {
     const matchedKeywords = [];
     seekerKeywords.forEach(keyword => {
         if (wgDescription.includes(keyword) || wgLookingForInFlatmate.includes(keyword)) {
-            freeTextScore += 1 * MATCH_WEIGHTS.freeTextMatch;
             matchedKeywords.push(keyword);
         }
     });
+    let freeTextScore = matchedKeywords.length * 1 * MATCH_WEIGHTS.freeTextMatch;
     totalScore += freeTextScore;
     details.freeTextMatch = { score: freeTextScore, description: `Free text keywords (${matchedKeywords.join(', ') || 'None'})` };
+    
 
     // 8. Average age of WG residents compared to seeker's age
-    let avgAgeDiffScore = 0;
     if (seeker.age && wg?.avgAge) {
-        avgAgeDiffScore = -Math.abs(seeker.age - wg.avgAge) * MATCH_WEIGHTS.avgAgeDifference;
+        let avgAgeDiffScore = -Math.abs(seeker.age - wg.avgAge) * MATCH_WEIGHTS.avgAgeDifference;
+        totalScore += avgAgeDiffScore;
+        details.avgAgeDifference = { score: avgAgeDiffScore, description: `Average age difference (Seeker: ${seeker.age}, WG Avg: ${wg.avgAge})` };
     }
-    totalScore += avgAgeDiffScore;
-    details.avgAgeDifference = { score: avgAgeDiffScore, description: `Average age difference (Seeker: ${seeker.age || 'N/A'}, WG Avg: ${wg?.avgAge || 'N/A'})` };
 
     // 9. New: Communal Living Preferences
-    let communalLivingScore = 0;
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
     const wgCommunalPrefs = getArrayValue(wg, 'wgCommunalLiving');
     const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => wgCommunalPrefs.includes(pref));
-    communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
+    let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
     details.communalLiving = { score: communalLivingScore, description: `Communal living preferences (${commonCommunalPrefs.join(', ') || 'None'})` };
 
     // 10. New: Values
-    let valuesScore = 0;
     const seekerValues = getArrayValue(seeker, 'values');
     const wgValues = getArrayValue(wg, 'wgValues');
     const commonValues = seekerValues.filter(val => wgValues.includes(val));
-    valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
+    let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;
     details.values = { score: valuesScore, description: `Shared values (${commonValues.join(', ') || 'None'})` };
 
@@ -367,8 +370,6 @@ function App() {
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
-                // Removed the problematic line: const { totalScore, details } = calculateMatchScore(searcher, null);
-                
                 // Re-calculate the score for each potential match to get the breakdown
                 const matchingWGs = allWgProfilesGlobal.map(wg => {
                     const { totalScore: score, details: breakdownDetails } = calculateMatchScore(searcher, wg);

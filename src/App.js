@@ -500,7 +500,7 @@ function App() {
             maxRent: '', pets: 'any', lookingFor: '',
             description: '', rent: '', roomType: 'Single Room', petsAllowed: 'any',
             avgAge: '', lookingForInFlatmate: '',
-            location: '',
+            location: 'Cologne', // Default to Cologne
             communalLivingPreferences: [], // New for seekers
             wgCommunalLiving: [],          // New for providers
             values: [],                    // New for seekers
@@ -535,7 +535,7 @@ function App() {
                 genderPreference: 'any', personalityTraits: [], interests: [],
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
-                lookingForInFlatmate: '', location: '',
+                lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
                 communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
             });
             setCurrentStep(1); // Go back to first step
@@ -557,7 +557,7 @@ function App() {
                 genderPreference: 'any', personalityTraits: [], interests: [],
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
-                lookingForInFlatmate: '', location: '',
+                lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
                 communalLivingPreferences: [], wgCommunalLiving: [], values: [], wgValues: []
             });
             setCurrentStep(1); // Go back to first step
@@ -664,13 +664,15 @@ function App() {
                         {/* Location / City District (for both) */}
                         <div>
                             <label className="block text-gray-700 text-base font-semibold mb-2">Location / City District:</label>
-                            <input
-                                type="text"
+                            <select
                                 name="location"
                                 value={formState.location}
                                 onChange={handleChange}
+                                required
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
-                            />
+                            >
+                                <option value="Cologne">Cologne</option>
+                            </select>
                         </div>
                     </div>
                 )}

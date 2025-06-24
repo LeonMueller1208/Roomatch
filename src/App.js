@@ -39,6 +39,9 @@ const MATCH_WEIGHTS = {
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID SHOWN IN THE APP!
 const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
 
+// Helper to safely parse numbers
+const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
+
 // Function to calculate the match score between a seeker and a WG profile
 // Now returns an object with total score and a detailed breakdown
 const calculateMatchScore = (seeker, wg) => {
@@ -61,9 +64,6 @@ const calculateMatchScore = (seeker, wg) => {
         const value = profile[field];
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
     };
-
-    // Helper to safely parse numbers
-    const safeParseInt = (value) => parseInt(value) || 0;
 
     // 1. Age Match (Seeker age vs. WG age range)
     const seekerAge = safeParseInt(seeker.age);

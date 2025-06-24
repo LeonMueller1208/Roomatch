@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Corrected syntax here
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
@@ -190,6 +190,9 @@ const getScoreColorClass = (score) => {
 const MatchDetailsModal = ({ isOpen, onClose, seeker, wg, matchDetails }) => {
     if (!isOpen || !seeker || !wg || !matchDetails) return null;
 
+    // Defensive checks for matchDetails.details
+    const detailsEntries = matchDetails.details ? Object.entries(matchDetails.details) : [];
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto relative">
@@ -208,16 +211,17 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, wg, matchDetails }) => {
                 </p>
 
                 <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-lg font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}>
-                    Total Score: {matchDetails.totalScore.toFixed(0)}
+                    Total Score: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
                 </div>
 
                 <h3 className="text-xl font-bold text-gray-700 mb-3">Score Breakdown:</h3>
                 <ul className="space-y-2">
-                    {Object.entries(matchDetails.details).map(([key, value]) => (
+                    {detailsEntries.map(([key, value]) => (
                         <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                            <span className="font-medium text-gray-700">{value.description || key}:</span>
-                            <span className={`font-bold ${value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {value.score.toFixed(1)}
+                            {/* Guard value.description and value.score access */}
+                            <span className="font-medium text-gray-700">{value?.description || key}:</span>
+                            <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
                             </span>
                         </li>
                     ))}

@@ -22,6 +22,20 @@ const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports',
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
+// Define fixed weights for matching criteria
+const MATCH_WEIGHTS = {
+    ageMatch: 2.0,           // Age is twice as important
+    genderMatch: 1.0,        // Gender is normally important
+    personalityTraits: 1.5,  // Personality traits are 1.5 times as important
+    interests: 0.5,          // Interests are half as important
+    rentMatch: 2.5,          // Rent is 2.5 times as important
+    petsMatch: 1.2,          // Pets are slightly more important
+    freeTextMatch: 0.2,      // Free text has minor importance
+    avgAgeDifference: 1.0,   // Age difference (negative contribution)
+    communalLiving: 1.8,     // Communal living preferences are important
+    values: 2.0              // Values are twice as important
+};
+
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID SHOWN IN THE APP!
 const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; 
@@ -38,18 +52,18 @@ const calculateMatchScore = (seeker, wg) => {
     // 1. Age Match (Seeker age vs. WG age range)
     if (seeker.age && wg.minAge && wg.maxAge) {
         if (seeker.age >= wg.minAge && seeker.age <= wg.maxAge) {
-            score += 20;
+            score += 20 * MATCH_WEIGHTS.ageMatch;
         } else {
-            score -= 15;
+            score -= 15 * MATCH_WEIGHTS.ageMatch;
         }
     }
 
     // 2. Gender Preference
     if (seeker.gender && wg.genderPreference) {
         if (wg.genderPreference === 'any' || seeker.gender === wg.genderPreference) {
-            score += 10;
+            score += 10 * MATCH_WEIGHTS.genderMatch;
         } else {
-            score -= 10;
+            score -= 10 * MATCH_WEIGHTS.genderMatch;
         }
     }
 
@@ -58,7 +72,7 @@ const calculateMatchScore = (seeker, wg) => {
     const wgTraits = getArrayValue(wg, 'personalityTraits');
     seekerTraits.forEach(trait => {
         if (wgTraits.includes(trait)) {
-            score += 5;
+            score += 5 * MATCH_WEIGHTS.personalityTraits;
         }
     });
 
@@ -67,25 +81,25 @@ const calculateMatchScore = (seeker, wg) => {
     const wgInterests = getArrayValue(wg, 'interests');
     seekerInterests.forEach(interest => {
         if (wgInterests.includes(interest)) {
-            score += 3;
+            score += 3 * MATCH_WEIGHTS.interests;
         }
     });
 
     // 5. Rent (Seeker Max Rent >= WG Rent)
     if (seeker.maxRent && wg.rent) {
         if (seeker.maxRent >= wg.rent) {
-            score += 15;
+            score += 15 * MATCH_WEIGHTS.rentMatch;
         } else {
-            score -= 15;
+            score -= 15 * MATCH_WEIGHTS.rentMatch;
         }
     }
 
     // 6. Pets (Match)
     if (seeker.pets && wg.petsAllowed) {
         if (seeker.pets === 'yes' && wg.petsAllowed === 'yes') {
-            score += 8;
+            score += 8 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'yes' && wg.petsAllowed === 'no') {
-            score -= 8;
+            score -= 8 * MATCH_WEIGHTS.petsMatch;
         }
     }
 
@@ -97,13 +111,13 @@ const calculateMatchScore = (seeker, wg) => {
     const seekerKeywords = seekerLookingFor.split(' ').filter(word => word.length > 2);
     seekerKeywords.forEach(keyword => {
         if (wgDescription.includes(keyword) || wgLookingForInFlatmate.includes(keyword)) {
-            score += 1;
+            score += 1 * MATCH_WEIGHTS.freeTextMatch;
         }
     });
 
     // 8. Average age of WG residents compared to seeker's age
     if (seeker.age && wg.avgAge) {
-        score -= Math.abs(seeker.age - wg.avgAge);
+        score -= Math.abs(seeker.age - wg.avgAge) * MATCH_WEIGHTS.avgAgeDifference;
     }
 
     // 9. New: Communal Living Preferences
@@ -111,7 +125,7 @@ const calculateMatchScore = (seeker, wg) => {
     const wgCommunalPrefs = getArrayValue(wg, 'wgCommunalLiving');
     seekerCommunalPrefs.forEach(pref => {
         if (wgCommunalPrefs.includes(pref)) {
-            score += 7; // High value for lifestyle agreement
+            score += 7 * MATCH_WEIGHTS.communalLiving; // High value for lifestyle agreement
         }
     });
 
@@ -120,7 +134,7 @@ const calculateMatchScore = (seeker, wg) => {
     const wgValues = getArrayValue(wg, 'wgValues');
     seekerValues.forEach(val => {
         if (wgValues.includes(val)) {
-            score += 10; // Very high value for value agreement
+            score += 10 * MATCH_WEIGHTS.values; // Very high value for value agreement
         }
     });
 

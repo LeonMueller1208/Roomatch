@@ -373,15 +373,29 @@ function App() {
     // Real-time data retrieval for *all* Room profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
-        const allRoomsQuery = query(collection(db, `roomProfiles`));
-        const unsubscribeAllRooms = onSnapshot(allRoomsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllRoomProfilesGlobal(profiles);
+        const roomProfilesQuery = query(collection(db, `roomProfiles`));
+        const wgProfilesQuery = query(collection(db, `wgProfiles`)); // Query for old collection name
+
+        const unsubscribeRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
+            const newRoomProfiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Fetch from old wgProfiles collection as well
+            onSnapshot(wgProfilesQuery, (wgSnapshot) => {
+                const oldWgProfiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Combine and set the global room profiles
+                setAllRoomProfilesGlobal([...newRoomProfiles, ...oldWgProfiles]);
+            }, (err) => {
+                console.error("Error fetching old WG profiles (global):", err);
+                // Even if old profiles fail, still set the new ones
+                setAllRoomProfilesGlobal(newRoomProfiles);
+            });
         }, (err) => {
             console.error("Error fetching all Room profiles (global):", err);
+            setError("Error loading all Room profiles.");
         });
-        return () => unsubscribeAllRooms();
+        return () => unsubscribeRooms();
     }, [db]);
+
 
     // Match calculation for both directions
     useEffect(() => {

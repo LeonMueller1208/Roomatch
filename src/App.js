@@ -181,7 +181,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
-    const roomCommunalPrefs = getArrayValue(room, 'wgCommunalLiving'); // Changed from wgCommunalLiving to roomCommunalLiving to keep internal structure the same but reflect new naming
+    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving'); // Changed field name
     const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => roomCommunalPrefs.includes(pref));
     let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
@@ -189,7 +189,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 10. New: Values
     const seekerValues = getArrayValue(seeker, 'values');
-    const roomValues = getArrayValue(room, 'wgValues'); // Changed from wgValues to roomValues to keep internal structure the same but reflect new naming
+    const roomValues = getArrayValue(room, 'roomValues'); // Changed field name
     const commonValues = seekerValues.filter(val => roomValues.includes(val));
     let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;
@@ -451,7 +451,7 @@ function App() {
             return;
         }
         try {
-            await addDoc(collection(db, `roomProfiles`), {
+            await addDoc(collection(db, `roomProfiles`), { // Corrected collection name
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -1025,7 +1025,7 @@ function App() {
                                                                     Score: {roomMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, wg: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
+                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
@@ -1035,8 +1035,8 @@ function App() {
                                                             <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
                                                             <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.wgCommunalLiving) ? roomMatch.room.wgCommunalLiving.join(', ') : (roomMatch.room.wgCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.wgValues) ? roomMatch.room.wgValues.join(', ') : (roomMatch.room.wgValues || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -1076,7 +1076,7 @@ function App() {
                                                                     Score: {seekerMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
+                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
                                                                     className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
@@ -1141,12 +1141,12 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.wgCommunalLiving) ? profile.wgCommunalLiving.join(', ') : (profile.wgCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.wgValues) ? profile.wgValues.join(', ') : (profile.wgValues || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
+                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
-                                            onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
+                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name
                                             className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
                                             <Trash2 size={16} className="mr-2" /> Delete
@@ -1224,7 +1224,7 @@ function App() {
                                                 </h4>
                                                 <div className="space-y-4">
                                                     {profileMatches && profileMatches.matchingRooms.length > 0 ? (
-                                                        profileMatches.matchingRooms.slice(0, 10).map(roomMatch => (
+                                                        profileMatches.matchingRooms.slice(0, 10).map(roomMatch => ( // Limit to 10 matches
                                                             <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
                                                                     <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name}</p>
@@ -1233,7 +1233,7 @@ function App() {
                                                                             Score: {roomMatch.score.toFixed(0)}
                                                                         </div>
                                                                         <button
-                                                                            onClick={() => setSelectedMatchDetails({ seeker: profile, wg: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
+                                                                            onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                             className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
@@ -1243,8 +1243,8 @@ function App() {
                                                                     <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
                                                                     <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
                                                                     <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.wgCommunalLiving) ? roomMatch.room.wgCommunalLiving.join(', ') : (roomMatch.room.wgCommunalLiving || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.wgValues) ? roomMatch.room.wgValues.join(', ') : (roomMatch.room.wgValues || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
@@ -1278,7 +1278,7 @@ function App() {
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
-                                                    onClick={() => handleDeleteProfile('wgProfiles', profile.id, profile.name, profile.createdBy)}
+                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name
                                                     className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
                                                 >
                                                     <Trash2 size={16} className="mr-2" /> Delete Profile
@@ -1299,7 +1299,7 @@ function App() {
                                                                             Score: {seekerMatch.score.toFixed(0)}
                                                                         </div>
                                                                         <button
-                                                                            onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, wg: profile, matchDetails: seekerMatch.fullMatchResult })}
+                                                                            onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
                                                                             className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
@@ -1343,7 +1343,7 @@ function App() {
                 isOpen={!!selectedMatchDetails}
                 onClose={() => setSelectedMatchDetails(null)}
                 seeker={selectedMatchDetails?.seeker}
-                wg={selectedMatchDetails?.wg}
+                room={selectedMatchDetails?.room} // Changed from wg to room
                 matchDetails={selectedMatchDetails?.matchDetails}
             />
         </div>

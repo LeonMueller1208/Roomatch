@@ -37,7 +37,7 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKc N7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
@@ -126,7 +126,7 @@ const calculateMatchScore = (seeker, room) => {
     let rentScore = 0;
     let rentDescription = `Rent match (Max: ${seeker.maxRent || 'N/A'}€, Room: ${room?.rent || 'N/A'}€)`;
 
-    if (seekerMaxRent > 0 && roomRent > 0) { // Check if valid numbers
+    if (seekerMaxRent > 0 && roomRent > 0) { // Check if all valid numbers
         if (seekerMaxRent >= roomRent) {
             rentScore = 15 * MATCH_WEIGHTS.rentMatch;
         } else {

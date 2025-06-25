@@ -544,6 +544,7 @@ function App() {
     const ProfileForm = ({ onSubmit, type }) => {
         const [currentStep, setCurrentStep] = useState(1);
         const totalSteps = 3; // Number of steps defined here
+        const [showGenderTooltip, setShowGenderTooltip] = useState(false); // State for tooltip visibility
 
         const [formState, setFormState] = useState({
             name: '',
@@ -700,7 +701,21 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Flatmate Gender Preference:</label>
+                                <label className="block text-gray-700 text-base font-semibold mb-2 flex items-center">
+                                    Flatmate Gender Preference:
+                                    <div
+                                        className="relative ml-2 cursor-pointer text-red-500 hover:text-red-700"
+                                        onMouseEnter={() => setShowGenderTooltip(true)}
+                                        onMouseLeave={() => setShowGenderTooltip(false)}
+                                    >
+                                        <Info size={18} />
+                                        {showGenderTooltip && (
+                                            <div className="absolute left-full ml-2 w-64 p-3 bg-red-100 text-red-800 text-sm rounded-lg shadow-lg z-10 border border-red-300">
+                                                If you select "Male" or "Female", seekers of the opposite gender will be excluded from your match results.
+                                            </div>
+                                        )}
+                                    </div>
+                                </label>
                                 <select
                                     name="genderPreference"
                                     value={formState.genderPreference}

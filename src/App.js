@@ -36,8 +36,8 @@ const MATCH_WEIGHTS = {
     values: 2.0              // Values are twice as important
 };
 
-// **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
+// **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
+const ADMIN_UID = "H9jtz5aHKc N7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
@@ -89,14 +89,16 @@ const calculateMatchScore = (seeker, room) => {
     details.ageMatch = { score: ageScore, description: ageDescription };
     totalScore += ageScore;
 
-    // 2. Gender Preference
+    // 2. Gender Preference - If specific preference doesn't match, return a disqualifying score
     let genderScore = 0;
     let genderDescription = `Gender preference (Seeker: ${seeker.gender || 'N/A'}, Room: ${room?.genderPreference || 'N/A'})`;
     if (seeker.gender && room?.genderPreference) {
-        if (room.genderPreference === 'any' || seeker.gender === room.genderPreference) {
-            genderScore = 10 * MATCH_WEIGHTS.genderMatch;
-        } else {
-            genderScore = -10 * MATCH_WEIGHTS.genderMatch;
+        if (room.genderPreference !== 'any' && seeker.gender !== room.genderPreference) {
+            // If room has a specific gender preference and seeker's gender doesn't match,
+            // return a very low score to effectively exclude this match.
+            return { totalScore: -999999, details: { ...details, genderMatch: { score: -999999, description: "Gender mismatch (Disqualified)" } } };
+        } else if (room.genderPreference === 'any' || seeker.gender === room.genderPreference) {
+            genderScore = 10 * MATCH_WEIGHTS.genderMatch; // Positive score if room allows any gender or genders match
         }
     }
     details.genderMatch = { score: genderScore, description: genderDescription };
@@ -441,7 +443,8 @@ function App() {
                     // Get the full match result object
                     const matchResult = calculateMatchScore(searcher, room); 
                     return { room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
-                });
+                }).filter(match => match.score > -999998); // Filter out disqualified matches
+                
                 matchingRooms.sort((a, b) => b.score - a.score);
                 newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms.slice(0, 10) }); // Limit to top 10 matches
             });
@@ -455,7 +458,8 @@ function App() {
                     // Get the full match result object
                     const matchResult = calculateMatchScore(searcher, room);
                     return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
-                });
+                }).filter(match => match.score > -999998); // Filter out disqualified matches
+                
                 matchingSeekers.sort((a, b) => b.score - a.score);
                 newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers.slice(0, 10) }); // Limit to top 10 matches
             });
@@ -690,7 +694,7 @@ function App() {
                                 >
                                     <option value="male">Male</option>
                                     <option value="female">Female</option>
-                                    <option value="diverse">Diverse</option>
+                                    {/* <option value="diverse">Diverse</option> Removed as requested */}
                                 </select>
                             </div>
                         )}
@@ -706,7 +710,7 @@ function App() {
                                     <option value="any">Any</option>
                                     <option value="male">Male</option>
                                     <option value="female">Female</option>
-                                    <option value="diverse">Diverse</option>
+                                    {/* <option value="diverse">Diverse</option> Removed as requested */}
                                 </select>
                             </div>
                         )}
@@ -1322,7 +1326,7 @@ function App() {
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
+                                                <p className="text-sm text-gray-700 mb-1"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
                                                     onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name

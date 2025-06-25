@@ -710,7 +710,7 @@ function App() {
                                     >
                                         <Info size={18} />
                                         {showGenderTooltip && (
-                                            <div className="absolute left-full ml-2 w-64 p-3 bg-red-100 text-red-800 text-sm rounded-lg shadow-lg z-10 border border-red-300">
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 bg-red-100 text-red-800 text-sm rounded-lg shadow-lg z-10 border border-red-300 sm:left-full sm:translate-x-0 sm:ml-2 sm:mt-0">
                                                 If you select "Male" or "Female", seekers of the opposite gender will be excluded from your match results.
                                             </div>
                                         )}

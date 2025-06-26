@@ -253,9 +253,9 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
 // Main component of the Room match application
 function App() {
     const [mySearcherProfiles, setMySearcherProfiles] = useState([]);
-    const [myRoomProfiles, setMyRoomProfiles] = useState([]); // Changed back to myRoomProfiles
+    const [myRoomProfiles, setMyRoomProfiles] = useState([]);
     const [allSearcherProfilesGlobal, setAllSearcherProfilesGlobal] = useState([]);
-    const [allRoomProfilesGlobal, setAllRoomProfilesGlobal] = useState([]); // Changed back to allRoomProfilesGlobal
+    const [allRoomProfilesGlobal, setAllRoomProfilesGlobal] = useState([]);
 
     const [matches, setMatches] = useState([]);
     const [reverseMatches, setReverseMatches] = useState([]);
@@ -274,8 +274,8 @@ function App() {
         let appInstance, dbInstance, authInstance;
 
         try {
-            // Use global variables provided by Canvas environment
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            // Use global variables provided by Canvas environment, explicitly accessing window
+            const firebaseConfig = JSON.parse(typeof window.__firebase_config !== 'undefined' ? window.__firebase_config : '{}');
 
             appInstance = initializeApp(firebaseConfig);
             dbInstance = getFirestore(appInstance);
@@ -287,8 +287,8 @@ function App() {
                 if (!user) {
                     try {
                         // Sign in anonymously if no user is present or use custom token if provided
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(authInstance, __initial_auth_token);
+                        if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                            await signInWithCustomToken(authInstance, window.__initial_auth_token);
                         } else {
                             await signInAnonymously(authInstance);
                         }
@@ -344,10 +344,10 @@ function App() {
     // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-        const myRoomsQuery = query(getCollectionRef(`roomProfiles`), where('createdBy', '==', userId)); // Changed to roomProfiles
+        const myRoomsQuery = query(getCollectionRef(`roomProfiles`), where('createdBy', '==', userId));
         const unsubscribeMyRooms = onSnapshot(myRoomsQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMyRoomProfiles(profiles); // Changed to setMyRoomProfiles
+            setMyRoomProfiles(profiles);
         }, (err) => {
             console.error("Error fetching own Room profiles:", err);
             setError("Error loading own Room profiles.");
@@ -371,10 +371,10 @@ function App() {
     // Real-time data retrieval for *all* Room profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
-        const allRoomsQuery = query(getCollectionRef(`roomProfiles`)); // Changed to roomProfiles
+        const allRoomsQuery = query(getCollectionRef(`roomProfiles`));
         const unsubscribeAllRooms = onSnapshot(allRoomsQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllRoomProfilesGlobal(profiles); // Changed to setAllRoomProfilesGlobal
+            setAllRoomProfilesGlobal(profiles);
         }, (err) => {
             console.error("Error fetching all Room profiles (global):", err);
             setError("Error loading all Room profiles.");
@@ -389,7 +389,7 @@ function App() {
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
-                const matchingRooms = allRoomProfilesGlobal.map(room => { // Changed to allRoomProfilesGlobal
+                const matchingRooms = allRoomProfilesGlobal.map(room => {
                     const matchResult = calculateMatchScore(searcher, room);
                     return { room: room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult };
                 }).filter(match => match.score > -999998);
@@ -400,7 +400,7 @@ function App() {
             setMatches(newSeekerToRoomMatches);
 
             const newRoomToSeekerMatches = [];
-            const roomsForMatching = adminMode ? allRoomProfilesGlobal : myRoomProfiles; // Changed to allRoomProfilesGlobal / myRoomProfiles
+            const roomsForMatching = adminMode ? allRoomProfilesGlobal : myRoomProfiles;
 
             roomsForMatching.forEach(room => {
                 const matchingSeekers = allSearcherProfilesGlobal.map(searcher => {
@@ -443,13 +443,13 @@ function App() {
     };
 
     // Function to add a Room profile to Firestore
-    const addRoomProfile = async (profileData) => { // Changed function name
+    const addRoomProfile = async (profileData) => {
         if (!db || !userId) {
             setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
-            await addDoc(getCollectionRef(`roomProfiles`), { // Changed to roomProfiles
+            await addDoc(getCollectionRef(`roomProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -970,7 +970,7 @@ function App() {
     }
 
     const showMySeekerDashboard = mySearcherProfiles.length > 0 && !adminMode;
-    const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode; // Uses myRoomProfiles
+    const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode;
 
     return (
         <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center relative overflow-hidden">
@@ -1114,7 +1114,7 @@ function App() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                    <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <p className="font-bold text-[#333333] text-lg mb-2">Name: {profile.name}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Age:</span> {profile.age}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
@@ -1154,7 +1154,7 @@ function App() {
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
-                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Changed to roomProfiles
+                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
                                             className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
                                             <Trash2 size={16} className="mr-2" /> Delete
@@ -1286,7 +1286,7 @@ function App() {
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
-                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Changed to roomProfiles
+                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
                                                 >
                                                     <Trash2 size={16} className="mr-2" /> Delete Profile

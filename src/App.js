@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info } from 'lucide-react'; // Added Info icon
+
+// Firebase Configuration
+const firebaseConfig = {
+    // REPLACE THIS API KEY WITH YOUR OWN FROM THE FIREBASE CONSOLE!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // Example: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg"
+    authDomain: "mvp-roomatch.firebaseapp.com",
+    projectId: "mvp-roomatch",
+    storageBucket: "mvp-roomatch.firebasestorage.app",
+    messagingSenderId: "190918526277",
+    appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
+    measurementId: "G-5JPWLD0ZC"
+};
 
 // Predefined lists for personality traits and interests
 const allPersonalityTraits = ['tidy', 'calm', 'social', 'creative', 'sporty', 'night owl', 'early bird', 'tolerant', 'animal lover', 'flexible', 'structured'];
-const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art'];
+const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art']; // Corrected 'Natur' to 'Nature'
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
@@ -25,10 +37,10 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3";
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
 
 // Helper to safely parse numbers
-const safeParseInt = (value) => parseInt(value) || 0;
+const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
 
 // Helper to capitalize first letter for display
 const capitalizeFirstLetter = (string) => {
@@ -41,14 +53,14 @@ const calculateMatchScore = (seeker, room) => {
     let totalScore = 0;
     // Initialize details with all possible categories and default values
     const details = {
-        ageMatch: { score: 0, description: `Age match (N/A)` },
+        ageMatch: { score: 0, description: `Age match (N/A)` }, // Updated default description
         genderMatch: { score: 0, description: `Gender preference (N/A)` },
         personalityTraits: { score: 0, description: `Personality overlap (None)` },
         interests: { score: 0, description: `Interests overlap (None)` },
-        rentMatch: { score: 0, description: `Rent match (N/A)` },
+        rentMatch: { score: 0, description: `Rent match (N/A)` }, // Updated default description
         petsMatch: { score: 0, description: `Pets compatibility (N/A)` },
         freeTextMatch: { score: 0, description: `Free text keywords (None)` },
-        avgAgeDifference: { score: 0, description: `Average age difference (N/A)` },
+        avgAgeDifference: { score: 0, description: `Average age difference (N/A)` }, // Updated default description
         communalLiving: { score: 0, description: `Communal living preferences (None)` },
         values: { score: 0, description: `Shared values (None)` },
     };
@@ -65,7 +77,7 @@ const calculateMatchScore = (seeker, room) => {
     let ageScore = 0;
     let ageDescription = `Age match (Seeker: ${seeker.age || 'N/A'}, Room: ${room?.minAge || 'N/A'}-${room?.maxAge || 'N/A'})`;
 
-    if (seekerAge > 0 && roomMinAge > 0 && roomMaxAge > 0) {
+    if (seekerAge > 0 && roomMinAge > 0 && roomMaxAge > 0) { // Check if all valid numbers
         if (seekerAge >= roomMinAge && seekerAge <= roomMaxAge) {
             ageScore = 20 * MATCH_WEIGHTS.ageMatch;
         } else {
@@ -82,9 +94,11 @@ const calculateMatchScore = (seeker, room) => {
     let genderDescription = `Gender preference (Seeker: ${seeker.gender || 'N/A'}, Room: ${room?.genderPreference || 'N/A'})`;
     if (seeker.gender && room?.genderPreference) {
         if (room.genderPreference !== 'any' && seeker.gender !== room.genderPreference) {
+            // If room has a specific gender preference and seeker's gender doesn't match,
+            // return a very low score to effectively exclude this match.
             return { totalScore: -999999, details: { ...details, genderMatch: { score: -999999, description: "Gender mismatch (Disqualified)" } } };
         } else if (room.genderPreference === 'any' || seeker.gender === room.genderPreference) {
-            genderScore = 10 * MATCH_WEIGHTS.genderMatch;
+            genderScore = 10 * MATCH_WEIGHTS.genderMatch; // Positive score if room allows any gender or genders match
         }
     }
     details.genderMatch = { score: genderScore, description: genderDescription };
@@ -112,11 +126,11 @@ const calculateMatchScore = (seeker, room) => {
     let rentScore = 0;
     let rentDescription = `Rent match (Max: ${seeker.maxRent || 'N/A'}€, Room: ${room?.rent || 'N/A'}€)`;
 
-    if (seekerMaxRent > 0 && roomRent > 0) {
+    if (seekerMaxRent > 0 && roomRent > 0) { // Check if all valid numbers
         if (seekerMaxRent >= roomRent) {
             rentScore = 15 * MATCH_WEIGHTS.rentMatch;
         } else {
-            rentScore = -(roomRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2;
+            rentScore = -(roomRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
         }
     }
     details.rentMatch = { score: rentScore, description: rentDescription };
@@ -129,11 +143,11 @@ const calculateMatchScore = (seeker, room) => {
         if (seeker.pets === 'yes' && room.petsAllowed === 'yes') {
             petsScore = 8 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'yes' && room.petsAllowed === 'no') {
-            petsScore = -20 * MATCH_WEIGHTS.petsMatch;
+            petsScore = -20 * MATCH_WEIGHTS.petsMatch; // Strong penalty
         } else if (seeker.pets === 'no' && room.petsAllowed === 'yes') {
-            petsScore = 0;
+            petsScore = 0; // No penalty if seeker doesn't have pets but Room allows (it's optional)
         } else if (seeker.pets === 'no' && room.petsAllowed === 'no') {
-            petsScore = 5 * MATCH_WEIGHTS.petsMatch;
+            petsScore = 5 * MATCH_WEIGHTS.petsMatch; // Positive if both explicitly don't want pets
         }
     }
     details.petsMatch = { score: petsScore, description: petsDescription };
@@ -155,6 +169,7 @@ const calculateMatchScore = (seeker, room) => {
     totalScore += freeTextScore;
     details.freeTextMatch = { score: freeTextScore, description: `Free text keywords (${matchedKeywords.join(', ') || 'None'})` };
     
+
     // 8. Average age of Room residents compared to seeker's age
     const seekerAgeAvg = safeParseInt(seeker.age);
     const roomAvgAge = safeParseInt(room?.avgAge);
@@ -168,7 +183,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
-    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving');
+    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving'); // Corrected field name
     const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => roomCommunalPrefs.includes(pref));
     let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
@@ -176,7 +191,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 10. New: Values
     const seekerValues = getArrayValue(seeker, 'values');
-    const roomValues = getArrayValue(room, 'roomValues');
+    const roomValues = getArrayValue(room, 'roomValues'); // Corrected field name
     const commonValues = seekerValues.filter(val => roomValues.includes(val));
     let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;
@@ -187,13 +202,13 @@ const calculateMatchScore = (seeker, room) => {
 
 // Helper function to get color class based on score
 const getScoreColorClass = (score) => {
-    if (score >= 100) {
+    if (score >= 100) { // Very good match
         return 'bg-green-200 text-green-800';
-    } else if (score >= 50) {
+    } else if (score >= 50) { // Good match
         return 'bg-yellow-200 text-yellow-800';
-    } else if (score >= 0) {
+    } else if (score >= 0) { // Neutral/okay match
         return 'bg-orange-200 text-orange-800';
-    } else {
+    } else { // Poor match
         return 'bg-red-200 text-red-800';
     }
 };
@@ -202,6 +217,7 @@ const getScoreColorClass = (score) => {
 const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
     if (!isOpen || !seeker || !room || !matchDetails) return null;
 
+    // Defensive checks for matchDetails.details
     const detailsEntries = matchDetails.details ? Object.entries(matchDetails.details) : [];
 
     return (
@@ -229,6 +245,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                 <ul className="space-y-2">
                     {detailsEntries.map(([key, value]) => (
                         <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                            {/* Guard value.description and value.score access */}
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
@@ -256,27 +273,29 @@ function App() {
     const [myRoomProfiles, setMyRoomProfiles] = useState([]);
     const [allSearcherProfilesGlobal, setAllSearcherProfilesGlobal] = useState([]);
     const [allRoomProfilesGlobal, setAllRoomProfilesGlobal] = useState([]);
-
     const [matches, setMatches] = useState([]);
     const [reverseMatches, setReverseMatches] = useState([]);
     
+    // New states to temporarily hold data from separate collections before combining
+    const [newRoomProfilesData, setNewRoomProfilesData] = useState([]);
+    const [oldWgProfilesData, setOldWgProfilesData] = useState([]);
+    const [myNewRoomProfilesData, setMyNewRoomProfilesData] = useState([]);
+    const [myOldWgProfilesData, setMyOldWgProfilesData] = useState([]);
+
     const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showSeekerForm, setShowSeekerForm] = useState(true);
+    const [showSeekerForm, setShowSeekerForm] = useState(true); // Display seeker form by default
     const [saveMessage, setSaveMessage] = useState('');
     const [adminMode, setAdminMode] = useState(false);
-    const [selectedMatchDetails, setSelectedMatchDetails] = useState(null);
+    const [selectedMatchDetails, setSelectedMatchDetails] = useState(null); // State to hold match details for modal
 
     // Firebase initialization and authentication
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
 
         try {
-            // Use global variables provided by Canvas environment, explicitly accessing window
-            const firebaseConfig = JSON.parse(typeof window.__firebase_config !== 'undefined' ? window.__firebase_config : '{}');
-
             appInstance = initializeApp(firebaseConfig);
             dbInstance = getFirestore(appInstance);
             authInstance = getAuth(appInstance);
@@ -286,22 +305,17 @@ function App() {
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (!user) {
                     try {
-                        // Sign in anonymously if no user is present or use custom token if provided
-                        if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
-                            await signInWithCustomToken(authInstance, window.__initial_auth_token);
-                        } else {
-                            await signInAnonymously(authInstance);
-                        }
+                        await signInAnonymously(authInstance);
                     } catch (signInError) {
-                        console.error("Error during Firebase authentication:", signInError);
+                        console.error("Error during Firebase anonymous authentication:", signInError);
                         setError("Error signing in. Please try again later.");
                         setLoading(false);
                         return;
                     }
                 }
-                const currentUid = authInstance.currentUser?.uid || crypto.randomUUID();
+                const currentUid = authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2);
                 setUserId(currentUid);
-                setAdminMode(currentUid === ADMIN_UID);
+                setAdminMode(currentUid === ADMIN_UID); 
                 setLoading(false);
             });
 
@@ -318,19 +332,15 @@ function App() {
     // When admin mode is toggled, ensure the form defaults back to 'Seeker Profile'
     useEffect(() => {
         if (!adminMode) {
-            setShowSeekerForm(true);
+            setShowSeekerForm(true); // Sets it to seeker form when admin mode is deactivated
         }
     }, [adminMode]);
 
-    // Helper to get collection path (simplified for root-level collections as per rules)
-    const getCollectionRef = (collectionName) => {
-        return collection(db, collectionName);
-    };
 
     // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-        const mySearchersQuery = query(getCollectionRef(`searcherProfiles`), where('createdBy', '==', userId));
+        const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMySearcherProfiles(profiles);
@@ -341,24 +351,44 @@ function App() {
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // Real-time data retrieval for *own* Room profiles from Firestore
+    // Real-time data retrieval for *own* Room profiles from Firestore (combining new and old collections)
     useEffect(() => {
         if (!db || !userId) return;
-        const myRoomsQuery = query(getCollectionRef(`roomProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMyRooms = onSnapshot(myRoomsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMyRoomProfiles(profiles);
+
+        const myRoomsQuery = query(collection(db, `roomProfiles`), where('createdBy', '==', userId));
+        const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
+
+        const unsubscribeMyNewRooms = onSnapshot(myRoomsQuery, (snapshot) => {
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
+            setMyNewRoomProfilesData(profiles);
         }, (err) => {
-            console.error("Error fetching own Room profiles:", err);
+            console.error("Error fetching own new Room profiles:", err);
             setError("Error loading own Room profiles.");
         });
-        return () => unsubscribeMyRooms();
+
+        const unsubscribeMyOldWgs = onSnapshot(myWgsQuery, (snapshot) => {
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
+            setMyOldWgProfilesData(profiles);
+        }, (err) => {
+            console.error("Error fetching own old WG profiles:", err);
+        });
+
+        return () => {
+            unsubscribeMyNewRooms();
+            unsubscribeMyOldWgs();
+        };
     }, [db, userId]);
+
+    // Combine own new and old room profiles whenever either changes
+    useEffect(() => {
+        setMyRoomProfiles([...myNewRoomProfilesData, ...myOldWgProfilesData]);
+    }, [myNewRoomProfilesData, myOldWgProfilesData]);
+
 
     // Real-time data retrieval for *all* seeker profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
-        const allSearchersQuery = query(getCollectionRef(`searcherProfiles`));
+        const allSearchersQuery = query(collection(db, `searcherProfiles`));
         const unsubscribeAllSearchers = onSnapshot(allSearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllSearcherProfilesGlobal(profiles);
@@ -368,19 +398,39 @@ function App() {
         return () => unsubscribeAllSearchers();
     }, [db]);
 
-    // Real-time data retrieval for *all* Room profiles (for match calculation)
+    // Real-time data retrieval for *all* Room profiles (for match calculation - combining new and old collections)
     useEffect(() => {
         if (!db) return;
-        const allRoomsQuery = query(getCollectionRef(`roomProfiles`));
-        const unsubscribeAllRooms = onSnapshot(allRoomsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllRoomProfilesGlobal(profiles);
+
+        const roomProfilesQuery = query(collection(db, `roomProfiles`));
+        const wgProfilesQuery = query(collection(db, `wgProfiles`));
+
+        const unsubscribeNewRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
+            const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
+            setNewRoomProfilesData(profiles);
         }, (err) => {
-            console.error("Error fetching all Room profiles (global):", err);
+            console.error("Error fetching all Room profiles (new collection):", err);
             setError("Error loading all Room profiles.");
         });
-        return () => unsubscribeAllRooms();
+
+        const unsubscribeOldWgs = onSnapshot(wgProfilesQuery, (wgSnapshot) => {
+            const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
+            setOldWgProfilesData(profiles);
+        }, (err) => {
+            console.error("Error fetching all Room profiles (old WG collection):", err);
+        });
+
+        return () => {
+            unsubscribeNewRooms();
+            unsubscribeOldWgs();
+        };
     }, [db]);
+
+    // Combine new and old room profiles whenever either changes
+    useEffect(() => {
+        setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgProfilesData]);
+    }, [newRoomProfilesData, oldWgProfilesData]);
+
 
     // Match calculation for both directions
     useEffect(() => {
@@ -390,12 +440,13 @@ function App() {
             
             seekersForMatching.forEach(searcher => {
                 const matchingRooms = allRoomProfilesGlobal.map(room => {
-                    const matchResult = calculateMatchScore(searcher, room);
-                    return { room: room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult };
-                }).filter(match => match.score > -999998);
+                    // Get the full match result object
+                    const matchResult = calculateMatchScore(searcher, room); 
+                    return { room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
+                }).filter(match => match.score > -999998); // Filter out disqualified matches
                 
                 matchingRooms.sort((a, b) => b.score - a.score);
-                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms.slice(0, 10) });
+                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms.slice(0, 10) }); // Limit to top 10 matches
             });
             setMatches(newSeekerToRoomMatches);
 
@@ -404,12 +455,13 @@ function App() {
 
             roomsForMatching.forEach(room => {
                 const matchingSeekers = allSearcherProfilesGlobal.map(searcher => {
+                    // Get the full match result object
                     const matchResult = calculateMatchScore(searcher, room);
-                    return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult };
-                }).filter(match => match.score > -999998);
+                    return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
+                }).filter(match => match.score > -999998); // Filter out disqualified matches
                 
                 matchingSeekers.sort((a, b) => b.score - a.score);
-                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers.slice(0, 10) });
+                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers.slice(0, 10) }); // Limit to top 10 matches
             });
             setReverseMatches(newRoomToSeekerMatches);
         };
@@ -422,6 +474,7 @@ function App() {
         }
     }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db]);
 
+
     // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
@@ -429,7 +482,7 @@ function App() {
             return;
         }
         try {
-            await addDoc(getCollectionRef(`searcherProfiles`), {
+            await addDoc(collection(db, `searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -449,7 +502,7 @@ function App() {
             return;
         }
         try {
-            await addDoc(getCollectionRef(`roomProfiles`), {
+            await addDoc(collection(db, `roomProfiles`), { // Corrected collection name
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -469,16 +522,18 @@ function App() {
             return;
         }
 
+        // Check permission before deletion
         if (!adminMode && userId !== profileCreatorId) {
             setError("You are not authorized to delete this profile.");
-            setTimeout(() => setError(''), 3000);
+            setTimeout(() => setError(''), 3000); // Hide message after 3 seconds
             return;
         }
 
+        // Direct deletion without confirmation dialog
         try {
-            await deleteDoc(doc(getCollectionRef(collectionName), docId));
+            await deleteDoc(doc(db, collectionName, docId));
             setSaveMessage(`Profile "${profileName}" successfully deleted!`);
-            setTimeout(() => setSaveMessage(''), 3000);
+            setTimeout(() => setSaveMessage(''), 3000); // Hide message after 3 seconds
         } catch (e) {
             console.error(`Error deleting profile ${profileName}: `, e);
             setError(`Error deleting profile "${profileName}".`);
@@ -488,8 +543,8 @@ function App() {
     // Unified Profile Form Component
     const ProfileForm = ({ onSubmit, type }) => {
         const [currentStep, setCurrentStep] = useState(1);
-        const totalSteps = 3;
-        const [showGenderTooltip, setShowGenderTooltip] = useState(false);
+        const totalSteps = 3; // Number of steps defined here
+        const [showGenderTooltip, setShowGenderTooltip] = useState(false); // State for tooltip visibility
 
         const [formState, setFormState] = useState({
             name: '',
@@ -500,11 +555,11 @@ function App() {
             maxRent: '', pets: 'any', lookingFor: '',
             description: '', rent: '', roomType: 'Single Room', petsAllowed: 'any',
             avgAge: '', lookingForInFlatmate: '',
-            location: 'Cologne',
-            communalLivingPreferences: [],
-            roomCommunalLiving: [],
-            values: [],
-            roomValues: [],
+            location: 'Cologne', // Default to Cologne
+            communalLivingPreferences: [], // New for seekers
+            roomCommunalLiving: [],          // New for providers
+            values: [],                    // New for seekers
+            roomValues: [],                  // New for providers
         });
 
         const handleChange = (e) => {
@@ -530,16 +585,17 @@ function App() {
         };
 
         const handleCancel = () => {
-            setFormState({
+            setFormState({ // Reset form completely
                 name: '', age: '', minAge: '', maxAge: '', gender: 'male',
                 genderPreference: 'any', personalityTraits: [], interests: [],
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
-                lookingForInFlatmate: '', location: 'Cologne',
+                lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
                 communalLivingPreferences: [], roomCommunalLiving: [], values: [], roomValues: []
             });
-            setCurrentStep(1);
+            setCurrentStep(1); // Go back to first step
         };
+
 
         const handleSubmit = async () => {
             const dataToSubmit = { ...formState };
@@ -550,16 +606,16 @@ function App() {
             dataToSubmit.rent = safeParseInt(dataToSubmit.rent);
             dataToSubmit.avgAge = safeParseInt(dataToSubmit.avgAge);
 
-            await onSubmit(dataToSubmit);
-            setFormState({
+            await onSubmit(dataToSubmit); // Wait until data is saved
+            setFormState({ // Reset form after saving
                 name: '', age: '', minAge: '', maxAge: '', gender: 'male',
                 genderPreference: 'any', personalityTraits: [], interests: [],
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
-                lookingForInFlatmate: '', location: 'Cologne',
+                lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
                 communalLivingPreferences: [], roomCommunalLiving: [], values: [], roomValues: []
             });
-            setCurrentStep(1);
+            setCurrentStep(1); // Go back to first step
         };
 
         return (
@@ -767,7 +823,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(trait)}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(trait)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -789,7 +845,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(interest)}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(interest)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -811,7 +867,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(pref)}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(pref)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -902,7 +958,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(val)}</span>
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(val)}</span> {/* Capitalized for display */}
                                     </label>
                                 ))}
                             </div>
@@ -937,8 +993,8 @@ function App() {
                         </button>
                     ) : (
                         <button
-                            type="button"
-                            onClick={handleSubmit}
+                            type="button" // Changed to type="button"
+                            onClick={handleSubmit} // handleSubmit is now called directly here
                             className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
                                 type === 'seeker'
                                     ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
@@ -1029,6 +1085,7 @@ function App() {
                                                     <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name} <span className="text-sm font-normal text-gray-600">(Score: {roomMatch.score})</span></p>
+                                                            {/* Enhanced Score Display */}
                                                             <div className="flex items-center mt-2">
                                                                 <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                     Score: {roomMatch.score.toFixed(0)}
@@ -1078,7 +1135,8 @@ function App() {
                                                                 roomMatch.matchingSeekers.map(seekerMatch => (
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                            {/* Enhanced Score Display */}
                                                             <div className="flex items-center mt-2">
                                                                 <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                     Score: {seekerMatch.score.toFixed(0)}
@@ -1114,7 +1172,7 @@ function App() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                    <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <p className="font-bold text-[#333333] text-lg mb-2">Name: {profile.name}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Age:</span> {profile.age}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
@@ -1154,7 +1212,7 @@ function App() {
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
-                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
+                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name
                                             className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
                                             <Trash2 size={16} className="mr-2" /> Delete
@@ -1286,7 +1344,7 @@ function App() {
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
-                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
+                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name
                                                     className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
                                                 >
                                                     <Trash2 size={16} className="mr-2" /> Delete Profile
@@ -1351,7 +1409,7 @@ function App() {
                 isOpen={!!selectedMatchDetails}
                 onClose={() => setSelectedMatchDetails(null)}
                 seeker={selectedMatchDetails?.seeker}
-                room={selectedMatchDetails?.room}
+                room={selectedMatchDetails?.room} // Changed from wg to room
                 matchDetails={selectedMatchDetails?.matchDetails}
             />
         </div>

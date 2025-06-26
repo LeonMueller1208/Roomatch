@@ -349,43 +349,70 @@ function App() {
     // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId || !isAuthReady) return; // Wait until auth is ready and userId is set
-        const mySearchersQuery = query(getCollectionRef(`searcherProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMySearcherProfiles(profiles);
-        }, (err) => {
-            console.error("Error fetching own seeker profiles:", err);
-            setError("Error loading own seeker profiles.");
-        });
-        return () => unsubscribeMySearchers();
-    }, [db, userId, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
+        let unsubscribe;
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            const collectionRef = getCollectionRef(`searcherProfiles`);
+            if (!collectionRef) {
+                console.error("Collection reference for searcherProfiles is null after delay.");
+                return;
+            }
+            const mySearchersQuery = query(collectionRef, where('createdBy', '==', userId));
+            unsubscribe = onSnapshot(mySearchersQuery, (snapshot) => {
+                const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setMySearcherProfiles(profiles);
+            }, (err) => {
+                console.error("Error fetching own seeker profiles:", err);
+                setError("Error loading own seeker profiles.");
+            });
+        }, 100); // 100ms delay
+
+        return () => {
+            clearTimeout(timer);
+            if (unsubscribe) unsubscribe();
+        };
+    }, [db, userId, isAuthReady, getCollectionRef]);
 
     // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
         if (!db || !userId || !isAuthReady) return; // Wait until auth is ready and userId is set
+        let unsubscribeMyNewRooms;
+        let unsubscribeMyOldWgs;
 
-        // Fetch from 'roomProfiles' (new)
-        const myRoomsQuery = query(getCollectionRef(`roomProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMyNewRooms = onSnapshot(myRoomsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
-            setMyNewRoomProfilesData(profiles); // Assuming these states exist
-        }, (err) => {
-            console.error("Error fetching own new Room profiles:", err);
-            setError("Error loading own Room profiles.");
-        });
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            // Fetch from 'roomProfiles' (new)
+            const newRoomsCollectionRef = getCollectionRef(`roomProfiles`);
+            if (newRoomsCollectionRef) {
+                const myRoomsQuery = query(newRoomsCollectionRef, where('createdBy', '==', userId));
+                unsubscribeMyNewRooms = onSnapshot(myRoomsQuery, (snapshot) => {
+                    const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
+                    setMyNewRoomProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching own new Room profiles:", err);
+                    setError("Error loading own Room profiles.");
+                });
+            } else {
+                console.error("Collection reference for roomProfiles is null after delay.");
+            }
 
-        // Fetch from 'wgProfiles' (old)
-        const myWgsQuery = query(getCollectionRef(`wgProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMyOldWgs = onSnapshot(myWgsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
-            setMyOldWgProfilesData(profiles); // Assuming these states exist
-        }, (err) => {
-            console.error("Error fetching own old WG profiles:", err);
-        });
+            // Fetch from 'wgProfiles' (old)
+            const oldWgsCollectionRef = getCollectionRef(`wgProfiles`);
+            if (oldWgsCollectionRef) {
+                const myWgsQuery = query(oldWgsCollectionRef, where('createdBy', '==', userId));
+                unsubscribeMyOldWgs = onSnapshot(myWgsQuery, (snapshot) => {
+                    const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
+                    setMyOldWgProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching own old WG profiles:", err);
+                });
+            } else {
+                console.error("Collection reference for wgProfiles is null after delay.");
+            }
+        }, 100); // 100ms delay
 
         return () => {
-            unsubscribeMyNewRooms();
-            unsubscribeMyOldWgs();
+            clearTimeout(timer);
+            if (unsubscribeMyNewRooms) unsubscribeMyNewRooms();
+            if (unsubscribeMyOldWgs) unsubscribeMyOldWgs();
         };
     }, [db, userId, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
 
@@ -405,44 +432,71 @@ function App() {
     // Real-time data retrieval for *all* seeker profiles (for match calculation)
     useEffect(() => {
         if (!db || !isAuthReady) return; // Wait until auth is ready
-        const allSearchersQuery = query(getCollectionRef(`searcherProfiles`));
-        const unsubscribeAllSearchers = onSnapshot(allSearchersQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllSearcherProfilesGlobal(profiles);
-        }, (err) => {
-            console.error("Error fetching all seeker profiles (global):", err);
-        });
-        return () => unsubscribeAllSearchers();
-    }, [db, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
+        let unsubscribe;
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            const collectionRef = getCollectionRef(`searcherProfiles`);
+            if (!collectionRef) {
+                console.error("Collection reference for all searcherProfiles is null after delay.");
+                return;
+            }
+            const allSearchersQuery = query(collectionRef);
+            unsubscribe = onSnapshot(allSearchersQuery, (snapshot) => {
+                const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setAllSearcherProfilesGlobal(profiles);
+            }, (err) => {
+                console.error("Error fetching all seeker profiles (global):", err);
+            });
+        }, 100); // 100ms delay
+
+        return () => {
+            clearTimeout(timer);
+            if (unsubscribe) unsubscribe();
+        };
+    }, [db, isAuthReady, getCollectionRef]);
 
     // Real-time data retrieval for *all* Room profiles (for match calculation - combining new and old collections)
     useEffect(() => {
         if (!db || !isAuthReady) return; // Wait until auth is ready
+        let unsubscribeNewRooms;
+        let unsubscribeOldWgs;
 
-        // Fetch from 'roomProfiles' (new)
-        const roomProfilesQuery = query(getCollectionRef(`roomProfiles`));
-        const unsubscribeNewRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
-            const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
-            setNewRoomProfilesData(profiles);
-        }, (err) => {
-            console.error("Error fetching all Room profiles (new collection):", err);
-            setError("Error loading all Room profiles.");
-        });
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            // Fetch from 'roomProfiles' (new)
+            const newRoomsCollectionRef = getCollectionRef(`roomProfiles`);
+            if (newRoomsCollectionRef) {
+                const roomProfilesQuery = query(newRoomsCollectionRef);
+                unsubscribeNewRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
+                    const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
+                    setNewRoomProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching all Room profiles (new collection):", err);
+                    setError("Error loading all Room profiles.");
+                });
+            } else {
+                console.error("Collection reference for roomProfiles (global) is null after delay.");
+            }
 
-        // Fetch from 'wgProfiles' (old)
-        const wgProfilesQuery = query(getCollectionRef(`wgProfiles`));
-        const unsubscribeOldWgs = onSnapshot(wgProfilesQuery, (wgSnapshot) => {
-            const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
-            setOldWgProfilesData(profiles);
-        }, (err) => {
-            console.error("Error fetching all Room profiles (old WG collection):", err);
-        });
+            // Fetch from 'wgProfiles' (old)
+            const oldWgsCollectionRef = getCollectionRef(`wgProfiles`);
+            if (oldWgsCollectionRef) {
+                const wgProfilesQuery = query(oldWgsCollectionRef);
+                unsubscribeOldWgs = onSnapshot(wgProfilesQuery, (wgSnapshot) => {
+                    const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
+                    setOldWgProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching all Room profiles (old WG collection):", err);
+                });
+            } else {
+                console.error("Collection reference for wgProfiles (global) is null after delay.");
+            }
+        }, 100); // 100ms delay
 
         return () => {
-            unsubscribeNewRooms();
-            unsubscribeOldWgs();
+            clearTimeout(timer);
+            if (unsubscribeNewRooms) unsubscribeNewRooms();
+            if (unsubscribeOldWgs) unsubscribeOldWgs();
         };
-    }, [db, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
+    }, [db, isAuthReady, getCollectionRef]);
 
     // Combine new and old room profiles whenever either changes
     useEffect(() => {
@@ -1209,7 +1263,7 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
+                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 0)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
@@ -1238,7 +1292,7 @@ function App() {
                                         <p className="text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
                                         <p className="text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
+                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 0)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}

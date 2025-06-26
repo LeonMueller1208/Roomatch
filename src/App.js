@@ -1078,7 +1078,7 @@ function App() {
                                                                 roomMatch.matchingSeekers.map(seekerMatch => (
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
+                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
                                                             <div className="flex items-center mt-2">
                                                                 <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                     Score: {seekerMatch.score.toFixed(0)}

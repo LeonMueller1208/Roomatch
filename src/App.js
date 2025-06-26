@@ -1,24 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info } from 'lucide-react'; // Added Info icon
-
-// Firebase Configuration
-const firebaseConfig = {
-    // REPLACE THIS API KEY WITH YOUR OWN FROM THE FIREBASE CONSOLE!
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // Example: "AIzaSyACGoSxD0_UZWNg06gzZjaifBn3sI06YGg"
-    authDomain: "mvp-roomatch.firebaseapp.com",
-    projectId: "mvp-roomatch",
-    storageBucket: "mvp-roomatch.firebasestorage.app",
-    messagingSenderId: "190918526277",
-    appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
-    measurementId: "G-5JPWLD0ZC"
-};
+import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info } from 'lucide-react';
 
 // Predefined lists for personality traits and interests
 const allPersonalityTraits = ['tidy', 'calm', 'social', 'creative', 'sporty', 'night owl', 'early bird', 'tolerant', 'animal lover', 'flexible', 'structured'];
-const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art']; // Corrected 'Natur' to 'Nature'
+const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports', 'Reading', 'Travel', 'Partying', 'Gaming', 'Plants', 'Culture', 'Art'];
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
@@ -37,10 +25,10 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // <-- Corrected ADMIN_UID based on your input
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3";
 
 // Helper to safely parse numbers
-const safeParseInt = (value) => parseInt(value) || 0; // Moved this function here
+const safeParseInt = (value) => parseInt(value) || 0;
 
 // Helper to capitalize first letter for display
 const capitalizeFirstLetter = (string) => {
@@ -53,14 +41,14 @@ const calculateMatchScore = (seeker, room) => {
     let totalScore = 0;
     // Initialize details with all possible categories and default values
     const details = {
-        ageMatch: { score: 0, description: `Age match (N/A)` }, // Updated default description
+        ageMatch: { score: 0, description: `Age match (N/A)` },
         genderMatch: { score: 0, description: `Gender preference (N/A)` },
         personalityTraits: { score: 0, description: `Personality overlap (None)` },
         interests: { score: 0, description: `Interests overlap (None)` },
-        rentMatch: { score: 0, description: `Rent match (N/A)` }, // Updated default description
+        rentMatch: { score: 0, description: `Rent match (N/A)` },
         petsMatch: { score: 0, description: `Pets compatibility (N/A)` },
         freeTextMatch: { score: 0, description: `Free text keywords (None)` },
-        avgAgeDifference: { score: 0, description: `Average age difference (N/A)` }, // Updated default description
+        avgAgeDifference: { score: 0, description: `Average age difference (N/A)` },
         communalLiving: { score: 0, description: `Communal living preferences (None)` },
         values: { score: 0, description: `Shared values (None)` },
     };
@@ -77,7 +65,7 @@ const calculateMatchScore = (seeker, room) => {
     let ageScore = 0;
     let ageDescription = `Age match (Seeker: ${seeker.age || 'N/A'}, Room: ${room?.minAge || 'N/A'}-${room?.maxAge || 'N/A'})`;
 
-    if (seekerAge > 0 && roomMinAge > 0 && roomMaxAge > 0) { // Check if all valid numbers
+    if (seekerAge > 0 && roomMinAge > 0 && roomMaxAge > 0) {
         if (seekerAge >= roomMinAge && seekerAge <= roomMaxAge) {
             ageScore = 20 * MATCH_WEIGHTS.ageMatch;
         } else {
@@ -94,11 +82,9 @@ const calculateMatchScore = (seeker, room) => {
     let genderDescription = `Gender preference (Seeker: ${seeker.gender || 'N/A'}, Room: ${room?.genderPreference || 'N/A'})`;
     if (seeker.gender && room?.genderPreference) {
         if (room.genderPreference !== 'any' && seeker.gender !== room.genderPreference) {
-            // If room has a specific gender preference and seeker's gender doesn't match,
-            // return a very low score to effectively exclude this match.
             return { totalScore: -999999, details: { ...details, genderMatch: { score: -999999, description: "Gender mismatch (Disqualified)" } } };
         } else if (room.genderPreference === 'any' || seeker.gender === room.genderPreference) {
-            genderScore = 10 * MATCH_WEIGHTS.genderMatch; // Positive score if room allows any gender or genders match
+            genderScore = 10 * MATCH_WEIGHTS.genderMatch;
         }
     }
     details.genderMatch = { score: genderScore, description: genderDescription };
@@ -126,11 +112,11 @@ const calculateMatchScore = (seeker, room) => {
     let rentScore = 0;
     let rentDescription = `Rent match (Max: ${seeker.maxRent || 'N/A'}€, Room: ${room?.rent || 'N/A'}€)`;
 
-    if (seekerMaxRent > 0 && roomRent > 0) { // Check if all valid numbers
+    if (seekerMaxRent > 0 && roomRent > 0) {
         if (seekerMaxRent >= roomRent) {
             rentScore = 15 * MATCH_WEIGHTS.rentMatch;
         } else {
-            rentScore = -(roomRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2; 
+            rentScore = -(roomRent - seekerMaxRent) * MATCH_WEIGHTS.rentMatch * 0.2;
         }
     }
     details.rentMatch = { score: rentScore, description: rentDescription };
@@ -143,11 +129,11 @@ const calculateMatchScore = (seeker, room) => {
         if (seeker.pets === 'yes' && room.petsAllowed === 'yes') {
             petsScore = 8 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'yes' && room.petsAllowed === 'no') {
-            petsScore = -20 * MATCH_WEIGHTS.petsMatch; // Strong penalty
+            petsScore = -20 * MATCH_WEIGHTS.petsMatch;
         } else if (seeker.pets === 'no' && room.petsAllowed === 'yes') {
-            petsScore = 0; // No penalty if seeker doesn't have pets but Room allows (it's optional)
+            petsScore = 0;
         } else if (seeker.pets === 'no' && room.petsAllowed === 'no') {
-            petsScore = 5 * MATCH_WEIGHTS.petsMatch; // Positive if both explicitly don't want pets
+            petsScore = 5 * MATCH_WEIGHTS.petsMatch;
         }
     }
     details.petsMatch = { score: petsScore, description: petsDescription };
@@ -169,7 +155,6 @@ const calculateMatchScore = (seeker, room) => {
     totalScore += freeTextScore;
     details.freeTextMatch = { score: freeTextScore, description: `Free text keywords (${matchedKeywords.join(', ') || 'None'})` };
     
-
     // 8. Average age of Room residents compared to seeker's age
     const seekerAgeAvg = safeParseInt(seeker.age);
     const roomAvgAge = safeParseInt(room?.avgAge);
@@ -183,7 +168,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 9. New: Communal Living Preferences
     const seekerCommunalPrefs = getArrayValue(seeker, 'communalLivingPreferences');
-    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving'); // Corrected field name
+    const roomCommunalPrefs = getArrayValue(room, 'roomCommunalLiving');
     const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => roomCommunalPrefs.includes(pref));
     let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
@@ -191,7 +176,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 10. New: Values
     const seekerValues = getArrayValue(seeker, 'values');
-    const roomValues = getArrayValue(room, 'roomValues'); // Corrected field name
+    const roomValues = getArrayValue(room, 'roomValues');
     const commonValues = seekerValues.filter(val => roomValues.includes(val));
     let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;
@@ -202,13 +187,13 @@ const calculateMatchScore = (seeker, room) => {
 
 // Helper function to get color class based on score
 const getScoreColorClass = (score) => {
-    if (score >= 100) { // Very good match
+    if (score >= 100) {
         return 'bg-green-200 text-green-800';
-    } else if (score >= 50) { // Good match
+    } else if (score >= 50) {
         return 'bg-yellow-200 text-yellow-800';
-    } else if (score >= 0) { // Neutral/okay match
+    } else if (score >= 0) {
         return 'bg-orange-200 text-orange-800';
-    } else { // Poor match
+    } else {
         return 'bg-red-200 text-red-800';
     }
 };
@@ -217,7 +202,6 @@ const getScoreColorClass = (score) => {
 const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
     if (!isOpen || !seeker || !room || !matchDetails) return null;
 
-    // Defensive checks for matchDetails.details
     const detailsEntries = matchDetails.details ? Object.entries(matchDetails.details) : [];
 
     return (
@@ -245,7 +229,6 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                 <ul className="space-y-2">
                     {detailsEntries.map(([key, value]) => (
                         <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                            {/* Guard value.description and value.score access */}
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
@@ -270,32 +253,30 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
 // Main component of the Room match application
 function App() {
     const [mySearcherProfiles, setMySearcherProfiles] = useState([]);
-    const [myRoomProfiles, setMyRoomProfiles] = useState([]);
+    const [myRoomProfiles, setMyRoomProfiles] = useState([]); // Changed back to myRoomProfiles
     const [allSearcherProfilesGlobal, setAllSearcherProfilesGlobal] = useState([]);
-    const [allRoomProfilesGlobal, setAllRoomProfilesGlobal] = useState([]);
+    const [allRoomProfilesGlobal, setAllRoomProfilesGlobal] = useState([]); // Changed back to allRoomProfilesGlobal
+
     const [matches, setMatches] = useState([]);
     const [reverseMatches, setReverseMatches] = useState([]);
     
-    // New states to temporarily hold data from separate collections before combining
-    const [newRoomProfilesData, setNewRoomProfilesData] = useState([]);
-    const [oldWgProfilesData, setOldWgProfilesData] = useState([]);
-    const [myNewRoomProfilesData, setMyNewRoomProfilesData] = useState([]);
-    const [myOldWgProfilesData, setMyOldWgProfilesData] = useState([]);
-
     const [db, setDb] = useState(null);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showSeekerForm, setShowSeekerForm] = useState(true); // Display seeker form by default
+    const [showSeekerForm, setShowSeekerForm] = useState(true);
     const [saveMessage, setSaveMessage] = useState('');
     const [adminMode, setAdminMode] = useState(false);
-    const [selectedMatchDetails, setSelectedMatchDetails] = useState(null); // State to hold match details for modal
+    const [selectedMatchDetails, setSelectedMatchDetails] = useState(null);
 
     // Firebase initialization and authentication
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
 
         try {
+            // Use global variables provided by Canvas environment
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
             appInstance = initializeApp(firebaseConfig);
             dbInstance = getFirestore(appInstance);
             authInstance = getAuth(appInstance);
@@ -305,17 +286,22 @@ function App() {
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (!user) {
                     try {
-                        await signInAnonymously(authInstance);
+                        // Sign in anonymously if no user is present or use custom token if provided
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(authInstance, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(authInstance);
+                        }
                     } catch (signInError) {
-                        console.error("Error during Firebase anonymous authentication:", signInError);
+                        console.error("Error during Firebase authentication:", signInError);
                         setError("Error signing in. Please try again later.");
                         setLoading(false);
                         return;
                     }
                 }
-                const currentUid = authInstance.currentUser?.uid || 'anonymous-' + Date.now() + '-' + Math.random().toString(36).substring(2);
+                const currentUid = authInstance.currentUser?.uid || crypto.randomUUID();
                 setUserId(currentUid);
-                setAdminMode(currentUid === ADMIN_UID); 
+                setAdminMode(currentUid === ADMIN_UID);
                 setLoading(false);
             });
 
@@ -332,15 +318,19 @@ function App() {
     // When admin mode is toggled, ensure the form defaults back to 'Seeker Profile'
     useEffect(() => {
         if (!adminMode) {
-            setShowSeekerForm(true); // Sets it to seeker form when admin mode is deactivated
+            setShowSeekerForm(true);
         }
     }, [adminMode]);
 
+    // Helper to get collection path (simplified for root-level collections as per rules)
+    const getCollectionRef = (collectionName) => {
+        return collection(db, collectionName);
+    };
 
     // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-        const mySearchersQuery = query(collection(db, `searcherProfiles`), where('createdBy', '==', userId));
+        const mySearchersQuery = query(getCollectionRef(`searcherProfiles`), where('createdBy', '==', userId));
         const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMySearcherProfiles(profiles);
@@ -351,44 +341,24 @@ function App() {
         return () => unsubscribeMySearchers();
     }, [db, userId]);
 
-    // Real-time data retrieval for *own* Room profiles from Firestore (combining new and old collections)
+    // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
         if (!db || !userId) return;
-
-        const myRoomsQuery = query(collection(db, `roomProfiles`), where('createdBy', '==', userId));
-        const myWgsQuery = query(collection(db, `wgProfiles`), where('createdBy', '==', userId));
-
-        const unsubscribeMyNewRooms = onSnapshot(myRoomsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
-            setMyNewRoomProfilesData(profiles);
+        const myRoomsQuery = query(getCollectionRef(`roomProfiles`), where('createdBy', '==', userId)); // Changed to roomProfiles
+        const unsubscribeMyRooms = onSnapshot(myRoomsQuery, (snapshot) => {
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setMyRoomProfiles(profiles); // Changed to setMyRoomProfiles
         }, (err) => {
-            console.error("Error fetching own new Room profiles:", err);
+            console.error("Error fetching own Room profiles:", err);
             setError("Error loading own Room profiles.");
         });
-
-        const unsubscribeMyOldWgs = onSnapshot(myWgsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
-            setMyOldWgProfilesData(profiles);
-        }, (err) => {
-            console.error("Error fetching own old WG profiles:", err);
-        });
-
-        return () => {
-            unsubscribeMyNewRooms();
-            unsubscribeMyOldWgs();
-        };
+        return () => unsubscribeMyRooms();
     }, [db, userId]);
-
-    // Combine own new and old room profiles whenever either changes
-    useEffect(() => {
-        setMyRoomProfiles([...myNewRoomProfilesData, ...myOldWgProfilesData]);
-    }, [myNewRoomProfilesData, myOldWgProfilesData]);
-
 
     // Real-time data retrieval for *all* seeker profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
-        const allSearchersQuery = query(collection(db, `searcherProfiles`));
+        const allSearchersQuery = query(getCollectionRef(`searcherProfiles`));
         const unsubscribeAllSearchers = onSnapshot(allSearchersQuery, (snapshot) => {
             const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllSearcherProfilesGlobal(profiles);
@@ -398,39 +368,19 @@ function App() {
         return () => unsubscribeAllSearchers();
     }, [db]);
 
-    // Real-time data retrieval for *all* Room profiles (for match calculation - combining new and old collections)
+    // Real-time data retrieval for *all* Room profiles (for match calculation)
     useEffect(() => {
         if (!db) return;
-
-        const roomProfilesQuery = query(collection(db, `roomProfiles`));
-        const wgProfilesQuery = query(collection(db, `wgProfiles`));
-
-        const unsubscribeNewRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
-            const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
-            setNewRoomProfilesData(profiles);
+        const allRoomsQuery = query(getCollectionRef(`roomProfiles`)); // Changed to roomProfiles
+        const unsubscribeAllRooms = onSnapshot(allRoomsQuery, (snapshot) => {
+            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setAllRoomProfilesGlobal(profiles); // Changed to setAllRoomProfilesGlobal
         }, (err) => {
-            console.error("Error fetching all Room profiles (new collection):", err);
+            console.error("Error fetching all Room profiles (global):", err);
             setError("Error loading all Room profiles.");
         });
-
-        const unsubscribeOldWgs = onSnapshot(wgProfilesQuery, (wgSnapshot) => {
-            const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
-            setOldWgProfilesData(profiles);
-        }, (err) => {
-            console.error("Error fetching all Room profiles (old WG collection):", err);
-        });
-
-        return () => {
-            unsubscribeNewRooms();
-            unsubscribeOldWgs();
-        };
+        return () => unsubscribeAllRooms();
     }, [db]);
-
-    // Combine new and old room profiles whenever either changes
-    useEffect(() => {
-        setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgProfilesData]);
-    }, [newRoomProfilesData, oldWgProfilesData]);
-
 
     // Match calculation for both directions
     useEffect(() => {
@@ -439,29 +389,27 @@ function App() {
             const seekersForMatching = adminMode ? allSearcherProfilesGlobal : mySearcherProfiles;
             
             seekersForMatching.forEach(searcher => {
-                const matchingRooms = allRoomProfilesGlobal.map(room => {
-                    // Get the full match result object
-                    const matchResult = calculateMatchScore(searcher, room); 
-                    return { room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
-                }).filter(match => match.score > -999998); // Filter out disqualified matches
+                const matchingRooms = allRoomProfilesGlobal.map(room => { // Changed to allRoomProfilesGlobal
+                    const matchResult = calculateMatchScore(searcher, room);
+                    return { room: room, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult };
+                }).filter(match => match.score > -999998);
                 
                 matchingRooms.sort((a, b) => b.score - a.score);
-                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms.slice(0, 10) }); // Limit to top 10 matches
+                newSeekerToRoomMatches.push({ searcher: searcher, matchingRooms: matchingRooms.slice(0, 10) });
             });
             setMatches(newSeekerToRoomMatches);
 
             const newRoomToSeekerMatches = [];
-            const roomsForMatching = adminMode ? allRoomProfilesGlobal : myRoomProfiles;
+            const roomsForMatching = adminMode ? allRoomProfilesGlobal : myRoomProfiles; // Changed to allRoomProfilesGlobal / myRoomProfiles
 
             roomsForMatching.forEach(room => {
                 const matchingSeekers = allSearcherProfilesGlobal.map(searcher => {
-                    // Get the full match result object
                     const matchResult = calculateMatchScore(searcher, room);
-                    return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult }; // Pass the full result as well
-                }).filter(match => match.score > -999998); // Filter out disqualified matches
+                    return { searcher, score: matchResult.totalScore, breakdownDetails: matchResult.details, fullMatchResult: matchResult };
+                }).filter(match => match.score > -999998);
                 
                 matchingSeekers.sort((a, b) => b.score - a.score);
-                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers.slice(0, 10) }); // Limit to top 10 matches
+                newRoomToSeekerMatches.push({ room: room, matchingSeekers: matchingSeekers.slice(0, 10) });
             });
             setReverseMatches(newRoomToSeekerMatches);
         };
@@ -474,7 +422,6 @@ function App() {
         }
     }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db]);
 
-
     // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
@@ -482,7 +429,7 @@ function App() {
             return;
         }
         try {
-            await addDoc(collection(db, `searcherProfiles`), {
+            await addDoc(getCollectionRef(`searcherProfiles`), {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -496,13 +443,13 @@ function App() {
     };
 
     // Function to add a Room profile to Firestore
-    const addRoomProfile = async (profileData) => {
+    const addRoomProfile = async (profileData) => { // Changed function name
         if (!db || !userId) {
             setError("Database not ready. Please wait or log in.");
             return;
         }
         try {
-            await addDoc(collection(db, `roomProfiles`), { // Corrected collection name
+            await addDoc(getCollectionRef(`roomProfiles`), { // Changed to roomProfiles
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -522,18 +469,16 @@ function App() {
             return;
         }
 
-        // Check permission before deletion
         if (!adminMode && userId !== profileCreatorId) {
             setError("You are not authorized to delete this profile.");
-            setTimeout(() => setError(''), 3000); // Hide message after 3 seconds
+            setTimeout(() => setError(''), 3000);
             return;
         }
 
-        // Direct deletion without confirmation dialog
         try {
-            await deleteDoc(doc(db, collectionName, docId));
+            await deleteDoc(doc(getCollectionRef(collectionName), docId));
             setSaveMessage(`Profile "${profileName}" successfully deleted!`);
-            setTimeout(() => setSaveMessage(''), 3000); // Hide message after 3 seconds
+            setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error(`Error deleting profile ${profileName}: `, e);
             setError(`Error deleting profile "${profileName}".`);
@@ -543,8 +488,8 @@ function App() {
     // Unified Profile Form Component
     const ProfileForm = ({ onSubmit, type }) => {
         const [currentStep, setCurrentStep] = useState(1);
-        const totalSteps = 3; // Number of steps defined here
-        const [showGenderTooltip, setShowGenderTooltip] = useState(false); // State for tooltip visibility
+        const totalSteps = 3;
+        const [showGenderTooltip, setShowGenderTooltip] = useState(false);
 
         const [formState, setFormState] = useState({
             name: '',
@@ -555,11 +500,11 @@ function App() {
             maxRent: '', pets: 'any', lookingFor: '',
             description: '', rent: '', roomType: 'Single Room', petsAllowed: 'any',
             avgAge: '', lookingForInFlatmate: '',
-            location: 'Cologne', // Default to Cologne
-            communalLivingPreferences: [], // New for seekers
-            roomCommunalLiving: [],          // New for providers
-            values: [],                    // New for seekers
-            roomValues: [],                  // New for providers
+            location: 'Cologne',
+            communalLivingPreferences: [],
+            roomCommunalLiving: [],
+            values: [],
+            roomValues: [],
         });
 
         const handleChange = (e) => {
@@ -585,17 +530,16 @@ function App() {
         };
 
         const handleCancel = () => {
-            setFormState({ // Reset form completely
+            setFormState({
                 name: '', age: '', minAge: '', maxAge: '', gender: 'male',
                 genderPreference: 'any', personalityTraits: [], interests: [],
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
-                lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
+                lookingForInFlatmate: '', location: 'Cologne',
                 communalLivingPreferences: [], roomCommunalLiving: [], values: [], roomValues: []
             });
-            setCurrentStep(1); // Go back to first step
+            setCurrentStep(1);
         };
-
 
         const handleSubmit = async () => {
             const dataToSubmit = { ...formState };
@@ -606,16 +550,16 @@ function App() {
             dataToSubmit.rent = safeParseInt(dataToSubmit.rent);
             dataToSubmit.avgAge = safeParseInt(dataToSubmit.avgAge);
 
-            await onSubmit(dataToSubmit); // Wait until data is saved
-            setFormState({ // Reset form after saving
+            await onSubmit(dataToSubmit);
+            setFormState({
                 name: '', age: '', minAge: '', maxAge: '', gender: 'male',
                 genderPreference: 'any', personalityTraits: [], interests: [],
                 maxRent: '', pets: 'any', lookingFor: '', description: '', rent: '',
                 roomType: 'Single Room', petsAllowed: 'any', avgAge: '',
-                lookingForInFlatmate: '', location: 'Cologne', // Reset to Cologne
+                lookingForInFlatmate: '', location: 'Cologne',
                 communalLivingPreferences: [], roomCommunalLiving: [], values: [], roomValues: []
             });
-            setCurrentStep(1); // Go back to first step
+            setCurrentStep(1);
         };
 
         return (
@@ -823,7 +767,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(trait)}</span> {/* Capitalized for display */}
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(trait)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -845,7 +789,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(interest)}</span> {/* Capitalized for display */}
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(interest)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -867,7 +811,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(pref)}</span> {/* Capitalized for display */}
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(pref)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -958,7 +902,7 @@ function App() {
                                             onChange={handleChange}
                                             className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(val)}</span> {/* Capitalized for display */}
+                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(val)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -993,8 +937,8 @@ function App() {
                         </button>
                     ) : (
                         <button
-                            type="button" // Changed to type="button"
-                            onClick={handleSubmit} // handleSubmit is now called directly here
+                            type="button"
+                            onClick={handleSubmit}
                             className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
                                 type === 'seeker'
                                     ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
@@ -1026,7 +970,7 @@ function App() {
     }
 
     const showMySeekerDashboard = mySearcherProfiles.length > 0 && !adminMode;
-    const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode;
+    const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode; // Uses myRoomProfiles
 
     return (
         <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center relative overflow-hidden">
@@ -1085,7 +1029,6 @@ function App() {
                                                     <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name} <span className="text-sm font-normal text-gray-600">(Score: {roomMatch.score})</span></p>
-                                                            {/* Enhanced Score Display */}
                                                             <div className="flex items-center mt-2">
                                                                 <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                     Score: {roomMatch.score.toFixed(0)}
@@ -1136,7 +1079,6 @@ function App() {
                                                                     <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name} <span className="text-sm font-normal text-gray-600">(Score: {seekerMatch.score})</span></p>
-                                                            {/* Enhanced Score Display */}
                                                             <div className="flex items-center mt-2">
                                                                 <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                     Score: {seekerMatch.score.toFixed(0)}
@@ -1212,7 +1154,7 @@ function App() {
                                         <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
-                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name
+                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Changed to roomProfiles
                                             className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
                                         >
                                             <Trash2 size={16} className="mr-2" /> Delete
@@ -1344,7 +1286,7 @@ function App() {
                                                 <p className="text-sm text-gray-700 mb-1"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
-                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Corrected collection name
+                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)} // Changed to roomProfiles
                                                     className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
                                                 >
                                                     <Trash2 size={16} className="mr-2" /> Delete Profile
@@ -1409,7 +1351,7 @@ function App() {
                 isOpen={!!selectedMatchDetails}
                 onClose={() => setSelectedMatchDetails(null)}
                 seeker={selectedMatchDetails?.seeker}
-                room={selectedMatchDetails?.room} // Changed from wg to room
+                room={selectedMatchDetails?.room}
                 matchDetails={selectedMatchDetails?.matchDetails}
             />
         </div>

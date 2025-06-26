@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // useCallback hinzugefügt
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
@@ -334,9 +334,17 @@ function App() {
     }, [adminMode]);
 
     // Helper to get collection path (simplified for root-level collections as per rules)
-    const getCollectionRef = (collectionName) => {
+    const getCollectionRef = useCallback((collectionName) => {
+        // Diese Prüfung ist theoretisch redundant, wenn die useEffects bereits auf `db` prüfen,
+        // aber sie bietet explizite Sicherheit und eine klarere Warnung, falls sie fälschlicherweise
+        // aufgerufen wird, bevor die DB initialisiert wurde.
+        if (!db) {
+            console.warn("Attempted to get collection reference before Firestore DB was initialized.");
+            return null; // Null zurückgeben oder einen Fehler werfen
+        }
         return collection(db, collectionName);
-    };
+    }, [db]); // Diese Funktion wird nur neu erstellt, wenn sich 'db' ändert.
+
 
     // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
@@ -350,7 +358,7 @@ function App() {
             setError("Error loading own seeker profiles.");
         });
         return () => unsubscribeMySearchers();
-    }, [db, userId, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
+    }, [db, userId, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
 
     // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
@@ -379,7 +387,7 @@ function App() {
             unsubscribeMyNewRooms();
             unsubscribeMyOldWgs();
         };
-    }, [db, userId, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
+    }, [db, userId, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
 
     // States to temporarily hold data from separate collections before combining
     const [newRoomProfilesData, setNewRoomProfilesData] = useState([]);
@@ -405,7 +413,7 @@ function App() {
             console.error("Error fetching all seeker profiles (global):", err);
         });
         return () => unsubscribeAllSearchers();
-    }, [db, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
+    }, [db, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
 
     // Real-time data retrieval for *all* Room profiles (for match calculation - combining new and old collections)
     useEffect(() => {
@@ -434,7 +442,7 @@ function App() {
             unsubscribeNewRooms();
             unsubscribeOldWgs();
         };
-    }, [db, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
+    }, [db, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
 
     // Combine new and old room profiles whenever either changes
     useEffect(() => {
@@ -481,7 +489,7 @@ function App() {
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db, isAuthReady]); // Add isAuthReady to dependencies
+    }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db, isAuthReady]); // isAuthReady ist bereits eine Abhängigkeit
 
     // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
@@ -490,7 +498,13 @@ function App() {
             return;
         }
         try {
-            await addDoc(getCollectionRef(`searcherProfiles`), {
+            // Sicherstellen, dass getCollectionRef nicht null zurückgibt, bevor addDoc aufgerufen wird
+            const collectionRef = getCollectionRef(`searcherProfiles`);
+            if (!collectionRef) {
+                setError("Could not get collection reference for searcher profiles.");
+                return;
+            }
+            await addDoc(collectionRef, {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -510,9 +524,13 @@ function App() {
             return;
         }
         try {
-            // Determine which collection to use based on isLegacy flag, if applicable.
-            // For now, always add to 'roomProfiles' (new structure) as per current forms.
-            await addDoc(getCollectionRef(`roomProfiles`), {
+            // Sicherstellen, dass getCollectionRef nicht null zurückgibt, bevor addDoc aufgerufen wird
+            const collectionRef = getCollectionRef(`roomProfiles`);
+            if (!collectionRef) {
+                setError("Could not get collection reference for room profiles.");
+                return;
+            }
+            await addDoc(collectionRef, {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId,
@@ -539,7 +557,13 @@ function App() {
         }
 
         try {
-            await deleteDoc(doc(getCollectionRef(collectionName), docId));
+            // Sicherstellen, dass getCollectionRef nicht null zurückgibt, bevor doc aufgerufen wird
+            const collectionRef = getCollectionRef(collectionName);
+            if (!collectionRef) {
+                setError(`Could not get collection reference for ${collectionName}.`);
+                return;
+            }
+            await deleteDoc(doc(collectionRef, docId));
             setSaveMessage(`Profile "${profileName}" successfully deleted!`);
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {

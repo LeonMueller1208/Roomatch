@@ -350,7 +350,7 @@ function App() {
             setError("Error loading own seeker profiles.");
         });
         return () => unsubscribeMySearchers();
-    }, [db, userId, isAuthReady]); // Add isAuthReady to dependencies
+    }, [db, userId, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
 
     // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
@@ -379,7 +379,7 @@ function App() {
             unsubscribeMyNewRooms();
             unsubscribeMyOldWgs();
         };
-    }, [db, userId, isAuthReady]); // Add isAuthReady to dependencies
+    }, [db, userId, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
 
     // States to temporarily hold data from separate collections before combining
     const [newRoomProfilesData, setNewRoomProfilesData] = useState([]);
@@ -405,7 +405,7 @@ function App() {
             console.error("Error fetching all seeker profiles (global):", err);
         });
         return () => unsubscribeAllSearchers();
-    }, [db, isAuthReady]); // Add isAuthReady to dependencies
+    }, [db, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
 
     // Real-time data retrieval for *all* Room profiles (for match calculation - combining new and old collections)
     useEffect(() => {
@@ -434,7 +434,7 @@ function App() {
             unsubscribeNewRooms();
             unsubscribeOldWgs();
         };
-    }, [db, isAuthReady]); // Add isAuthReady to dependencies
+    }, [db, isAuthReady, getCollectionRef]); // Add getCollectionRef to dependencies
 
     // Combine new and old room profiles whenever either changes
     useEffect(() => {

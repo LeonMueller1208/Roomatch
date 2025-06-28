@@ -237,10 +237,10 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                     Total Score: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-3">Score Breakdown:</h3>
+                <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3> {/* Adjusted text size here */}
                 <ul className="space-y-3">
                     {detailsEntries.map(([key, value]) => (
-                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm sm:text-base">
+                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm"> {/* Adjusted text size here */}
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}

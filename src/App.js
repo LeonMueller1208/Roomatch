@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // useCallback hinzugefügt
+import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
@@ -224,22 +224,22 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                 >
                     <XCircle size={24} />
                 </button>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">Match Details</h2>
-                <p className="text-lg font-semibold mb-2">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 text-center">Match Details</h2> {/* Increased size */}
+                <p className="text-lg sm:text-xl font-semibold mb-2"> {/* Increased size */}
                     <span className="text-[#5a9c68]">Seeker:</span> {seeker.name}
                 </p>
-                <p className="text-lg font-semibold mb-4">
+                <p className="text-lg sm:text-xl font-semibold mb-4"> {/* Increased size */}
                     <span className="text-[#cc8a2f]">Room Offer:</span> {room.name}
                 </p>
 
-                <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-lg font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}>
+                <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-xl sm:text-2xl font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}> {/* Increased size */}
                     Total Score: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-700 mb-3">Score Breakdown:</h3>
-                <ul className="space-y-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-3">Score Breakdown:</h3> {/* Increased size */}
+                <ul className="space-y-3"> {/* Increased space */}
                     {detailsEntries.map(([key, value]) => (
-                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm sm:text-base"> {/* Increased text size */}
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
@@ -1162,14 +1162,14 @@ function App() {
                                         <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mb-3 sm:mb-4 flex items-center">
                                             <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
                                         </h4>
-                                        <div className="space-y-4">
+                                        <div className="space-y-4"> {/* Adjusted spacing */}
                                             {match.matchingRooms.length === 0 ? (
                                                 <p className="text-gray-600 text-sm sm:text-base">No matching Rooms.</p>
                                             ) : (
                                                 match.matchingRooms.map(roomMatch => (
                                                     <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-base sm:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                            <p className="font-bold text-gray-800 text-base sm:text-lg">Room Name: {roomMatch.room.name}</p> {/* Increased size */}
                                                             <div className="flex items-center mt-1 sm:mt-2">
                                                                 <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                     Score: {roomMatch.score.toFixed(0)}
@@ -1182,11 +1182,11 @@ function App() {
                                                                     <Info size={16} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
+                                                            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2 leading-relaxed"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p> {/* Increased size, leading */}
                                                         </div>
                                                     </div>
                                                 ))
@@ -1212,14 +1212,14 @@ function App() {
                                         <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mb-3 sm:mb-4 flex items-center">
                                             <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
                                         </h4>
-                                        <div className="space-y-4">
+                                        <div className="space-y-4"> {/* Adjusted spacing */}
                                             {roomMatch.matchingSeekers.length === 0 ? (
                                                 <p className="text-gray-600 text-sm sm:text-base">No matching seekers for your Room profile.</p>
-                                            ) : (
-                                                roomMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            ) : (
+                                                                roomMatch.matchingSeekers.map(seekerMatch => (
+                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                            <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p> {/* Increased size */}
                                                             <div className="flex items-center mt-1 sm:mt-2">
                                                                 <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                     Score: {seekerMatch.score.toFixed(0)}
@@ -1232,11 +1232,11 @@ function App() {
                                                                     <Info size={16} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2 leading-relaxed"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p> {/* Increased size, leading */}
+                                                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p> {/* Increased size, leading */}
                                                         </div>
                                                     </div>
                                                 ))
@@ -1253,16 +1253,16 @@ function App() {
                         {allSearcherProfilesGlobal.length === 0 ? (
                             <p className="text-center text-gray-600 text-base sm:text-lg py-4">No seeker profiles available yet.</p>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Increased gap */}
                                 {allSearcherProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#f0f8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-base sm:text-lg mb-1 sm:mb-2">Name: {profile.name}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
+                                        <p className="font-bold text-[#333333] text-base sm:text-lg mb-2">Name: {profile.name}</p> {/* Increased size, mb */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Age:</span> {profile.age}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Gender:</span> {profile.gender}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-2 leading-relaxed"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p> {/* Increased size, mb, leading */}
                                         <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
@@ -1282,16 +1282,16 @@ function App() {
                         {allRoomProfilesGlobal.length === 0 ? (
                             <p className="text-center text-gray-600 text-base sm:text-lg py-4">No Room offers available yet.</p>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Increased gap */}
                                 {allRoomProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-base sm:text-lg mb-1 sm:mb-2">Room Name: {profile.name}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
-                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
+                                        <p className="font-bold text-[#333333] text-base sm:text-lg mb-2">Room Name: {profile.name}</p> {/* Increased size, mb */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-1 leading-relaxed"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p> {/* Increased size, mb, leading */}
+                                        <p className="text-sm sm:text-base text-gray-700 mb-2 leading-relaxed"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p> {/* Increased size, mb, leading */}
                                         <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
@@ -1352,14 +1352,14 @@ function App() {
                                                 <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
                                                     <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                 </h3>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Gender:</span> {profile.gender}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Pets:</span> {profile.pets === 'yes' ? 'Yes' : 'No'}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Communal Living Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Age:</span> {profile.age}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Gender:</span> {profile.gender}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Pets:</span> {profile.pets === 'yes' ? 'Yes' : 'No'}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Communal Living Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-2 leading-relaxed"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p> {/* Increased size, leading */}
                                                 <button
                                                     onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
@@ -1371,12 +1371,12 @@ function App() {
                                                 <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
                                                     <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers for {profile.name}:
                                                 </h4>
-                                                <div className="space-y-4">
+                                                <div className="space-y-4"> {/* Adjusted spacing */}
                                                     {profileMatches && profileMatches.matchingRooms.length > 0 ? (
                                                         profileMatches.matchingRooms.map(roomMatch => (
                                                             <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-base sm:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                                    <p className="font-bold text-gray-800 text-base sm:text-lg">Room Name: {roomMatch.room.name}</p> {/* Increased size */}
                                                                     <div className="flex items-center mt-1 sm:mt-2">
                                                                         <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                             Score: {roomMatch.score.toFixed(0)}
@@ -1389,11 +1389,11 @@ function App() {
                                                                             <Info size={16} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
+                                                                    <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2 leading-relaxed"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p> {/* Increased size, leading */}
                                                                 </div>
                                                             </div>
                                                         ))
@@ -1418,14 +1418,14 @@ function App() {
                                                 <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
                                                     <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                 </h3>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Room Type:</span> {profile.roomType}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Pets Allowed:</span> {profile.petsAllowed === 'yes' ? 'Yes' : 'No'}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
-                                                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Rent:</span> {profile.rent}€</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Room Type:</span> {profile.roomType}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Pets Allowed:</span> {profile.petsAllowed === 'yes' ? 'Yes' : 'No'}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-1 leading-relaxed"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p> {/* Increased size, leading */}
+                                                <p className="text-base sm:text-lg text-gray-700 mb-2 leading-relaxed"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p> {/* Increased size, leading */}
                                                 <button
                                                     onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
@@ -1437,12 +1437,12 @@ function App() {
                                                 <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
                                                     <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers for {profile.name}:
                                                 </h4>
-                                                <div className="space-y-4">
+                                                <div className="space-y-4"> {/* Adjusted spacing */}
                                                     {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
                                                         profileMatches.matchingSeekers.map(seekerMatch => (
                                                             <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                    <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p> {/* Increased size */}
                                                                     <div className="flex items-center mt-1 sm:mt-2">
                                                                         <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                             Score: {seekerMatch.score.toFixed(0)}
@@ -1455,11 +1455,11 @@ function App() {
                                                                             <Info size={16} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                                    <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2 leading-relaxed"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p> {/* Increased size, leading */}
+                                                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p> {/* Increased size, leading */}
                                                                 </div>
                                                             </div>
                                                         ))

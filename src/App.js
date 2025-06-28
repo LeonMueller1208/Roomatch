@@ -36,7 +36,7 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKcNc7JCjtTPL7t32rtE3"; // Bitte prüfen Sie hier Ihre tatsächliche Admin-ID!
+const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // Bitte prüfen Sie hier Ihre tatsächliche Admin-ID!
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0;

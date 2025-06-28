@@ -1179,7 +1179,7 @@ function App() {
                                                                     className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
-                                                                    <Info size={16} sm:size={18} />
+                                                                    <Info size={16} />
                                                                 </button>
                                                             </div>
                                                             <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
@@ -1215,9 +1215,9 @@ function App() {
                                         <div className="space-y-4">
                                             {roomMatch.matchingSeekers.length === 0 ? (
                                                 <p className="text-gray-600 text-sm sm:text-base">No matching seekers for your Room profile.</p>
-                                                            ) : (
-                                                                roomMatch.matchingSeekers.map(seekerMatch => (
-                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                            ) : (
+                                                roomMatch.matchingSeekers.map(seekerMatch => (
+                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
                                                             <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p>
                                                             <div className="flex items-center mt-1 sm:mt-2">
@@ -1229,7 +1229,7 @@ function App() {
                                                                     className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
-                                                                    <Info size={16} sm:size={18} />
+                                                                    <Info size={16} />
                                                                 </button>
                                                             </div>
                                                             <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
@@ -1386,7 +1386,7 @@ function App() {
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
-                                                                            <Info size={16} sm:size={18} />
+                                                                            <Info size={16} />
                                                                         </button>
                                                                     </div>
                                                                     <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
@@ -1452,7 +1452,7 @@ function App() {
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
-                                                                            <Info size={16} sm:size={18} />
+                                                                            <Info size={16} />
                                                                         </button>
                                                                     </div>
                                                                     <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>

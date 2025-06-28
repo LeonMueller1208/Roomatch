@@ -237,10 +237,10 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                     Total Score: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
                 </div>
 
-                <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3> {/* Adjusted text size here */}
+                <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3>
                 <ul className="space-y-3">
                     {detailsEntries.map(([key, value]) => (
-                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm"> {/* Adjusted text size here */}
+                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-xs"> {/* Adjusted text size here to text-xs */}
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
@@ -708,7 +708,7 @@ function App() {
         return (
             <form className="p-8 bg-white rounded-2xl shadow-xl space-y-4 sm:space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-4 sm:mb-6 text-center">
-                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSteps})`}
+                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSters})`}
                 </h2>
 
                 {/* --- STEP 1 --- */}

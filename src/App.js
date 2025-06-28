@@ -708,7 +708,7 @@ function App() {
         return (
             <form className="p-8 bg-white rounded-2xl shadow-xl space-y-4 sm:space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-4 sm:mb-6 text-center">
-                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSters})`}
+                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSteps})`}
                 </h2>
 
                 {/* --- STEP 1 --- */}

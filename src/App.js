@@ -36,7 +36,7 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3";
+const ADMIN_UID = "H9jtz5aHKcNc7JCjtTPL7t32rtE3"; // Bitte prüfen Sie hier Ihre tatsächliche Admin-ID!
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0;
@@ -349,43 +349,70 @@ function App() {
     // Real-time data retrieval for *own* seeker profiles from Firestore
     useEffect(() => {
         if (!db || !userId || !isAuthReady) return; // Wait until auth is ready and userId is set
-        const mySearchersQuery = query(getCollectionRef(`searcherProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMySearchers = onSnapshot(mySearchersQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setMySearcherProfiles(profiles);
-        }, (err) => {
-            console.error("Error fetching own seeker profiles:", err);
-            setError("Error loading own seeker profiles.");
-        });
-        return () => unsubscribeMySearchers();
-    }, [db, userId, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
+        let unsubscribe;
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            const collectionRef = getCollectionRef(`searcherProfiles`);
+            if (!collectionRef) {
+                console.error("Collection reference for searcherProfiles is null after delay.");
+                return;
+            }
+            const mySearchersQuery = query(collectionRef, where('createdBy', '==', userId));
+            unsubscribe = onSnapshot(mySearchersQuery, (snapshot) => {
+                const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setMySearcherProfiles(profiles);
+            }, (err) => {
+                console.error("Error fetching own seeker profiles:", err);
+                setError("Error loading own seeker profiles.");
+            });
+        }, 100); // 100ms delay
+
+        return () => {
+            clearTimeout(timer);
+            if (unsubscribe) unsubscribe();
+        };
+    }, [db, userId, isAuthReady, getCollectionRef]);
 
     // Real-time data retrieval for *own* Room profiles from Firestore
     useEffect(() => {
         if (!db || !userId || !isAuthReady) return; // Wait until auth is ready and userId is set
+        let unsubscribeMyNewRooms;
+        let unsubscribeMyOldWgs;
 
-        // Fetch from 'roomProfiles' (new)
-        const myRoomsQuery = query(getCollectionRef(`roomProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMyNewRooms = onSnapshot(myRoomsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
-            setMyNewRoomProfilesData(profiles); // Assuming these states exist
-        }, (err) => {
-            console.error("Error fetching own new Room profiles:", err);
-            setError("Error loading own Room profiles.");
-        });
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            // Fetch from 'roomProfiles' (new)
+            const newRoomsCollectionRef = getCollectionRef(`roomProfiles`);
+            if (newRoomsCollectionRef) {
+                const myRoomsQuery = query(newRoomsCollectionRef, where('createdBy', '==', userId));
+                unsubscribeMyNewRooms = onSnapshot(myRoomsQuery, (snapshot) => {
+                    const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
+                    setMyNewRoomProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching own new Room profiles:", err);
+                    setError("Error loading own Room profiles.");
+                });
+            } else {
+                console.error("Collection reference for roomProfiles is null after delay.");
+            }
 
-        // Fetch from 'wgProfiles' (old)
-        const myWgsQuery = query(getCollectionRef(`wgProfiles`), where('createdBy', '==', userId));
-        const unsubscribeMyOldWgs = onSnapshot(myWgsQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
-            setMyOldWgProfilesData(profiles); // Assuming these states exist
-        }, (err) => {
-            console.error("Error fetching own old WG profiles:", err);
-        });
+            // Fetch from 'wgProfiles' (old)
+            const oldWgsCollectionRef = getCollectionRef(`wgProfiles`);
+            if (oldWgsCollectionRef) {
+                const myWgsQuery = query(oldWgsCollectionRef, where('createdBy', '==', userId));
+                unsubscribeMyOldWgs = onSnapshot(myWgsQuery, (snapshot) => {
+                    const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
+                    setMyOldWgProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching own old WG profiles:", err);
+                });
+            } else {
+                console.error("Collection reference for wgProfiles is null after delay.");
+            }
+        }, 100); // 100ms delay
 
         return () => {
-            unsubscribeMyNewRooms();
-            unsubscribeMyOldWgs();
+            clearTimeout(timer);
+            if (unsubscribeMyNewRooms) unsubscribeMyNewRooms();
+            if (unsubscribeMyOldWgs) unsubscribeMyOldWgs();
         };
     }, [db, userId, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
 
@@ -405,44 +432,71 @@ function App() {
     // Real-time data retrieval for *all* seeker profiles (for match calculation)
     useEffect(() => {
         if (!db || !isAuthReady) return; // Wait until auth is ready
-        const allSearchersQuery = query(getCollectionRef(`searcherProfiles`));
-        const unsubscribeAllSearchers = onSnapshot(allSearchersQuery, (snapshot) => {
-            const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setAllSearcherProfilesGlobal(profiles);
-        }, (err) => {
-            console.error("Error fetching all seeker profiles (global):", err);
-        });
-        return () => unsubscribeAllSearchers();
-    }, [db, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
+        let unsubscribe;
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            const collectionRef = getCollectionRef(`searcherProfiles`);
+            if (!collectionRef) {
+                console.error("Collection reference for all searcherProfiles is null after delay.");
+                return;
+            }
+            const allSearchersQuery = query(collectionRef);
+            unsubscribe = onSnapshot(allSearchersQuery, (snapshot) => {
+                const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setAllSearcherProfilesGlobal(profiles);
+            }, (err) => {
+                console.error("Error fetching all seeker profiles (global):", err);
+            });
+        }, 100); // 100ms delay
+
+        return () => {
+            clearTimeout(timer);
+            if (unsubscribe) unsubscribe();
+        };
+    }, [db, isAuthReady, getCollectionRef]);
 
     // Real-time data retrieval for *all* Room profiles (for match calculation - combining new and old collections)
     useEffect(() => {
         if (!db || !isAuthReady) return; // Wait until auth is ready
+        let unsubscribeNewRooms;
+        let unsubscribeOldWgs;
 
-        // Fetch from 'roomProfiles' (new)
-        const roomProfilesQuery = query(getCollectionRef(`roomProfiles`));
-        const unsubscribeNewRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
-            const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
-            setNewRoomProfilesData(profiles);
-        }, (err) => {
-            console.error("Error fetching all Room profiles (new collection):", err);
-            setError("Error loading all Room profiles.");
-        });
+        const timer = setTimeout(() => { // Verzögerung hinzugefügt
+            // Fetch from 'roomProfiles' (new)
+            const newRoomsCollectionRef = getCollectionRef(`roomProfiles`);
+            if (newRoomsCollectionRef) {
+                const roomProfilesQuery = query(newRoomsCollectionRef);
+                unsubscribeNewRooms = onSnapshot(roomProfilesQuery, (roomSnapshot) => {
+                    const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
+                    setNewRoomProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching all Room profiles (new collection):", err);
+                    setError("Error loading all Room profiles.");
+                });
+            } else {
+                console.error("Collection reference for roomProfiles (global) is null after delay.");
+            }
 
-        // Fetch from 'wgProfiles' (old)
-        const wgProfilesQuery = query(getCollectionRef(`wgProfiles`));
-        const unsubscribeOldWgs = onSnapshot(wgProfilesQuery, (wgSnapshot) => {
-            const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
-            setOldWgProfilesData(profiles);
-        }, (err) => {
-            console.error("Error fetching all Room profiles (old WG collection):", err);
-        });
+            // Fetch from 'wgProfiles' (old)
+            const oldWgsCollectionRef = getCollectionRef(`wgProfiles`);
+            if (oldWgsCollectionRef) {
+                const wgProfilesQuery = query(oldWgsCollectionRef);
+                unsubscribeOldWgs = onSnapshot(wgProfilesQuery, (wgSnapshot) => {
+                    const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
+                    setOldWgProfilesData(profiles);
+                }, (err) => {
+                    console.error("Error fetching all Room profiles (old WG collection):", err);
+                });
+            } else {
+                console.error("Collection reference for wgProfiles (global) is null after delay.");
+            }
+        }, 100); // 100ms delay
 
         return () => {
-            unsubscribeNewRooms();
-            unsubscribeOldWgs();
+            clearTimeout(timer);
+            if (unsubscribeNewRooms) unsubscribeNewRooms();
+            if (unsubscribeOldWgs) unsubscribeOldWgs();
         };
-    }, [db, isAuthReady, getCollectionRef]); // getCollectionRef als Abhängigkeit hinzugefügt
+    }, [db, isAuthReady, getCollectionRef]);
 
     // Combine new and old room profiles whenever either changes
     useEffect(() => {
@@ -650,8 +704,8 @@ function App() {
         };
 
         return (
-            <form className="p-8 bg-white rounded-2xl shadow-xl space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
-                <h2 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
+            <form className="p-8 bg-white rounded-2xl shadow-xl space-y-4 sm:space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-4 sm:mb-6 text-center">
                     {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSteps})`}
                 </h2>
 
@@ -660,7 +714,7 @@ function App() {
                     <div className="space-y-4">
                         {/* Name / Room Name */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
                                 {type === 'seeker' ? 'Your Name:' : 'Room Name:'}
                             </label>
                             <input
@@ -669,46 +723,46 @@ function App() {
                                 value={formState.name}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                             />
                         </div>
 
                         {/* Age (Seeker) / Age Range (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Your Age:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Your Age:</label>
                                 <input
                                     type="number"
                                     name="age"
                                     value={formState.age}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 />
                             </div>
                         )}
                         {type === 'provider' && (
-                            <div className="flex space-x-4">
+                            <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Min Flatmate Age:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Min Flatmate Age:</label>
                                     <input
                                         type="number"
                                         name="minAge"
                                         value={formState.minAge}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                        className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Max Flatmate Age:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Max Flatmate Age:</label>
                                     <input
                                         type="number"
                                         name="maxAge"
                                         value={formState.maxAge}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                        className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                     />
                                 </div>
                             </div>
@@ -717,12 +771,12 @@ function App() {
                         {/* Gender (Seeker) / Gender Preference (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Your Gender:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Your Gender:</label>
                                 <select
                                     name="gender"
                                     value={formState.gender}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
                                     <option value="male">Male</option>
                                     <option value="female">Female</option>
@@ -732,7 +786,7 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2 flex items-center">
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2 flex items-center">
                                     Flatmate Gender Preference:
                                     <div
                                         className="relative ml-2 cursor-pointer text-red-500 hover:text-red-700"
@@ -751,7 +805,7 @@ function App() {
                                     name="genderPreference"
                                     value={formState.genderPreference}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
                                     <option value="any">Any</option>
                                     <option value="male">Male</option>
@@ -763,13 +817,13 @@ function App() {
 
                         {/* Location / City District (for both) */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">Location / City District:</label>
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Location / City District:</label>
                             <select
                                 name="location"
                                 value={formState.location}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                             >
                                 <option value="Cologne">Cologne</option>
                             </select>
@@ -783,25 +837,25 @@ function App() {
                         {/* Maximum Rent (Seeker) / Rent (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Maximum Rent (€):</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Maximum Rent (€):</label>
                                 <input
                                     type="number"
                                     name="maxRent"
                                     value={formState.maxRent}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 />
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Rent (€):</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Rent (€):</label>
                                 <input
                                     type="number"
                                     name="rent"
                                     value={formState.rent}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 />
                             </div>
                         )}
@@ -809,12 +863,12 @@ function App() {
                         {/* Pets (Seeker) / Pets Allowed (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Pets:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Pets:</label>
                                 <select
                                     name="pets"
                                     value={formState.pets}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
                                     <option value="any">Any</option>
                                     <option value="yes">Yes</option>
@@ -824,12 +878,12 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Pets Allowed:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Pets Allowed:</label>
                                 <select
                                     name="petsAllowed"
                                     value={formState.petsAllowed}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
                                     <option value="any">Any</option>
                                     <option value="yes">Yes</option>
@@ -840,10 +894,10 @@ function App() {
 
                         {/* Personality Traits (for both) */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
                                 {type === 'seeker' ? 'Your Personality Traits:' : 'Current Residents\' Personality Traits:'}
                             </label>
-                            <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allPersonalityTraits.map(trait => (
                                     <label key={trait} className="inline-flex items-center text-gray-800 cursor-pointer">
                                         <input
@@ -852,9 +906,9 @@ function App() {
                                             value={trait}
                                             checked={formState.personalityTraits.includes(trait)}
                                             onChange={handleChange}
-                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                            className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(trait)}</span>
+                                        <span className="ml-2 text-xs sm:text-sm">{capitalizeFirstLetter(trait)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -862,10 +916,10 @@ function App() {
 
                         {/* Interests (for both) */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
                                 {type === 'seeker' ? 'Your Interests:' : 'Current Residents\' Interests:'}
                             </label>
-                            <div className="grid grid-cols-2 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allInterests.map(interest => (
                                     <label key={interest} className="inline-flex items-center text-gray-800 cursor-pointer">
                                         <input
@@ -874,9 +928,9 @@ function App() {
                                             value={interest}
                                             checked={formState.interests.includes(interest)}
                                             onChange={handleChange}
-                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                            className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(interest)}</span>
+                                        <span className="ml-2 text-xs sm:text-sm">{capitalizeFirstLetter(interest)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -884,10 +938,10 @@ function App() {
 
                         {/* New: Communal Living Preferences */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
                                 {type === 'seeker' ? 'Your Communal Living Preferences:' : 'Room Communal Living Preferences:'}
                             </label>
-                            <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-1 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allCommunalLivingPreferences.map(pref => (
                                     <label key={pref} className="inline-flex items-center text-gray-800 cursor-pointer">
                                         <input
@@ -896,9 +950,9 @@ function App() {
                                             value={pref}
                                             checked={(formState[type === 'seeker' ? 'communalLivingPreferences' : 'roomCommunalLiving'] || []).includes(pref)}
                                             onChange={handleChange}
-                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                            className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(pref)}</span>
+                                        <span className="ml-2 text-xs sm:text-sm">{capitalizeFirstLetter(pref)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -912,48 +966,48 @@ function App() {
                         {/* What is being sought (Seeker) / Description of the Room (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">What are you looking for in a Room?:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">What are you looking for in a Room?:</label>
                                 <textarea
                                     name="lookingFor"
                                     value={formState.lookingFor}
                                     onChange={handleChange}
                                     rows="3"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 ></textarea>
                             </div>
                         )}
                         {type === 'provider' && (
                             <>
                                 <div>
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">Description of the Room:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Description of the Room:</label>
                                     <textarea
                                         name="description"
                                         value={formState.description}
                                         onChange={handleChange}
                                         rows="3"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                        className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                     ></textarea>
                                 </div>
                                 <div>
-                                    <label className="block text-gray-700 text-base font-semibold mb-2">What are you looking for in a new flatmate?:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">What are you looking for in a new flatmate?:</label>
                                     <textarea
                                         name="lookingForInFlatmate"
                                         value={formState.lookingForInFlatmate}
                                         onChange={handleChange}
                                         rows="3"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                        className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 ></textarea>
                                 </div>
                             </>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Room Type:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Room Type:</label>
                                 <select
                                     name="roomType"
                                     value={formState.roomType}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
                                     <option value="Single Room">Single Room</option>
                                     <option value="Double Room">Double Room</option>
@@ -962,23 +1016,23 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-base font-semibold mb-2">Average Age of Residents:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Average Age of Residents:</label>
                                 <input
                                     type="number"
                                     name="avgAge"
                                     value={formState.avgAge}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200"
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 />
                             </div>
                         )}
 
                         {/* New: Values */}
                         <div>
-                            <label className="block text-gray-700 text-base font-semibold mb-2">
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
                                 {type === 'seeker' ? 'Your Values and Expectations for Room life:' : 'Room Values and Expectations:'}
                             </label>
-                            <div className="grid grid-cols-1 gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            <div className="grid grid-cols-1 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allWGValues.map(val => (
                                     <label key={val} className="inline-flex items-center text-gray-800 cursor-pointer">
                                         <input
@@ -987,9 +1041,9 @@ function App() {
                                             value={val}
                                             checked={(formState[type === 'seeker' ? 'values' : 'roomValues'] || []).includes(val)}
                                             onChange={handleChange}
-                                            className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
+                                            className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded focus:ring-2 focus:ring-[#3fd5c1]"
                                         />
-                                        <span className="ml-2 text-sm">{capitalizeFirstLetter(val)}</span>
+                                        <span className="ml-2 text-xs sm:text-sm">{capitalizeFirstLetter(val)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -997,19 +1051,19 @@ function App() {
                     </div>
                 )}
 
-                <div className="flex justify-between mt-8">
+                <div className="flex justify-between mt-6 sm:mt-8">
                     <button
                         type="button"
                         onClick={handleCancel}
-                        className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                        className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                     >
-                        <XCircle size={20} className="mr-2" /> Cancel
+                        <XCircle size={18} className="mr-1 sm:mr-2" /> Cancel
                     </button>
                     {currentStep > 1 && (
                         <button
                             type="button"
                             onClick={prevStep}
-                            className="flex items-center px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                            className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                         >
                             Back
                         </button>
@@ -1018,7 +1072,7 @@ function App() {
                         <button
                             type="button"
                             onClick={nextStep}
-                            className="flex items-center px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                            className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                         >
                             Next
                         </button>
@@ -1026,13 +1080,13 @@ function App() {
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            className={`flex items-center px-6 py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 ${
+                            className={`flex items-center px-4 py-2 sm:px-6 sm:py-3 font-bold rounded-xl shadow-lg transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base ${
                                 type === 'seeker'
                                     ? 'bg-[#9adfaa] hover:bg-[#85c292] text-[#333333]'
                                     : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
                             }`}
                         >
-                            <CheckCircle size={20} className="mr-2" /> Save Profile
+                            <CheckCircle size={18} className="mr-1 sm:mr-2" /> Save Profile
                         </button>
                     )}
                 </div>
@@ -1060,22 +1114,22 @@ function App() {
     const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode;
 
     return (
-        <div className="min-h-screen bg-[#3fd5c1] p-8 font-inter flex flex-col items-center relative overflow-hidden">
+        <div className="min-h-screen bg-[#3fd5c1] p-4 sm:p-8 font-inter flex flex-col items-center relative overflow-hidden">
             {/* Background circles for visual dynamism */}
             <div className="absolute top-[-50px] left-[-50px] w-48 h-48 bg-white opacity-10 rounded-full animate-blob-slow"></div>
             <div className="absolute bottom-[-50px] right-[-50px] w-64 h-64 bg-white opacity-10 rounded-full animate-blob-medium"></div>
             <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
 
-            <h1 className="text-5xl font-extrabold text-white mb-8 text-center drop-shadow-lg">Roomatch</h1>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-6 sm:mb-8 text-center drop-shadow-lg">Roomatch</h1>
             
             {userId && (
-                <div className="bg-[#c3efe8] text-[#0a665a] text-sm px-6 py-3 rounded-full mb-8 shadow-md flex items-center transform transition-all duration-300 hover:scale-[1.02]">
-                    <User size={18} className="mr-2" /> Your User ID: <span className="font-mono font-semibold ml-1">{userId}</span>
+                <div className="bg-[#c3efe8] text-[#0a665a] text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-3 rounded-full mb-6 sm:mb-8 shadow-md flex flex-col sm:flex-row items-center transform transition-all duration-300 hover:scale-[1.02] text-center">
+                    <span className="mb-1 sm:mb-0 sm:mr-2 flex items-center"><User size={16} className="mr-1" /> Your User ID:</span> <span className="font-mono font-semibold ml-0 sm:ml-1">{userId}</span>
                     {userId === ADMIN_UID && (
-                        <label className="ml-6 inline-flex items-center cursor-pointer">
+                        <label className="mt-2 sm:mt-0 sm:ml-6 inline-flex items-center cursor-pointer">
                             <input
                                 type="checkbox"
-                                className="form-checkbox h-5 w-5 text-[#3fd5c1] rounded-md transition-all duration-200 focus:ring-2 focus:ring-[#3fd5c1]"
+                                className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded-md transition-all duration-200 focus:ring-2 focus:ring-[#3fd5c1]"
                                 checked={adminMode}
                                 onChange={() => setAdminMode(!adminMode)}
                             />
@@ -1085,7 +1139,7 @@ function App() {
                 </div>
             )}
             {saveMessage && (
-                <div className="bg-green-100 text-green-700 px-5 py-3 rounded-lg mb-6 shadow-xl transition-all duration-300 scale-100 animate-fade-in-down">
+                <div className="bg-green-100 text-green-700 px-4 py-2 sm:px-5 sm:py-3 rounded-lg mb-4 sm:mb-6 shadow-xl transition-all duration-300 scale-100 animate-fade-in-down text-sm sm:text-base">
                     {saveMessage}
                 </div>
             )}
@@ -1093,46 +1147,46 @@ function App() {
             {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
             {adminMode ? (
                 // ADMIN MODE ON: Show all admin dashboards
-                <div className="w-full max-w-7xl flex flex-col gap-12">
-                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
+                <div className="w-full max-w-7xl flex flex-col gap-8 sm:gap-12">
+                    <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
                         {matches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">No matches found.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
                         ) : (
-                            <div className="space-y-8">
+                            <div className="space-y-6 sm:space-y-8">
                                 {matches.map((match, index) => (
-                                    <div key={index} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                            <Search size={22} className="mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-2">{match.searcher.name}</span> (ID: {match.searcher.id.substring(0, 8)}...)
+                                    <div key={index} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
+                                            <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-1 sm:ml-2">{match.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {match.searcher.id.substring(0, 8)}...)</span>
                                         </h3>
-                                        <h4 className="text-xl font-bold text-[#5a9c68] mb-4 flex items-center">
-                                            <Heart size={20} className="mr-2" /> Matching Room Offers:
+                                        <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mb-3 sm:mb-4 flex items-center">
+                                            <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
                                         </h4>
                                         <div className="space-y-4">
                                             {match.matchingRooms.length === 0 ? (
-                                                <p className="text-gray-600 text-base">No matching Rooms.</p>
+                                                <p className="text-gray-600 text-sm sm:text-base">No matching Rooms.</p>
                                             ) : (
                                                 match.matchingRooms.map(roomMatch => (
-                                                    <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                    <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name} <span className="text-sm font-normal text-gray-600">(Score: {roomMatch.score})</span></p>
-                                                            <div className="flex items-center mt-2">
-                                                                <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
+                                                            <p className="font-bold text-gray-800 text-base sm:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                            <div className="flex items-center mt-1 sm:mt-2">
+                                                                <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                     Score: {roomMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
                                                                     onClick={() => setSelectedMatchDetails({ seeker: match.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
-                                                                    className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                    className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
-                                                                    <Info size={18} />
+                                                                    <Info size={16} sm:size={18} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -1144,45 +1198,45 @@ function App() {
                         )}
                     </div>
 
-                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">Matches: Room finds Seeker (Admin View)</h2>
+                    <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Room finds Seeker (Admin View)</h2>
                         {reverseMatches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">No matches found.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
                         ) : (
-                            <div className="space-y-8">
+                            <div className="space-y-6 sm:space-y-8">
                                 {reverseMatches.map((roomMatch, index) => (
-                                    <div key={index} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                            <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-2">{roomMatch.room.name}</span> (ID: {roomMatch.room.id.substring(0, 8)}...)
+                                    <div key={index} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
+                                            <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
                                         </h3>
-                                        <h4 className="text-xl font-bold text-[#cc8a2f] mb-4 flex items-center">
-                                            <Users size={20} className="mr-2" /> Matching Seekers:
+                                        <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mb-3 sm:mb-4 flex items-center">
+                                            <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
                                         </h4>
                                         <div className="space-y-4">
                                             {roomMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-base">No matching seekers for your Room profile.</p>
+                                                <p className="text-gray-600 text-sm sm:text-base">No matching seekers for your Room profile.</p>
                                                             ) : (
                                                                 roomMatch.matchingSeekers.map(seekerMatch => (
-                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
-                                                            <div className="flex items-center mt-2">
-                                                                <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                            <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                            <div className="flex items-center mt-1 sm:mt-2">
+                                                                <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                     Score: {seekerMatch.score.toFixed(0)}
                                                                 </div>
                                                                 <button
                                                                     onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
-                                                                    className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                    className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                     title="Show Match Details"
                                                                 >
-                                                                    <Info size={18} />
+                                                                    <Info size={16} sm:size={18} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                            <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                            <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -1194,28 +1248,28 @@ function App() {
                         )}
                     </div>
 
-                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">All Seeker Profiles (Admin View)</h2>
+                    <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Seeker Profiles (Admin View)</h2>
                         {allSearcherProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">No seeker profiles available yet.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No seeker profiles available yet.</p>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#f0f8f0] p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-lg mb-2">Name: {profile.name}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
+                                    <div key={profile.id} className="bg-[#f0f8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <p className="font-bold text-[#333333] text-base sm:text-lg mb-1 sm:mb-2">Name: {profile.name}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Gender:</span> {profile.gender}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
-                                            className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
+                                            className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                         >
-                                            <Trash2 size={16} className="mr-2" /> Delete
+                                            <Trash2 size={14} className="mr-1.5" /> Delete
                                         </button>
                                     </div>
                                 ))}
@@ -1223,28 +1277,28 @@ function App() {
                         )}
                     </div>
 
-                    <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                        <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">All Room Offers (Admin View)</h2>
+                    <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Room Offers (Admin View)</h2>
                         {allRoomProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-lg py-4">No Room offers available yet.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No Room offers available yet.</p>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 {allRoomProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#fff8f0] p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-lg mb-2">Room Name: {profile.name}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
+                                    <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                        <p className="font-bold text-[#333333] text-base sm:text-lg mb-1 sm:mb-2">Room Name: {profile.name}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Gender Preference:</span> {profile.genderPreference}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
+                                        <p className="text-xs sm:text-sm text-gray-700"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
-                                            className="mt-6 px-5 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5"
+                                            className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                         >
-                                            <Trash2 size={16} className="mr-2" /> Delete
+                                            <Trash2 size={14} className="mr-1.5" /> Delete
                                         </button>
                                     </div>
                                 ))}
@@ -1254,97 +1308,97 @@ function App() {
                 </div>
             ) : (
                 // NORMAL MODE: Show form selection + forms and then dashboards (if available)
-                <div className="w-full max-w-7xl flex flex-col gap-12">
+                <div className="w-full max-w-7xl flex flex-col gap-8 sm:gap-12">
                     {/* Form Selection Buttons */}
-                    <div className="w-full max-w-4xl flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12 mx-auto">
+                    <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
                         <button
                             onClick={() => setShowSeekerForm(true)}
-                            className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
                                 showSeekerForm
                                     ? 'bg-[#9adfaa] text-[#333333]'
                                     : 'bg-white text-[#9adfaa] hover:bg-gray-50'
                             }`}
                         >
-                            <Search size={24} className="mr-3" /> Seeker Profile
+                            <Search size={20} className="mr-2" /> Seeker Profile
                         </button>
                         <button
                             onClick={() => setShowSeekerForm(false)}
-                            className={`flex items-center justify-center px-8 py-4 rounded-xl text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                            className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
                                 !showSeekerForm
                                     ? 'bg-[#fecd82] text-[#333333]'
                                     : 'bg-white text-[#fecd82] hover:bg-gray-50'
                             }`}
                         >
-                            <HomeIcon size={24} className="mr-3" /> Room Offer
+                            <HomeIcon size={20} className="mr-2" /> Room Offer
                         </button>
                     </div>
 
                     {/* Current Form */}
-                    <div className="w-full max-w-xl mb-12 mx-auto">
+                    <div className="w-full max-w-xl mb-8 sm:mb-12 mx-auto">
                         <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addRoomProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
                     </div>
 
                     {/* User Dashboards (if profiles exist) */}
                     {(showMySeekerDashboard || showMyRoomDashboard) ? (
-                        <div className="flex flex-col gap-12 w-full"> 
+                        <div className="flex flex-col gap-8 sm:gap-12 w-full"> 
                             {mySearcherProfiles.length > 0 && (
-                                <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Seeker Profiles & Matches</h2>
+                                <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
+                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Seeker Profiles & Matches</h2>
                                     {mySearcherProfiles.map(profile => {
                                         const profileMatches = matches.find(m => m.searcher.id === profile.id);
                                         return (
-                                            <div key={profile.id} className="bg-[#f0f8f0] p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-8">
+                                            <div key={profile.id} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                 {/* Own Seeker Profile Details */}
-                                                <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                    <Search size={22} className="mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-2">{profile.name}</span>
+                                                <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
+                                                    <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                 </h3>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Gender:</span> {profile.gender}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Pets:</span> {profile.pets === 'yes' ? 'Yes' : 'No'}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Communal Living Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Gender:</span> {profile.gender}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Pets:</span> {profile.pets === 'yes' ? 'Yes' : 'No'}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Communal Living Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.join(', ') : (profile.communalLivingPreferences || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.join(', ') : (profile.values || 'N/A')}</p>
                                                 <button
                                                     onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
-                                                    className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
+                                                    className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                 >
-                                                    <Trash2 size={16} className="mr-2" /> Delete Profile
+                                                    <Trash2 size={14} className="mr-1.5" /> Delete Profile
                                                 </button>
 
                                                 {/* Matches for this specific Seeker Profile */}
-                                                <h4 className="text-xl font-bold text-[#5a9c68] mt-8 mb-4 flex items-center">
-                                                    <Heart size={20} className="mr-2" /> Matching Room Offers for {profile.name}:
+                                                <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
+                                                    <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers for {profile.name}:
                                                 </h4>
                                                 <div className="space-y-4">
                                                     {profileMatches && profileMatches.matchingRooms.length > 0 ? (
                                                         profileMatches.matchingRooms.map(roomMatch => (
-                                                            <div key={roomMatch.room.id} className="bg-white p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-lg">Room Name: {roomMatch.room.name}</p>
-                                                                    <div className="flex items-center mt-2">
-                                                                        <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
+                                                                    <p className="font-bold text-gray-800 text-base sm:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                                    <div className="flex items-center mt-1 sm:mt-2">
+                                                                        <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                             Score: {roomMatch.score.toFixed(0)}
                                                                         </div>
                                                                         <button
                                                                             onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
-                                                                            className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
-                                                                            <Info size={18} />
+                                                                            <Info size={16} sm:size={18} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {roomMatch.room.genderPreference}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.join(', ') : (roomMatch.room.interests || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.join(', ') : (roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.join(', ') : (roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.join(', ') : (roomMatch.room.roomValues || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-gray-600 text-base">No matching Rooms for this profile.</p>
+                                                        <p className="text-gray-600 text-sm sm:text-base">No matching Rooms for this profile.</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1354,63 +1408,63 @@ function App() {
                             )}
 
                             {myRoomProfiles.length > 0 && (
-                                <div className="bg-white p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-12">
-                                    <h2 className="text-4xl font-extrabold text-gray-800 mb-8 text-center">My Room Offers & Matches</h2>
+                                <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
+                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Room Offers & Matches</h2>
                                     {myRoomProfiles.map(profile => {
                                         const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
                                         return (
-                                            <div key={profile.id} className="bg-[#fff8f0] p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-8">
+                                            <div key={profile.id} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                 {/* Own Room Profile Details */}
-                                                <h3 className="text-2xl font-bold text-[#333333] mb-4 flex items-center">
-                                                    <HomeIcon size={22} className="mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-2">{profile.name}</span>
+                                                <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
+                                                    <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                 </h3>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Room Type:</span> {profile.roomType}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Pets Allowed:</span> {profile.petsAllowed === 'yes' ? 'Yes' : 'No'}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-1"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
-                                                <p className="text-sm text-gray-700 mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Room Type:</span> {profile.roomType}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Pets Allowed:</span> {profile.petsAllowed === 'yes' ? 'Yes' : 'No'}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.join(', ') : (profile.interests || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-0.5 sm:mb-1"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.join(', ') : (profile.personalityTraits || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.join(', ') : (profile.roomCommunalLiving || 'N/A')}</p>
+                                                <p className="text-xs sm:text-sm text-gray-700 mb-2 sm:mb-4"><span className="font-semibold">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.join(', ') : (profile.roomValues || 'N/A')}</p>
                                                 <button
                                                     onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
-                                                    className="mt-2 px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center"
+                                                    className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                 >
-                                                    <Trash2 size={16} className="mr-2" /> Delete Profile
+                                                    <Trash2 size={14} className="mr-1.5" /> Delete Profile
                                                 </button>
 
                                                 {/* Matches for this specific Room Profile */}
-                                                <h4 className="text-xl font-bold text-[#cc8a2f] mt-8 mb-4 flex items-center">
-                                                    <Users size={20} className="mr-2" /> Matching Seekers for {profile.name}:
+                                                <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
+                                                    <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers for {profile.name}:
                                                 </h4>
                                                 <div className="space-y-4">
                                                     {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
                                                         profileMatches.matchingSeekers.map(seekerMatch => (
-                                                            <div key={seekerMatch.searcher.id} className="bg-white p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-lg">Seeker: {seekerMatch.searcher.name}</p>
-                                                                    <div className="flex items-center mt-2">
-                                                                        <div className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                                    <p className="font-bold text-gray-800 text-base sm:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                    <div className="flex items-center mt-1 sm:mt-2">
+                                                                        <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                             Score: {seekerMatch.score.toFixed(0)}
                                                                         </div>
                                                                         <button
                                                                             onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
-                                                                            className="ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                             title="Show Match Details"
                                                                         >
-                                                                            <Info size={18} />
+                                                                            <Info size={16} sm:size={18} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-sm text-gray-600 mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                    <p className="text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {seekerMatch.searcher.gender}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.join(', ') : (seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.join(', ') : (seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.join(', ') : (seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                    <p className="text-xs sm:text-sm text-gray-600"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.join(', ') : (seekerMatch.searcher.values || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-gray-600 text-base">No matching seekers for this Room profile.</p>
+                                                        <p className="text-gray-600 text-sm sm:text-base">No matching seekers for this Room profile.</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1421,13 +1475,13 @@ function App() {
                         </div> 
                     ) : (
                         // Message when no own profiles have been created and not in admin mode
-                        <div className="w-full max-w-xl bg-white p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-12 mx-auto">
-                            <p className="text-lg">Please create a Seeker Profile or a Room Offer to see your matches.</p>
+                        <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
+                            <p className="text-base sm:text-lg">Please create a Seeker Profile or a Room Offer to see your matches.</p>
                             <button
                                 onClick={() => setShowSeekerForm(true)}
-                                className="mt-6 px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5"
+                                className="mt-4 sm:mt-6 px-5 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-base"
                             >
-                                <span className="flex items-center"><Search size={20} className="mr-2" /> Create Profile</span>
+                                <span className="flex items-center"><Search size={18} className="mr-2" /> Create Profile</span>
                             </button>
                         </div>
                     )}

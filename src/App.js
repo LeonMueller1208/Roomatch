@@ -240,7 +240,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                 <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3>
                 <ul className="space-y-3">
                     {detailsEntries.map(([key, value]) => (
-                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-xs"> {/* Adjusted text size here to text-xs */}
+                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-[0.65rem]"> {/* Adjusted text size here to text-[0.65rem] */}
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
@@ -1211,7 +1211,7 @@ function App() {
                                         <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
                                             <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
                                         </h3>
-                                        <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mb-3 sm:mb-4 flex items-center">
+                                        <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
                                             <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
                                         </h4>
                                         <div className="space-y-2">

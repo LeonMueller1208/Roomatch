@@ -226,21 +226,21 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                     <XCircle size={24} />
                 </button>
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 text-center">Match Details</h2>
-                <p className="text-lg sm:text-xl font-semibold mb-2">
+                <p className="text-base sm:text-lg font-semibold mb-2"> {/* Adjusted from text-lg sm:text-xl */}
                     <span className="text-[#5a9c68]">Seeker:</span> {seeker.name}
                 </p>
-                <p className="text-lg sm:text-xl font-semibold mb-4">
+                <p className="text-base sm:text-lg font-semibold mb-4"> {/* Adjusted from text-lg sm:text-xl */}
                     <span className="text-[#cc8a2f]">Room Offer:</span> {room.name}
                 </p>
 
-                <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-xl sm:text-2xl font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}>
+                <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-lg sm:text-xl font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}> {/* Adjusted from text-xl sm:text-2xl */}
                     Total Score: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
                 </div>
 
                 <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3>
                 <ul className="space-y-3">
                     {detailsEntries.map(([key, value]) => (
-                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-[0.65rem]"> {/* Adjusted text size here to text-[0.65rem] */}
+                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-[0.65rem]">
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}

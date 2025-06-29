@@ -286,8 +286,6 @@ function App() {
     const [showUserIdCopied, setShowUserIdCopied] = useState(false); // State for copy message
     const [scrollToProfileId, setScrollToProfileId] = useState(null); // New state for scrolling to a specific profile
 
-    const mainContentRef = useRef(null); // Ref for the general main content area
-
     // Firebase initialization and authentication
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
@@ -330,23 +328,14 @@ function App() {
         if (scrollToProfileId) {
             const element = document.getElementById(`profile-${scrollToProfileId}`);
             if (element) {
-                setTimeout(() => { // Small delay to ensure element is rendered and positioned
+                // Use a small delay to ensure the DOM has updated after state change
+                setTimeout(() => {
                     element.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     setScrollToProfileId(null); // Clear the ID after scrolling
-                }, 100);
+                }, 100); // 100ms delay
             }
         }
     }, [scrollToProfileId, mySearcherProfiles, myRoomProfiles]); // Dependencies ensure re-run when profile data updates
-
-    // General scroll to top of main content area, only if no specific profile scroll is pending
-    useEffect(() => {
-        if (saveMessage && mainContentRef.current && !scrollToProfileId) {
-            setTimeout(() => {
-                mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
-        }
-    }, [saveMessage, scrollToProfileId]);
-
 
     // Function for Google Sign-in
     const handleGoogleSignIn = async () => {
@@ -659,6 +648,7 @@ function App() {
             setSaveMessage('Seeker profile saved successfully!');
             setTimeout(() => setSaveMessage(''), 3000);
             setScrollToProfileId(docRef.id); // Set the ID to scroll to
+            setShowSeekerForm(true); // Ensure seeker form tab is active after creation
         } catch (e) {
             console.error("Error adding seeker profile: ", e);
             setError("Error saving seeker profile.");
@@ -685,6 +675,7 @@ function App() {
             setSaveMessage('Room profile saved successfully!');
             setTimeout(() => setSaveMessage(''), 3000);
             setScrollToProfileId(docRef.id); // Set the ID to scroll to
+            setShowSeekerForm(false); // Ensure room form tab is active after creation
         } catch (e) {
             console.error("Error adding Room profile: ", e);
             setError("Error saving room profile.");
@@ -1279,7 +1270,7 @@ function App() {
             {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
             {adminMode ? (
                 // ADMIN MODE ON: Show all admin dashboards
-                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
+                <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                     {/* Admin Matches: Seeker finds Room */}
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
                         <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
@@ -1444,7 +1435,7 @@ function App() {
                 </div>
             ) : (
                 // NORMAL MODE: Show form selection + forms and then dashboards (if available)
-                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
+                <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                     {/* Form Selection Buttons / Login Prompt */}
                     {userId ? (
                         <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
@@ -1530,7 +1521,7 @@ function App() {
                                                                     <div className="flex items-center mt-1 sm:mt-2">
                                                                         <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                             Score: {roomMatch.score.toFixed(0)}
-                                                                        </div>
+                                                                                                        </div>
                                                                         <button
                                                                             onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"

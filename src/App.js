@@ -6,7 +6,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
+    apiKey: "AIzaSyACGoSxD0_UZwG06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -1227,14 +1227,14 @@ function App() {
     const showMyRoomDashboard = myRoomProfiles.length > 0 && !adminMode;
 
     return (
-        <div className="min-h-screen bg-[#3fd5c1] p-4 sm:p-8 font-inter flex flex-col items-center relative overflow-hidden">
+        // Adjusted padding for the main app container
+        <div className="min-h-screen bg-[#3fd5c1] pt-8 sm:pt-12 p-4 font-inter flex flex-col items-center relative overflow-hidden">
             {/* Background circles for visual dynamism */}
             <div className="absolute top-[-50px] left-[-50px] w-48 h-48 bg-white opacity-10 rounded-full animate-blob-slow"></div>
             <div className="absolute bottom-[-50px] right-[-50px] w-64 h-64 bg-white opacity-10 rounded-full animate-blob-medium"></div>
             <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
 
             {/* Header: Logo and User Info / Login / Logout */}
-            {/* Removed 'fixed' positioning and adjusted padding for overall layout */}
             <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-6 sm:mb-8 text-center drop-shadow-lg">Roomatch</h1>
             
             <div className="bg-[#c3efe8] text-[#0a665a] text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-3 rounded-full mb-6 sm:mb-8 shadow-md flex flex-col sm:flex-row items-center transform transition-all duration-300 hover:scale-[1.02] text-center">

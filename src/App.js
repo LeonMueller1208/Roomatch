@@ -1233,9 +1233,10 @@ function App() {
             <div className="absolute bottom-[-50px] right-[-50px] w-64 h-64 bg-white opacity-10 rounded-full animate-blob-medium"></div>
             <div className="absolute top-1/3 right-1/4 w-32 h-32 bg-white opacity-10 rounded-full animate-blob-fast"></div>
 
+            {/* Header: Logo and User Info / Login / Logout */}
+            {/* Removed 'fixed' positioning and adjusted padding for overall layout */}
             <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-6 sm:mb-8 text-center drop-shadow-lg">Roomatch</h1>
             
-            {/* User Info / Login / Logout */}
             <div className="bg-[#c3efe8] text-[#0a665a] text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-3 rounded-full mb-6 sm:mb-8 shadow-md flex flex-col sm:flex-row items-center transform transition-all duration-300 hover:scale-[1.02] text-center">
                 {userId ? (
                     <>
@@ -1304,371 +1305,373 @@ function App() {
                 </div>
             )}
 
-
-            {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
-            {adminMode ? (
-                // ADMIN MODE ON: Show all admin dashboards
-                <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
-                    {/* Admin Matches: Seeker finds Room */}
-                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
-                        {matches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
-                        ) : (
-                            <div className="space-y-6 sm:space-y-8">
-                                {matches.map((match, index) => (
-                                    <div key={index} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                            <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-1 sm:ml-2">{match.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {match.searcher.id.substring(0, 8)}...)</span>
-                                        </h3>
-                                        <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mb-3 sm:mb-4 flex items-center">
-                                            <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {match.matchingRooms.length === 0 ? (
-                                                <p className="text-gray-600 text-sm lg:text-base">No matching rooms.</p>
-                                            ) : (
-                                                match.matchingRooms.map(roomMatch => (
-                                                    <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                        <div>
-                                                            <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
-                                                            <div className="flex items-center mt-1 sm:mt-2">
-                                                                <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
-                                                                    Score: {roomMatch.score.toFixed(0)}
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: match.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
-                                                                    className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                    title="Show Match Details"
-                                                                >
-                                                                    <Info size={16} />
-                                                                </button>
-                                                            </div>
-                                                            <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Admin Matches: Room finds Seeker */}
-                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Room finds Seeker (Admin View)</h2>
-                        {reverseMatches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
-                        ) : (
-                            <div className="space-y-6 sm:space-y-8">
-                                {reverseMatches.map((roomMatch, index) => (
-                                    <div key={index} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                            <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
-                                        </h3>
-                                        <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                            <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {roomMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-sm lg:text-base">No matching seekers for this room profile.</p>
-                                            ) : (
-                                                roomMatch.matchingSeekers.map(seekerMatch => (
-                                                    <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                        <div>
-                                                            <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
-                                                            <div className="flex items-center mt-1 sm:mt-2">
-                                                                <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
-                                                                    Score: {seekerMatch.score.toFixed(0)}
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
-                                                                    className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                    title="Show Match Details"
-                                                                >
-                                                                    <Info size={16} />
-                                                                </button>
-                                                            </div>
-                                                            <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* All Seeker Profiles (Admin View) */}
-                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Seeker Profiles (Admin View)</h2>
-                        {allSearcherProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No seeker profiles available yet.</p>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {allSearcherProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#f0f8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Name: {profile.name}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
-                                        <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
-                                        <button
-                                            onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
-                                            className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
-                                        >
-                                            <Trash2 size={14} className="mr-1.5" /> Delete
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* All Room Profiles (Admin View) */}
-                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Room Offers (Admin View)</h2>
-                        {allRoomProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No room offers available yet.</p>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {allRoomProfilesGlobal.map(profile => (
-                                    <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Room Name: {profile.name}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age Residents:</span> {profile.avgAge}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Resident Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
-                                        <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
-                                        <button
-                                            onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
-                                            className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
-                                        >
-                                            <Trash2 size={14} className="mr-1.5" /> Delete
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            ) : (
-                // NORMAL MODE: Show form selection + forms and then dashboards (if available)
-                <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
-                    {/* Form Selection Buttons / Login Prompt */}
-                    {userId ? (
-                        <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
-                            <button
-                                onClick={() => setShowSeekerForm(true)}
-                                className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                                    showSeekerForm
-                                        ? 'bg-[#9adfaa] text-[#333333]'
-                                        : 'bg-white text-[#9adfaa] hover:bg-gray-50'
-                                }`}
-                            >
-                                <Search size={20} className="mr-2" /> Seeker Profile
-                            </button>
-                            <button
-                                onClick={() => setShowSeekerForm(false)}
-                                className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                                    !showSeekerForm
-                                        ? 'bg-[#fecd82] text-[#333333]'
-                                        : 'bg-white text-[#fecd82] hover:bg-gray-50'
-                                }`}
-                            >
-                                <HomeIcon size={20} className="mr-2" /> Room Offer
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
-                            <p className="text-base sm:text-lg">Please sign in to create profiles and see matches.</p>
-                            <button
-                                onClick={handleGoogleSignIn}
-                                className="mt-4 sm:mt-6 px-5 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-base"
-                            >
-                                <span className="flex items-center"><LogIn size={18} className="mr-2" /> Sign in with Google</span>
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Current Form */}
-                    {userId && (
-                        <div className="w-full max-w-xl mb-8 sm:mb-12 mx-auto">
-                            <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addRoomProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
-                        </div>
-                    )}
-
-                    {/* User Dashboards (if profiles exist AND user is logged in) */}
-                    {(showMySeekerDashboard || showMyRoomDashboard) && userId ? (
-                        <div className="flex flex-col gap-8 sm:gap-12 w-full">
-                            {mySearcherProfiles.length > 0 && (
-                                <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Seeker Profiles & Matches</h2>
-                                    {mySearcherProfiles.map(profile => {
-                                        const profileMatches = matches.find(m => m.searcher.id === profile.id);
-                                        return (
-                                            <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
-                                                {/* Own Seeker Profile Details */}
-                                                <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
-                                                    <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
-                                                </h3>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets:</span> {capitalizeFirstLetter(profile.pets === 'yes' ? 'Yes' : 'No')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
-                                                <button
-                                                    onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
-                                                    className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
-                                                >
-                                                    <Trash2 size={14} className="mr-1.5" /> Delete Profile
-                                                </button>
-
-                                                {/* Matches for this specific Seeker Profile */}
-                                                <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                    <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers for {profile.name}:
-                                                </h4>
-                                                <div className="space-y-2">
-                                                    {profileMatches && profileMatches.matchingRooms.length > 0 ? (
-                                                        profileMatches.matchingRooms.map(roomMatch => (
-                                                            <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                                <div>
-                                                                    <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
-                                                                    <div className="flex items-center mt-1 sm:mt-2">
-                                                                        <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
-                                                                            Score: {roomMatch.score.toFixed(0)}
-                                                                                                        </div>
-                                                                        <button
-                                                                            onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
-                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                            title="Show Match Details"
-                                                                        >
-                                                                            <Info size={16} />
-                                                                        </button>
+            {/* Main content wrapper - Removed top margin as global padding handles it */}
+            <div className="w-full max-w-6xl flex flex-col items-center">
+                {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
+                {adminMode ? (
+                    // ADMIN MODE ON: Show all admin dashboards
+                    <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
+                        {/* Admin Matches: Seeker finds Room */}
+                        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
+                            {matches.length === 0 ? (
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
+                            ) : (
+                                <div className="space-y-6 sm:space-y-8">
+                                    {matches.map((match, index) => (
+                                        <div key={index} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                            <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
+                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-1 sm:ml-2">{match.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {match.searcher.id.substring(0, 8)}...)</span>
+                                            </h3>
+                                            <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mb-3 sm:mb-4 flex items-center">
+                                                <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {match.matchingRooms.length === 0 ? (
+                                                    <p className="text-gray-600 text-sm lg:text-base">No matching rooms.</p>
+                                                ) : (
+                                                    match.matchingRooms.map(roomMatch => (
+                                                        <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            <div>
+                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                                <div className="flex items-center mt-1 sm:mt-2">
+                                                                    <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
+                                                                        Score: {roomMatch.score.toFixed(0)}
                                                                     </div>
-                                                                    <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
+                                                                    <button
+                                                                        onClick={() => setSelectedMatchDetails({ seeker: match.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
+                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                        title="Show Match Details"
+                                                                    >
+                                                                        <Info size={16} />
+                                                                    </button>
                                                                 </div>
+                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                             </div>
-                                                        ))
-                                                    ) : (
-                                                        <p className="text-gray-600 text-sm md:text-base">No matching rooms for this profile.</p>
-                                                    )}
-                                                </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    ))}
                                 </div>
                             )}
+                        </div>
 
-                            {myRoomProfiles.length > 0 && (
-                                <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Room Offers & Matches</h2>
-                                    {myRoomProfiles.map(profile => {
-                                        const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
-                                        return (
-                                            <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
-                                                {/* Own Room Profile Details */}
-                                                <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
-                                                    <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
-                                                </h3>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age Residents:</span> {profile.avgAge}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Resident Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
-                                                <button
-                                                    onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
-                                                    className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
-                                                >
-                                                    <Trash2 size={14} className="mr-1.5" /> Delete Profile
-                                                </button>
+                        {/* Admin Matches: Room finds Seeker */}
+                        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Room finds Seeker (Admin View)</h2>
+                            {reverseMatches.length === 0 ? (
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
+                            ) : (
+                                <div className="space-y-6 sm:space-y-8">
+                                    {reverseMatches.map((roomMatch, index) => (
+                                        <div key={index} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                            <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
+                                                <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
+                                            </h3>
+                                            <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
+                                                <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {roomMatch.matchingSeekers.length === 0 ? (
+                                                    <p className="text-gray-600 text-sm lg:text-base">No matching seekers for this room profile.</p>
+                                                ) : (
+                                                    roomMatch.matchingSeekers.map(seekerMatch => (
+                                                        <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                            <div>
+                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                <div className="flex items-center mt-1 sm:mt-2">
+                                                                    <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                                        Score: {seekerMatch.score.toFixed(0)}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
+                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                        title="Show Match Details"
+                                                                    >
+                                                                        <Info size={16} />
+                                                                    </button>
+                                                                </div>
+                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
-                                                {/* Matches for this specific Room Profile */}
-                                                <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                    <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers for {profile.name}:
-                                                </h4>
-                                                <div className="space-y-2">
-                                                    {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
-                                                        profileMatches.matchingSeekers.map(seekerMatch => (
-                                                            <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
-                                                                <div>
-                                                                    <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
-                                                                    <div className="flex items-center mt-1 sm:mt-2">
-                                                                        <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
-                                                                            Score: {seekerMatch.score.toFixed(0)}
+                        {/* All Seeker Profiles (Admin View) */}
+                        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Seeker Profiles (Admin View)</h2>
+                            {allSearcherProfilesGlobal.length === 0 ? (
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No seeker profiles available yet.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {allSearcherProfilesGlobal.map(profile => (
+                                        <div key={profile.id} className="bg-[#f0f8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                            <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Name: {profile.name}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
+                                            <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
+                                            <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                            <button
+                                                onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
+                                                className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
+                                            >
+                                                <Trash2 size={14} className="mr-1.5" /> Delete
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* All Room Profiles (Admin View) */}
+                        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Room Offers (Admin View)</h2>
+                            {allRoomProfilesGlobal.length === 0 ? (
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No room offers available yet.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {allRoomProfilesGlobal.map(profile => (
+                                        <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
+                                            <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Room Name: {profile.name}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age Residents:</span> {profile.avgAge}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Resident Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
+                                            <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
+                                            <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                            <button
+                                                onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
+                                                className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
+                                            >
+                                                <Trash2 size={14} className="mr-1.5" /> Delete
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    // NORMAL MODE: Show form selection + forms and then dashboards (if available)
+                    <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
+                        {/* Form Selection Buttons / Login Prompt */}
+                        {userId ? (
+                            <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
+                                <button
+                                    onClick={() => setShowSeekerForm(true)}
+                                    className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                                        showSeekerForm
+                                            ? 'bg-[#9adfaa] text-[#333333]'
+                                            : 'bg-white text-[#9adfaa] hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <Search size={20} className="mr-2" /> Seeker Profile
+                                </button>
+                                <button
+                                    onClick={() => setShowSeekerForm(false)}
+                                    className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                                        !showSeekerForm
+                                            ? 'bg-[#fecd82] text-[#333333]'
+                                            : 'bg-white text-[#fecd82] hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <HomeIcon size={20} className="mr-2" /> Room Offer
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
+                                <p className="text-base sm:text-lg">Please sign in to create profiles and see matches.</p>
+                                <button
+                                    onClick={handleGoogleSignIn}
+                                    className="mt-4 sm:mt-6 px-5 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-base"
+                                >
+                                    <span className="flex items-center"><LogIn size={18} className="mr-2" /> Sign in with Google</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Current Form */}
+                        {userId && (
+                            <div className="w-full max-w-xl mb-8 sm:mb-12 mx-auto">
+                                <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addRoomProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
+                            </div>
+                        )}
+
+                        {/* User Dashboards (if profiles exist AND user is logged in) */}
+                        {(showMySeekerDashboard || showMyRoomDashboard) && userId ? (
+                            <div className="flex flex-col gap-8 sm:gap-12 w-full">
+                                {mySearcherProfiles.length > 0 && (
+                                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
+                                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Seeker Profiles & Matches</h2>
+                                        {mySearcherProfiles.map(profile => {
+                                            const profileMatches = matches.find(m => m.searcher.id === profile.id);
+                                            return (
+                                                <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
+                                                    {/* Own Seeker Profile Details */}
+                                                    <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
+                                                        <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
+                                                    </h3>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets:</span> {capitalizeFirstLetter(profile.pets === 'yes' ? 'Yes' : 'No')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
+                                                    <button
+                                                        onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
+                                                        className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
+                                                    >
+                                                        <Trash2 size={14} className="mr-1.5" /> Delete Profile
+                                                    </button>
+
+                                                    {/* Matches for this specific Seeker Profile */}
+                                                    <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
+                                                        <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers for {profile.name}:
+                                                    </h4>
+                                                    <div className="space-y-2">
+                                                        {profileMatches && profileMatches.matchingRooms.length > 0 ? (
+                                                            profileMatches.matchingRooms.map(roomMatch => (
+                                                                <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                                    <div>
+                                                                        <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                                        <div className="flex items-center mt-1 sm:mt-2">
+                                                                            <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
+                                                                                Score: {roomMatch.score.toFixed(0)}
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
+                                                                                className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                                title="Show Match Details"
+                                                                            >
+                                                                                <Info size={16} />
+                                                                            </button>
                                                                         </div>
-                                                                        <button
-                                                                            onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
-                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                            title="Show Match Details"
-                                                                        >
-                                                                            <Info size={16} />
-                                                                        </button>
+                                                                        <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                                     </div>
-                                                                    <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
                                                                 </div>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <p className="text-gray-600 text-sm md:text-base">No matching seekers for this profile.</p>
-                                                    )}
+                                                            ))
+                                                        ) : (
+                                                            <p className="text-gray-600 text-sm md:text-base">No matching rooms for this profile.</p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        // If no profiles and user is logged in, no dashboard should be rendered,
-                        // just the form for creating profiles. This 'else' block ensures nothing extra is rendered.
-                        null
-                    )}
-                </div>
-            )}
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
-            <MatchDetailsModal
-                isOpen={!!selectedMatchDetails}
-                onClose={() => setSelectedMatchDetails(null)}
-                seeker={selectedMatchDetails?.seeker}
-                room={selectedMatchDetails?.room}
-                matchDetails={selectedMatchDetails?.matchDetails}
-            />
+                                {myRoomProfiles.length > 0 && (
+                                    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
+                                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Room Offers & Matches</h2>
+                                        {myRoomProfiles.map(profile => {
+                                            const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
+                                            return (
+                                                <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
+                                                    {/* Own Room Profile Details */}
+                                                    <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
+                                                        <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
+                                                    </h3>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age Residents:</span> {profile.avgAge}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Resident Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
+                                                    <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
+                                                    <button
+                                                        onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
+                                                        className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
+                                                    >
+                                                        <Trash2 size={14} className="mr-1.5" /> Delete Profile
+                                                    </button>
+
+                                                    {/* Matches for this specific Room Profile */}
+                                                    <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
+                                                        <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers for {profile.name}:
+                                                    </h4>
+                                                    <div className="space-y-2">
+                                                        {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
+                                                            profileMatches.matchingSeekers.map(seekerMatch => (
+                                                                <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
+                                                                    <div>
+                                                                        <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                        <div className="flex items-center mt-1 sm:mt-2">
+                                                                            <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
+                                                                                Score: {seekerMatch.score.toFixed(0)}
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
+                                                                                className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                                title="Show Match Details"
+                                                                            >
+                                                                                <Info size={16} />
+                                                                            </button>
+                                                                        </div>
+                                                                        <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                        <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <p className="text-gray-600 text-sm md:text-base">No matching seekers for this profile.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            // If no profiles and user is logged in, no dashboard should be rendered,
+                            // just the form for creating profiles. This 'else' block ensures nothing extra is rendered.
+                            null
+                        )}
+                    </div>
+                )}
+
+                <MatchDetailsModal
+                    isOpen={!!selectedMatchDetails}
+                    onClose={() => setSelectedMatchDetails(null)}
+                    seeker={selectedMatchDetails?.seeker}
+                    room={selectedMatchDetails?.room}
+                    matchDetails={selectedMatchDetails?.matchDetails}
+                />
+            </div>
         </div>
     );
 }

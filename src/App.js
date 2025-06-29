@@ -331,11 +331,14 @@ function App() {
                 // Use a small delay to ensure the DOM has updated after state change
                 setTimeout(() => {
                     element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    setScrollToProfileId(null); // Clear the ID after scrolling
+                    // Only clear if the current scrollToProfileId matches,
+                    // in case a new scroll request came in very quickly.
+                    setScrollToProfileId(currentId => currentId === scrollToProfileId ? null : currentId);
                 }, 100); // 100ms delay
             }
         }
-    }, [scrollToProfileId, mySearcherProfiles, myRoomProfiles]); // Dependencies ensure re-run when profile data updates
+    }, [scrollToProfileId]); // Dependencies now only include scrollToProfileId
+
 
     // Function for Google Sign-in
     const handleGoogleSignIn = async () => {

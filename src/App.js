@@ -342,28 +342,33 @@ function App() {
 
     // Effect for handling the save message display and fade-out
     useEffect(() => {
-        let timerVisible;
-        let timerClear;
-        if (saveMessage) {
-            setShowSaveMessageElement(true); // Make the element visible (opacity 100)
-            timerVisible = setTimeout(() => {
-                setShowSaveMessageElement(false); // Start fade-out (opacity 0)
-            }, 2500); // Message stays visible for 2.5 seconds
-        }
+        let timerFadeOut;
+        let timerClearContent;
 
-        // This effect runs when showSaveMessageElement becomes false after being true
-        // It clears the saveMessage content *after* the fade-out transition
-        if (!showSaveMessageElement && saveMessage) { // saveMessage check to ensure it was previously displayed
-            timerClear = setTimeout(() => {
-                setSaveMessage(''); // Clear content after fade-out completes (500ms transition)
-            }, 500); // Matches the transition duration
+        if (saveMessage) {
+            setShowSaveMessageElement(true); // Make element visible immediately
+
+            // Start fading out after 2 seconds
+            timerFadeOut = setTimeout(() => {
+                setShowSaveMessageElement(false);
+            }, 2000); // Message is fully visible for 2 seconds
+
+            // Clear the message content after the fade-out transition completes (2000ms + 500ms transition = 2500ms total)
+            timerClearContent = setTimeout(() => {
+                setSaveMessage('');
+            }, 2500); // Clear the actual message content after the animation is visually complete
+
+        } else {
+            // If saveMessage becomes empty (e.g., from initial state or explicitly cleared elsewhere),
+            // ensure the element is hidden and no timers are pending.
+            setShowSaveMessageElement(false); // Ensure it's hidden if saveMessage is empty
         }
 
         return () => {
-            clearTimeout(timerVisible);
-            clearTimeout(timerClear);
+            clearTimeout(timerFadeOut);
+            clearTimeout(timerClearContent);
         };
-    }, [saveMessage, showSaveMessageElement]);
+    }, [saveMessage]); // Depend only on saveMessage
 
 
     // Function for Google Sign-in

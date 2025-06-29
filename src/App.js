@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info, LogIn, LogOut, Copy } from 'lucide-react'; // Added Copy icon
+import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info, LogIn, LogOut, Copy } from 'lucide-react';
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- PLEASE INSERT YOUR CORRECT API KEY HERE!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -285,6 +285,8 @@ function App() {
     const [isAuthReady, setIsAuthReady] = useState(false); // New state to track auth readiness
     const [showUserIdCopied, setShowUserIdCopied] = useState(false); // State for copy message
 
+    const mainContentRef = useRef(null); // Ref for the main content area to scroll to
+
     // Firebase initialization and authentication
     useEffect(() => {
         let appInstance, dbInstance, authInstance;
@@ -321,6 +323,17 @@ function App() {
             setLoading(false);
         }
     }, []);
+
+    // Scroll to top of main content area after saving a profile
+    useEffect(() => {
+        if (saveMessage && mainContentRef.current) {
+            // Adding a small delay to ensure rendering is complete before scrolling
+            // or to allow the "save message" to be briefly visible.
+            setTimeout(() => {
+                mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300); // Small delay
+        }
+    }, [saveMessage]);
 
     // Function for Google Sign-in
     const handleGoogleSignIn = async () => {
@@ -1251,7 +1264,7 @@ function App() {
             {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
             {adminMode ? (
                 // ADMIN MODE ON: Show all admin dashboards
-                <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
+                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12"> {/* Added ref here */}
                     {/* Admin Matches: Seeker finds Room */}
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
                         <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
@@ -1403,7 +1416,7 @@ function App() {
                                         <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
-                                            onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)} // <-- This is the crucial line
+                                            onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
                                             className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                         >
                                             <Trash2 size={14} className="mr-1.5" /> Delete
@@ -1416,7 +1429,7 @@ function App() {
                 </div>
             ) : (
                 // NORMAL MODE: Show form selection + forms and then dashboards (if available)
-                <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
+                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12"> {/* Added ref here */}
                     {/* Form Selection Buttons / Login Prompt */}
                     {userId ? (
                         <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
@@ -1549,7 +1562,7 @@ function App() {
                                                 <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
                                                 <button
-                                                    onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)} // <-- This is the crucial line
+                                                    onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                 >
                                                     <Trash2 size={14} className="mr-1.5" /> Delete Profile

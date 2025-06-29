@@ -6,7 +6,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
+    apiKey: "AIzaSyACGoSxD0_UZWpWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -279,7 +279,8 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showSeekerForm, setShowSeekerForm] = useState(true);
-    const [saveMessage, setSaveMessage] = useState('');
+    const [saveMessage, setSaveMessage] = useState(''); // The message content
+    const [showSaveMessageElement, setShowSaveMessageElement] = useState(false); // Controls opacity/visibility of the fixed element
     const [adminMode, setAdminMode] = useState(false);
     const [selectedMatchDetails, setSelectedMatchDetails] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // New state to track auth readiness
@@ -338,6 +339,31 @@ function App() {
             }
         }
     }, [scrollToProfileId]); // Dependencies now only include scrollToProfileId
+
+    // Effect for handling the save message display and fade-out
+    useEffect(() => {
+        let timerVisible;
+        let timerClear;
+        if (saveMessage) {
+            setShowSaveMessageElement(true); // Make the element visible (opacity 100)
+            timerVisible = setTimeout(() => {
+                setShowSaveMessageElement(false); // Start fade-out (opacity 0)
+            }, 2500); // Message stays visible for 2.5 seconds
+        }
+
+        // This effect runs when showSaveMessageElement becomes false after being true
+        // It clears the saveMessage content *after* the fade-out transition
+        if (!showSaveMessageElement && saveMessage) { // saveMessage check to ensure it was previously displayed
+            timerClear = setTimeout(() => {
+                setSaveMessage(''); // Clear content after fade-out completes (500ms transition)
+            }, 500); // Matches the transition duration
+        }
+
+        return () => {
+            clearTimeout(timerVisible);
+            clearTimeout(timerClear);
+        };
+    }, [saveMessage, showSaveMessageElement]);
 
 
     // Function for Google Sign-in
@@ -649,7 +675,6 @@ function App() {
                 createdBy: userId, // Link profile to USER_ID
             });
             setSaveMessage('Seeker profile saved successfully!');
-            setTimeout(() => setSaveMessage(''), 3000);
             setScrollToProfileId(docRef.id); // Set the ID to scroll to
             setShowSeekerForm(true); // Ensure seeker form tab is active after creation
         } catch (e) {
@@ -676,7 +701,6 @@ function App() {
                 createdBy: userId, // Link profile to USER_ID
             });
             setSaveMessage('Room profile saved successfully!');
-            setTimeout(() => setSaveMessage(''), 3000);
             setScrollToProfileId(docRef.id); // Set the ID to scroll to
             setShowSeekerForm(false); // Ensure room form tab is active after creation
         } catch (e) {
@@ -706,7 +730,6 @@ function App() {
             }
             await deleteDoc(doc(collectionRef, docId));
             setSaveMessage(`Profile "${profileName}" deleted successfully!`);
-            setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error(`Error deleting profile ${profileName}: `, e);
             setError(`Error deleting profile "${profileName}".`);
@@ -1264,19 +1287,17 @@ function App() {
                 )}
             </div>
 
-            {/* Success Message Container - Always present to prevent layout shift */}
-            <div className={`
-                min-h-[50px] sm:min-h-[60px] flex items-center justify-center
-                w-full max-w-xl mx-auto mb-4 sm:mb-6
-                transition-all duration-500 ease-in-out
-                ${saveMessage ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}
-            `}>
-                {saveMessage && ( // Only render text if message exists
-                    <div className="bg-green-100 text-green-700 px-4 py-2 sm:px-5 sm:py-3 rounded-lg shadow-xl text-sm sm:text-base">
-                        {saveMessage}
-                    </div>
-                )}
-            </div>
+            {/* Success Message Displayed as a Fixed Overlay */}
+            {saveMessage && (
+                <div className={`
+                    fixed top-4 left-1/2 -translate-x-1/2 z-50
+                    bg-green-100 text-green-700 px-4 py-2 sm:px-5 sm:py-3 rounded-lg shadow-xl text-sm sm:text-base
+                    transition-opacity duration-500 ease-in-out
+                    ${showSaveMessageElement ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+                `}>
+                    {saveMessage}
+                </div>
+            )}
 
 
             {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}

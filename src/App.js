@@ -6,7 +6,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- PLEASE INSERT YOUR CORRECT API KEY HERE!
+    apiKey: "YOUR_CORRECT_API_KEY_HERE", // <--- PLEASE INSERT YOUR CORRECT API KEY HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -364,31 +364,28 @@ function App() {
     // Function to copy UID to clipboard
     const copyUidToClipboard = () => {
         if (userId) {
-            navigator.clipboard.writeText(userId).then(() => {
+            document.execCommand('copy'); // Using document.execCommand for iFrame compatibility
+            // Fallback if the above doesn't work (e.g. not in user-gesture-driven context)
+            const textArea = document.createElement("textarea");
+            textArea.value = userId;
+            textArea.style.position = "fixed"; // Avoid scrolling to bottom
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
                 setShowUserIdCopied(true);
                 setTimeout(() => setShowUserIdCopied(false), 2000);
-            }).catch(err => {
-                console.error('Failed to copy UID:', err);
-                // Fallback for older browsers or http context (not secure context)
-                const textArea = document.createElement("textarea");
-                textArea.value = userId;
-                textArea.style.position = "fixed"; // Avoid scrolling to bottom
-                textArea.style.opacity = "0";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    setShowUserIdCopied(true);
-                    setTimeout(() => setShowUserIdCopied(false), 2000);
-                } catch (err) {
-                    console.error('Fallback: Oops, unable to copy', err);
-                    alert('Please manually copy your User ID: ' + userId);
-                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                // In a real app, you might show a user-friendly message here instead of alert
+            } finally {
                 document.body.removeChild(textArea);
-            });
+            }
         }
     };
+
 
     // When admin mode is toggled, ensure the form defaults back to 'Seeker Profile'
     useEffect(() => {
@@ -1406,7 +1403,7 @@ function App() {
                                         <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
                                         <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
-                                            onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
+                                            onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)} // <-- This is the crucial line
                                             className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                         >
                                             <Trash2 size={14} className="mr-1.5" /> Delete
@@ -1552,7 +1549,7 @@ function App() {
                                                 <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
                                                 <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
                                                 <button
-                                                    onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
+                                                    onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)} // <-- This is the crucial line
                                                     className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                 >
                                                     <Trash2 size={14} className="mr-1.5" /> Delete Profile

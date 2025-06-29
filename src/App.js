@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'; // Wichtige Importe für Google Auth
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info, LogIn, LogOut } from 'lucide-react'; // Neue Icons für Login/Logout
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg",
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGQ", // Bestätigen Sie, dass dies Ihre korrekte API-ID ist
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -36,7 +36,7 @@ const MATCH_WEIGHTS = {
 };
 
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY MIT IHREM ADMIN ID SHOWN IN DER APP!
-const ADMIN_UID = "H9jtz5aHKkcN7JCjtTPL7t32rtE3"; // Bitte prüfen Sie hier Ihre tatsächliche Admin-ID!
+const ADMIN_UID = "H9jtz5aHKcNc7JCjtTPL7t32rtE3"; // Bitte prüfen Sie hier Ihre tatsächliche Admin-ID!
 
 // Helper to safely parse numbers
 const safeParseInt = (value) => parseInt(value) || 0;
@@ -240,7 +240,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                 <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3>
                 <ul className="space-y-3">
                     {detailsEntries.map(([key, value]) => (
-                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-xs"> {/* Reverted to text-xs */}
+                        <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-xs">
                             <span className="font-medium text-gray-700">{value?.description || key}:</span>
                             <span className={`font-bold ${value?.score !== undefined && value.score !== null && value.score >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {value?.score !== undefined && value.score !== null ? value.score.toFixed(1) : 'N/A'}
@@ -273,7 +273,9 @@ function App() {
     const [reverseMatches, setReverseMatches] = useState([]);
     
     const [db, setDb] = useState(null);
+    const [auth, setAuth] = useState(null); // Firebase Auth Instanz
     const [userId, setUserId] = useState(null);
+    const [userName, setUserName] = useState(null); // Zustand für den Benutzernamen
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showSeekerForm, setShowSeekerForm] = useState(true);
@@ -293,27 +295,32 @@ function App() {
             authInstance = getAuth(appInstance);
 
             setDb(dbInstance);
+            setAuth(authInstance); // Setzt die Auth-Instanz
 
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
-                if (!user) {
+                if (user) {
+                    setUserId(user.uid);
+                    setUserName(user.displayName || user.email || 'Gast'); // Name von Google oder E-Mail
+                    setAdminMode(user.uid === ADMIN_UID);
+                } else {
+                    // Fallback zur anonymen Anmeldung, wenn kein Google-Nutzer angemeldet ist
+                    // Wir halten die anonyme Anmeldung als Fallback bei, falls der Nutzer
+                    // sich nicht über Google anmelden möchte oder kann.
                     try {
-                        // Sign in anonymously if no user is present or use custom token if provided
                         if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
                             await signInWithCustomToken(authInstance, window.__initial_auth_token);
                         } else {
-                            await signInAnonymously(authInstance);
+                             // await signInAnonymously(authInstance); // Anonyme Anmeldung komplett entfernen, wenn nur Google Login gewünscht ist
+                             // Wenn diese Zeile auskommentiert ist, MUSS sich der Nutzer anmelden, um Profile zu erstellen.
+                             setUserId(null); // explizit null setzen, wenn kein Login und keine anonyme Auth
                         }
                     } catch (signInError) {
-                        console.error("Error during Firebase authentication:", signInError);
-                        setError("Error signing in. Please try again later.");
-                        setLoading(false);
-                        return;
+                        console.error("Error during anonymous Firebase authentication:", signInError);
+                        setError("Error signing in anonymously. Please try again later.");
                     }
+                    setUserName('Gast'); // Setzen auf Gast, wenn kein Nutzer angemeldet ist
                 }
-                const currentUid = authInstance.currentUser?.uid || crypto.randomUUID();
-                setUserId(currentUid);
-                setAdminMode(currentUid === ADMIN_UID);
-                setIsAuthReady(true); // Set auth ready after userId is determined
+                setIsAuthReady(true); // Auth ist bereit, unabhängig vom Anmeldestatus
                 setLoading(false);
             });
 
@@ -326,6 +333,42 @@ function App() {
             setLoading(false);
         }
     }, []);
+
+    // Funktion für Google-Anmeldung
+    const handleGoogleSignIn = async () => {
+        if (!auth) {
+            setError("Authentifizierungsservice nicht bereit.");
+            return;
+        }
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+            // onAuthStateChanged-Listener aktualisiert userId und userName automatisch
+        } catch (error) {
+            console.error("Fehler bei Google-Anmeldung:", error);
+            setError("Anmeldung mit Google fehlgeschlagen: " + error.message);
+        }
+    };
+
+    // Funktion für Abmeldung
+    const handleSignOut = async () => {
+        if (!auth) {
+            setError("Authentifizierungsservice nicht bereit für Abmeldung.");
+            return;
+        }
+        try {
+            await signOut(auth);
+            setUserId(null);
+            setUserName(null);
+            setAdminMode(false); // Admin-Modus deaktivieren bei Abmeldung
+            // Nach Abmeldung wird der Nutzer als "nicht angemeldet" behandelt.
+            // Der OnAuthStateChanged-Listener wird darauf reagieren und den Zustand entsprechend setzen.
+        } catch (error) {
+            console.error("Fehler bei Abmeldung:", error);
+            setError("Abmeldung fehlgeschlagen: " + error.message);
+        }
+    };
+
 
     // When admin mode is toggled, ensure the form defaults back to 'Seeker Profile'
     useEffect(() => {
@@ -343,6 +386,8 @@ function App() {
             console.warn("Attempted to get collection reference before Firestore DB was initialized.");
             return null; // Null zurückgeben oder einen Fehler werfen
         }
+        // WICHTIG: Die Collection-Pfade müssen an die Firebase-Sicherheitsregeln angepasst werden,
+        // die von Ihnen bereitgestellt wurden (z.B. searcherProfiles, roomProfiles direkt in der Root)
         return collection(db, collectionName);
     }, [db]); // Diese Funktion wird nur neu erstellt, wenn sich 'db' ändert.
 
@@ -377,7 +422,7 @@ function App() {
     useEffect(() => {
         if (!db || !userId || !isAuthReady) return; // Wait until auth is ready and userId is set
         let unsubscribeMyNewRooms;
-        let unsubscribeMyOldWgs;
+        let unsubscribeMyOldWgs; // Bleibt für Kompatibilität mit alten Daten
 
         const timer = setTimeout(() => { // Verzögerung hinzugefügt
             // Fetch from 'roomProfiles' (new)
@@ -396,6 +441,8 @@ function App() {
             }
 
             // Fetch from 'wgProfiles' (old)
+            // Diese Abfrage kann entfernt werden, wenn Sie sicher sind, dass keine alten wgProfiles mehr existieren
+            // oder Sie diese nicht mehr anzeigen möchten.
             const oldWgsCollectionRef = getCollectionRef(`wgProfiles`);
             if (oldWgsCollectionRef) {
                 const myWgsQuery = query(oldWgsCollectionRef, where('createdBy', '==', userId));
@@ -479,6 +526,7 @@ function App() {
             }
 
             // Fetch from 'wgProfiles' (old)
+            // Auch diese Abfrage kann entfernt werden, wenn Sie keine alten Daten mehr benötigen.
             const oldWgsCollectionRef = getCollectionRef(`wgProfiles`);
             if (oldWgsCollectionRef) {
                 const wgProfilesQuery = query(oldWgsCollectionRef);
@@ -538,23 +586,22 @@ function App() {
             setReverseMatches(newRoomToSeekerMatches);
         };
 
-        if (db && userId && isAuthReady) { // Ensure all necessary conditions are met
+        if (db && isAuthReady) { // Matches nur berechnen, wenn Auth bereit ist (userId kann null sein, wenn abgemeldet)
             calculateAllMatches();
         } else if (mySearcherProfiles.length === 0 && myRoomProfiles.length === 0 && !loading) {
             // Only clear matches if no data is present and not actively loading
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db, isAuthReady]); // isAuthReady ist bereits eine Abhängigkeit
+    }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db, isAuthReady]); // userId hier, da Match-Berechnung davon abhängt, ob Profile angezeigt werden
 
     // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Database not ready. Please wait or log in.");
+            setError("Datenbank nicht bereit oder nicht angemeldet. Bitte warten Sie oder melden Sie sich an.");
             return;
         }
         try {
-            // Sicherstellen, dass getCollectionRef nicht null zurückgibt, bevor addDoc aufgerufen wird
             const collectionRef = getCollectionRef(`searcherProfiles`);
             if (!collectionRef) {
                 setError("Could not get collection reference for searcher profiles.");
@@ -563,24 +610,23 @@ function App() {
             await addDoc(collectionRef, {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId,
+                createdBy: userId, // Profil mit der USER_ID verknüpfen
             });
-            setSaveMessage('Seeker profile successfully saved!');
+            setSaveMessage('Suchenden-Profil erfolgreich gespeichert!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error("Error adding seeker profile: ", e);
-            setError("Error saving seeker profile.");
+            setError("Fehler beim Speichern des Suchenden-Profils.");
         }
     };
 
     // Function to add a Room profile to Firestore
     const addRoomProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Database not ready. Please wait or log in.");
+            setError("Datenbank nicht bereit oder nicht angemeldet. Bitte warten Sie oder melden Sie sich an.");
             return;
         }
         try {
-            // Sicherstellen, dass getCollectionRef nicht null zurückgibt, bevor addDoc aufgerufen wird
             const collectionRef = getCollectionRef(`roomProfiles`);
             if (!collectionRef) {
                 setError("Could not get collection reference for room profiles.");
@@ -589,42 +635,41 @@ function App() {
             await addDoc(collectionRef, {
                 ...profileData,
                 createdAt: new Date(),
-                createdBy: userId,
+                createdBy: userId, // Profil mit der USER_ID verknüpfen
             });
-            setSaveMessage('Room profile successfully saved!');
+            setSaveMessage('Zimmerprofil erfolgreich gespeichert!');
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error("Error adding Room profile: ", e);
-            setError("Error saving Room profile.");
+            setError("Fehler beim Speichern des Zimmerprofils.");
         }
     };
 
     // Function to delete a profile
     const handleDeleteProfile = async (collectionName, docId, profileName, profileCreatorId) => {
         if (!db || !userId) {
-            setError("Database not ready for deletion.");
+            setError("Datenbank nicht bereit für Löschung oder nicht angemeldet.");
             return;
         }
 
         if (!adminMode && userId !== profileCreatorId) {
-            setError("You are not authorized to delete this profile.");
+            setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
             setTimeout(() => setError(''), 3000);
             return;
         }
 
         try {
-            // Sicherstellen, dass getCollectionRef nicht null zurückgibt, bevor doc aufgerufen wird
             const collectionRef = getCollectionRef(collectionName);
             if (!collectionRef) {
                 setError(`Could not get collection reference for ${collectionName}.`);
                 return;
             }
             await deleteDoc(doc(collectionRef, docId));
-            setSaveMessage(`Profile "${profileName}" successfully deleted!`);
+            setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
             setTimeout(() => setSaveMessage(''), 3000);
         } catch (e) {
             console.error(`Error deleting profile ${profileName}: `, e);
-            setError(`Error deleting profile "${profileName}".`);
+            setError(`Fehler beim Löschen des Profils "${profileName}".`);
         }
     };
 
@@ -708,7 +753,7 @@ function App() {
         return (
             <form className="p-8 bg-white rounded-2xl shadow-xl space-y-4 sm:space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-4 sm:mb-6 text-center">
-                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSteps})`}
+                    {type === 'seeker' ? `Suchenden-Profil erstellen (Schritt ${currentStep}/${totalSteps})` : `Zimmerangebot erstellen (Schritt ${currentStep}/${totalSteps})`}
                 </h2>
 
                 {/* --- STEP 1 --- */}
@@ -717,7 +762,7 @@ function App() {
                         {/* Name / Room Name */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Your Name:' : 'Room Name:'}
+                                {type === 'seeker' ? 'Ihr Name:' : 'Zimmername:'}
                             </label>
                             <input
                                 type="text"
@@ -732,7 +777,7 @@ function App() {
                         {/* Age (Seeker) / Age Range (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Your Age:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Ihr Alter:</label>
                                 <input
                                     type="number"
                                     name="age"
@@ -746,7 +791,7 @@ function App() {
                         {type === 'provider' && (
                             <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Min Flatmate Age:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Min. Mitbewohner-Alter:</label>
                                     <input
                                         type="number"
                                         name="minAge"
@@ -757,7 +802,7 @@ function App() {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Max Flatmate Age:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Max. Mitbewohner-Alter:</label>
                                     <input
                                         type="number"
                                         name="maxAge"
@@ -773,23 +818,23 @@ function App() {
                         {/* Gender (Seeker) / Gender Preference (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Your Gender:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Ihr Geschlecht:</label>
                                 <select
                                     name="gender"
                                     value={formState.gender}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                    {/* <option value="diverse">Diverse</option> Removed as requested */}
+                                    <option value="male">Männlich</option>
+                                    <option value="female">Weiblich</option>
+                                    {/* <option value="diverse">Divers</option> Removed as requested */}
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
                                 <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2 flex items-center">
-                                    Flatmate Gender Preference:
+                                    Geschlechtspräferenz für Mitbewohner:
                                     <div
                                         className="relative ml-2 cursor-pointer text-red-500 hover:text-red-700"
                                         onMouseEnter={() => setShowGenderTooltip(true)}
@@ -798,7 +843,7 @@ function App() {
                                         <Info size={18} />
                                         {showGenderTooltip && (
                                             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 bg-red-100 text-red-800 text-sm rounded-lg shadow-lg z-10 border border-red-300 sm:left-full sm:translate-x-0 sm:ml-2 sm:mt-0">
-                                                If you select "Male" or "Female", seekers of the opposite gender will be excluded from your match results.
+                                                Wenn Sie "Männlich" oder "Weiblich" auswählen, werden Suchende des anderen Geschlechts von Ihren Match-Ergebnissen ausgeschlossen.
                                             </div>
                                         )}
                                     </div>
@@ -809,17 +854,17 @@ function App() {
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="any">Any</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                    {/* <option value="diverse">Diverse</option> Removed as requested */}
+                                    <option value="any">Beliebig</option>
+                                    <option value="male">Männlich</option>
+                                    <option value="female">Weiblich</option>
+                                    {/* <option value="diverse">Divers</option> Removed as requested */}
                                 </select>
                             </div>
                         )}
 
                         {/* Location / City District (for both) */}
                         <div>
-                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Location / City District:</label>
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Ort / Stadtteil:</label>
                             <select
                                 name="location"
                                 value={formState.location}
@@ -827,7 +872,7 @@ function App() {
                                 required
                                 className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                             >
-                                <option value="Cologne">Cologne</option>
+                                <option value="Cologne">Köln</option>
                             </select>
                         </div>
                     </div>
@@ -839,7 +884,7 @@ function App() {
                         {/* Maximum Rent (Seeker) / Rent (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Maximum Rent (€):</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Maximale Miete (€):</label>
                                 <input
                                     type="number"
                                     name="maxRent"
@@ -851,7 +896,7 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Rent (€):</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Miete (€):</label>
                                 <input
                                     type="number"
                                     name="rent"
@@ -865,31 +910,31 @@ function App() {
                         {/* Pets (Seeker) / Pets Allowed (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Pets:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Haustiere:</label>
                                 <select
                                     name="pets"
                                     value={formState.pets}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="any">Any</option>
-                                    <option value="yes">Yes</option>
-                                    <option value="no">No</option>
+                                    <option value="any">Beliebig</option>
+                                    <option value="yes">Ja</option>
+                                    <option value="no">Nein</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Pets Allowed:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Haustiere erlaubt:</label>
                                 <select
                                     name="petsAllowed"
                                     value={formState.petsAllowed}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="any">Any</option>
-                                    <option value="yes">Yes</option>
-                                    <option value="no">No</option>
+                                    <option value="any">Beliebig</option>
+                                    <option value="yes">Ja</option>
+                                    <option value="no">Nein</option>
                                 </select>
                             </div>
                         )}
@@ -897,7 +942,7 @@ function App() {
                         {/* Personality Traits (for both) */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Your Personality Traits:' : 'Current Residents\' Personality Traits:'}
+                                {type === 'seeker' ? 'Ihre Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
                             </label>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allPersonalityTraits.map(trait => (
@@ -919,7 +964,7 @@ function App() {
                         {/* Interests (for both) */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Your Interests:' : 'Current Residents\' Interests:'}
+                                {type === 'seeker' ? 'Ihre Interessen:' : 'Interessen der aktuellen Bewohner:'}
                             </label>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allInterests.map(interest => (
@@ -941,7 +986,7 @@ function App() {
                         {/* New: Communal Living Preferences */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Your Communal Living Preferences:' : 'Room Communal Living Preferences:'}
+                                {type === 'seeker' ? 'Ihre Präferenzen für das Zusammenleben:' : 'Präferenzen für das Zusammenleben im Zimmer:'}
                             </label>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allCommunalLivingPreferences.map(pref => (
@@ -968,7 +1013,7 @@ function App() {
                         {/* What is being sought (Seeker) / Description of the Room (Provider) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">What are you looking for in a Room?:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Was suchen Sie in einem Zimmer?:</label>
                                 <textarea
                                     name="lookingFor"
                                     value={formState.lookingFor}
@@ -981,7 +1026,7 @@ function App() {
                         {type === 'provider' && (
                             <>
                                 <div>
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Description of the Room:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Beschreibung des Zimmers:</label>
                                     <textarea
                                         name="description"
                                         value={formState.description}
@@ -991,7 +1036,7 @@ function App() {
                                     ></textarea>
                                 </div>
                                 <div>
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">What are you looking for in a new flatmate?:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Was suchen Sie in einem neuen Mitbewohner?:</label>
                                     <textarea
                                         name="lookingForInFlatmate"
                                         value={formState.lookingForInFlatmate}
@@ -1004,21 +1049,21 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Room Type:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Zimmertyp:</label>
                                 <select
                                     name="roomType"
                                     value={formState.roomType}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="Single Room">Single Room</option>
-                                    <option value="Double Room">Double Room</option>
+                                    <option value="Single Room">Einzelzimmer</option>
+                                    <option value="Double Room">Doppelzimmer</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Average Age of Residents:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Durchschnittsalter der Bewohner:</label>
                                 <input
                                     type="number"
                                     name="avgAge"
@@ -1032,7 +1077,7 @@ function App() {
                         {/* New: Values */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Your Values and Expectations for Room life:' : 'Room Values and Expectations:'}
+                                {type === 'seeker' ? 'Ihre Werte und Erwartungen an das Zimmerleben:' : 'Zimmerwerte und Erwartungen:'}
                             </label>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allWGValues.map(val => (
@@ -1059,7 +1104,7 @@ function App() {
                         onClick={handleCancel}
                         className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                     >
-                        <XCircle size={18} className="mr-1 sm:mr-2" /> Cancel
+                        <XCircle size={18} className="mr-1 sm:mr-2" /> Abbrechen
                     </button>
                     {currentStep > 1 && (
                         <button
@@ -1067,7 +1112,7 @@ function App() {
                             onClick={prevStep}
                             className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                         >
-                            Back
+                            Zurück
                         </button>
                     )}
                     {currentStep < totalSteps ? (
@@ -1076,7 +1121,7 @@ function App() {
                             onClick={nextStep}
                             className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                         >
-                            Next
+                            Weiter
                         </button>
                     ) : (
                         <button
@@ -1088,7 +1133,7 @@ function App() {
                                     : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
                             }`}
                         >
-                            <CheckCircle size={18} className="mr-1 sm:mr-2" /> Save Profile
+                            <CheckCircle size={18} className="mr-1 sm:mr-2" /> Profil speichern
                         </button>
                     )}
                 </div>
@@ -1099,7 +1144,7 @@ function App() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#3fd5c1] to-[#e0f7f4]">
-                <p className="text-gray-700 text-lg animate-pulse">Loading App and Data...</p>
+                <p className="text-gray-700 text-lg animate-pulse">Lade App und Daten...</p>
             </div>
         );
     }
@@ -1107,7 +1152,7 @@ function App() {
     if (error) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-red-100 text-red-700 p-4 rounded-lg">
-                <p>Error: {error}</p>
+                <p>Fehler: {error}</p>
             </div>
         );
     }
@@ -1124,22 +1169,46 @@ function App() {
 
             <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-6 sm:mb-8 text-center drop-shadow-lg">Roomatch</h1>
             
-            {userId && (
-                <div className="bg-[#c3efe8] text-[#0a665a] text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-3 rounded-full mb-6 sm:mb-8 shadow-md flex flex-col sm:flex-row items-center transform transition-all duration-300 hover:scale-[1.02] text-center">
-                    <span className="mb-1 sm:mb-0 sm:mr-2 flex items-center"><User size={16} className="mr-1" /> Your User ID:</span> <span className="font-mono font-semibold ml-0 sm:ml-1">{userId}</span>
-                    {userId === ADMIN_UID && (
-                        <label className="mt-2 sm:mt-0 sm:ml-6 inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded-md transition-all duration-200 focus:ring-2 focus:ring-[#3fd5c1]"
-                                checked={adminMode}
-                                onChange={() => setAdminMode(!adminMode)}
-                            />
-                            <span className="ml-2 text-[#0a665a] font-bold select-none">Admin Mode</span>
-                        </label>
-                    )}
-                </div>
-            )}
+            {/* User Info / Login / Logout */}
+            <div className="bg-[#c3efe8] text-[#0a665a] text-xs sm:text-sm px-4 py-2 sm:px-6 sm:py-3 rounded-full mb-6 sm:mb-8 shadow-md flex flex-col sm:flex-row items-center transform transition-all duration-300 hover:scale-[1.02] text-center">
+                {userId ? (
+                    <>
+                        <span className="mb-1 sm:mb-0 sm:mr-2 flex items-center">
+                            <User size={16} className="mr-1" /> Angemeldet als: <span className="font-mono font-semibold ml-1">{userName}</span>
+                        </span>
+                        {userId === ADMIN_UID && (
+                            <label className="mt-2 sm:mt-0 sm:ml-6 inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-[#3fd5c1] rounded-md transition-all duration-200 focus:ring-2 focus:ring-[#3fd5c1]"
+                                    checked={adminMode}
+                                    onChange={() => setAdminMode(!adminMode)}
+                                />
+                                <span className="ml-2 text-[#0a665a] font-bold select-none">Admin Modus</span>
+                            </label>
+                        )}
+                        <button
+                            onClick={handleSignOut}
+                            className="ml-4 sm:ml-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 font-bold rounded-lg shadow-md hover:bg-gray-300 transition duration-150 ease-in-out flex items-center text-sm"
+                        >
+                            <LogOut size={16} className="mr-1.5" /> Abmelden
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <span className="mb-1 sm:mb-0 sm:mr-2 flex items-center">
+                            <User size={16} className="mr-1" /> Nicht angemeldet.
+                        </span>
+                        <button
+                            onClick={handleGoogleSignIn}
+                            className="ml-4 sm:ml-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-[#3fd5c1] font-bold rounded-lg shadow-md hover:bg-gray-100 transition duration-150 ease-in-out flex items-center text-sm"
+                        >
+                            <LogIn size={16} className="mr-1.5" /> Mit Google anmelden
+                        </button>
+                    </>
+                )}
+            </div>
+
             {saveMessage && (
                 <div className="bg-green-100 text-green-700 px-4 py-2 sm:px-5 sm:py-3 rounded-lg mb-4 sm:mb-6 shadow-xl transition-all duration-300 scale-100 animate-fade-in-down text-sm sm:text-base">
                     {saveMessage}
@@ -1151,27 +1220,27 @@ function App() {
                 // ADMIN MODE ON: Show all admin dashboards
                 <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Suchender findet Zimmer (Admin Ansicht)</h2>
                         {matches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">Keine Matches gefunden.</p>
                         ) : (
                             <div className="space-y-6 sm:space-y-8">
                                 {matches.map((match, index) => (
                                     <div key={index} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                            <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-1 sm:ml-2">{match.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {match.searcher.id.substring(0, 8)}...)</span>
+                                            <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Suchender: <span className="font-extrabold ml-1 sm:ml-2">{match.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {match.searcher.id.substring(0, 8)}...)</span>
                                         </h3>
                                         <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mb-3 sm:mb-4 flex items-center">
-                                            <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
+                                            <Heart size={18} className="mr-1 sm:mr-2" /> Passende Zimmerangebote:
                                         </h4>
                                         <div className="space-y-2">
                                             {match.matchingRooms.length === 0 ? (
-                                                <p className="text-gray-600 text-sm lg:text-base">No matching Rooms.</p>
+                                                <p className="text-gray-600 text-sm lg:text-base">Keine passenden Zimmer.</p>
                                             ) : (
                                                 match.matchingRooms.map(roomMatch => (
                                                     <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                            <p className="font-bold text-gray-800 text-base md:text-lg">Zimmername: {roomMatch.room.name}</p>
                                                             <div className="flex items-center mt-1 sm:mt-2">
                                                                 <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                     Score: {roomMatch.score.toFixed(0)}
@@ -1179,16 +1248,16 @@ function App() {
                                                                 <button
                                                                     onClick={() => setSelectedMatchDetails({ seeker: match.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                     className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                    title="Show Match Details"
+                                                                    title="Match Details anzeigen"
                                                                 >
                                                                     <Info size={16} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Gewünschtes Alter:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Bewohner-Persönlichkeit:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Gemeinschaftliches Wohnen:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -1201,27 +1270,27 @@ function App() {
                     </div>
 
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Room finds Seeker (Admin View)</h2>
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Zimmer findet Suchenden (Admin Ansicht)</h2>
                         {reverseMatches.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">Keine Matches gefunden.</p>
                         ) : (
                             <div className="space-y-6 sm:space-y-8">
                                 {reverseMatches.map((roomMatch, index) => (
                                     <div key={index} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                            <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
+                                            <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Zimmername: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
                                         </h3>
                                         <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                            <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
+                                            <Users size={18} className="mr-1 sm:mr-2" /> Passende Suchende:
                                         </h4>
                                         <div className="space-y-2">
                                             {roomMatch.matchingSeekers.length === 0 ? (
-                                                <p className="text-gray-600 text-sm lg:text-base">No matching seekers for your Room profile.</p>
+                                                <p className="text-gray-600 text-sm lg:text-base">Keine passenden Suchenden für Ihr Zimmerprofil.</p>
                                             ) : (
                                                 roomMatch.matchingSeekers.map(seekerMatch => (
                                                     <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                         <div>
-                                                            <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                            <p className="font-bold text-gray-800 text-base md:text-lg">Suchender: {seekerMatch.searcher.name}</p>
                                                             <div className="flex items-center mt-1 sm:mt-2">
                                                                 <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                     Score: {seekerMatch.score.toFixed(0)}
@@ -1229,16 +1298,16 @@ function App() {
                                                                 <button
                                                                     onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
                                                                     className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                    title="Show Match Details"
+                                                                    title="Match Details anzeigen"
                                                                 >
                                                                     <Info size={16} />
                                                                 </button>
                                                             </div>
-                                                            <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zimmerpräferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -1251,27 +1320,27 @@ function App() {
                     </div>
 
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Seeker Profiles (Admin View)</h2>
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Alle Suchenden-Profile (Admin Ansicht)</h2>
                         {allSearcherProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No seeker profiles available yet.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">Noch keine Suchenden-Profile verfügbar.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allSearcherProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#f0f8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Name: {profile.name}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
-                                        <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Alter:</span> {profile.age}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Geschlecht:</span> {capitalizeFirstLetter(profile.gender)}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Zimmerpräferenzen:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                        <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                             className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                         >
-                                            <Trash2 size={14} className="mr-1.5" /> Delete
+                                            <Trash2 size={14} className="mr-1.5" /> Löschen
                                         </button>
                                     </div>
                                 ))}
@@ -1280,27 +1349,27 @@ function App() {
                     </div>
 
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Room Offers (Admin View)</h2>
+                        <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Alle Zimmerangebote (Admin Ansicht)</h2>
                         {allRoomProfilesGlobal.length === 0 ? (
-                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">No Room offers available yet.</p>
+                            <p className="text-center text-gray-600 text-base sm:text-lg py-4">Noch keine Zimmerangebote verfügbar.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {allRoomProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                        <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Room Name: {profile.name}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender Preference:</span> {capitalizeFirstLetter(profile.genderPreference)}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Residents' Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
-                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy.substring(0, 8)}...</p>
-                                        <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                        <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Zimmername: {profile.name}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gewünschtes Alter:</span> {profile.minAge}-{profile.maxAge}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Geschlechtspräferenz:</span> {capitalizeFirstLetter(profile.genderPreference)}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Bewohner-Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Gemeinschaftliches Wohnen:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
+                                        <p className="text-xs text-gray-500 mt-3 sm:mt-4">Erstellt von: {profile.createdBy.substring(0, 8)}...</p>
+                                        <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                         <button
                                             onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
                                             className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                         >
-                                            <Trash2 size={14} className="mr-1.5" /> Delete
+                                            <Trash2 size={14} className="mr-1.5" /> Löschen
                                         </button>
                                     </div>
                                 ))}
@@ -1312,73 +1381,89 @@ function App() {
                 // NORMAL MODE: Show form selection + forms and then dashboards (if available)
                 <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                     {/* Form Selection Buttons */}
-                    <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
-                        <button
-                            onClick={() => setShowSeekerForm(true)}
-                            className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                                showSeekerForm
-                                    ? 'bg-[#9adfaa] text-[#333333]'
-                                    : 'bg-white text-[#9adfaa] hover:bg-gray-50'
-                            }`}
-                        >
-                            <Search size={20} className="mr-2" /> Seeker Profile
-                        </button>
-                        <button
-                            onClick={() => setShowSeekerForm(false)}
-                            className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                                !showSeekerForm
-                                    ? 'bg-[#fecd82] text-[#333333]'
-                                    : 'bg-white text-[#fecd82] hover:bg-gray-50'
-                            }`}
-                        >
-                            <HomeIcon size={20} className="mr-2" /> Room Offer
-                        </button>
-                    </div>
+                    {userId ? ( // Zeigt Formular-Buttons nur an, wenn angemeldet
+                        <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
+                            <button
+                                onClick={() => setShowSeekerForm(true)}
+                                className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                                    showSeekerForm
+                                        ? 'bg-[#9adfaa] text-[#333333]'
+                                        : 'bg-white text-[#9adfaa] hover:bg-gray-50'
+                                }`}
+                            >
+                                <Search size={20} className="mr-2" /> Suchenden-Profil
+                            </button>
+                            <button
+                                onClick={() => setShowSeekerForm(false)}
+                                className={`flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-xl text-lg sm:text-xl font-semibold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                                    !showSeekerForm
+                                        ? 'bg-[#fecd82] text-[#333333]'
+                                        : 'bg-white text-[#fecd82] hover:bg-gray-50'
+                                }`}
+                            >
+                                <HomeIcon size={20} className="mr-2" /> Zimmerangebot
+                            </button>
+                        </div>
+                    ) : ( // Aufforderung zur Anmeldung, wenn nicht angemeldet
+                        <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
+                            <p className="text-base sm:text-lg">Bitte melden Sie sich an, um Profile zu erstellen und Matches zu sehen.</p>
+                            <button
+                                onClick={handleGoogleSignIn}
+                                className="mt-4 sm:mt-6 px-5 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-base"
+                            >
+                                <span className="flex items-center"><LogIn size={18} className="mr-2" /> Mit Google anmelden</span>
+                            </button>
+                        </div>
+                    )}
+
 
                     {/* Current Form */}
-                    <div className="w-full max-w-xl mb-8 sm:mb-12 mx-auto">
-                        <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addRoomProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
-                    </div>
+                    {userId && ( // Formular nur anzeigen, wenn angemeldet
+                        <div className="w-full max-w-xl mb-8 sm:mb-12 mx-auto">
+                            <ProfileForm onSubmit={showSeekerForm ? addSearcherProfile : addRoomProfile} type={showSeekerForm ? "seeker" : "provider"} key={showSeekerForm ? "seekerForm" : "providerForm"} />
+                        </div>
+                    )}
 
-                    {/* User Dashboards (if profiles exist) */}
-                    {(showMySeekerDashboard || showMyRoomDashboard) ? (
+
+                    {/* User Dashboards (if profiles exist AND user is logged in) */}
+                    {(showMySeekerDashboard || showMyRoomDashboard) && userId ? (
                         <div className="flex flex-col gap-8 sm:gap-12 w-full"> 
                             {mySearcherProfiles.length > 0 && (
                                 <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Seeker Profiles & Matches</h2>
+                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Meine Suchenden-Profile & Matches</h2>
                                     {mySearcherProfiles.map(profile => {
                                         const profileMatches = matches.find(m => m.searcher.id === profile.id);
                                         return (
                                             <div key={profile.id} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                 {/* Own Seeker Profile Details */}
                                                 <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
-                                                    <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
+                                                    <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Ihr Profil: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                 </h3>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Max Rent:</span> {profile.maxRent}€</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets:</span> {capitalizeFirstLetter(profile.pets === 'yes' ? 'Yes' : 'No')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living Preferences:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-semibold">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Alter:</span> {profile.age}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Geschlecht:</span> {capitalizeFirstLetter(profile.gender)}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Max. Miete:</span> {profile.maxRent}€</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Haustiere:</span> {capitalizeFirstLetter(profile.pets === 'yes' ? 'Ja' : 'Nein')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gemeinschaftliches Wohnen:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
                                                 <button
                                                     onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                 >
-                                                    <Trash2 size={14} className="mr-1.5" /> Delete Profile
+                                                    <Trash2 size={14} className="mr-1.5" /> Profil löschen
                                                 </button>
 
                                                 {/* Matches for this specific Seeker Profile (titles/details also changed above, consistent now) */}
                                                 <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                    <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers for {profile.name}:
+                                                    <Heart size={18} className="mr-1 sm:mr-2" /> Passende Zimmerangebote für {profile.name}:
                                                 </h4>
                                                 <div className="space-y-2">
                                                     {profileMatches && profileMatches.matchingRooms.length > 0 ? (
                                                         profileMatches.matchingRooms.map(roomMatch => (
                                                             <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
+                                                                    <p className="font-bold text-gray-800 text-base md:text-lg">Zimmername: {roomMatch.room.name}</p>
                                                                     <div className="flex items-center mt-1 sm:mt-2">
                                                                         <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                             Score: {roomMatch.score.toFixed(0)}
@@ -1386,21 +1471,21 @@ function App() {
                                                                         <button
                                                                             onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                            title="Show Match Details"
+                                                                            title="Match Details anzeigen"
                                                                         >
                                                                             <Info size={16} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Residents' Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Gewünschtes Alter:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Bewohner-Persönlichkeit:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Gemeinschaftliches Wohnen:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-gray-600 text-sm md:text-base">No matching Rooms for this profile.</p>
+                                                        <p className="text-gray-600 text-sm md:text-base">Keine passenden Zimmer für dieses Profil.</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1411,40 +1496,40 @@ function App() {
 
                             {myRoomProfiles.length > 0 && (
                                 <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Room Offers & Matches</h2>
+                                    <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Meine Zimmerangebote & Matches</h2>
                                     {myRoomProfiles.map(profile => {
                                         const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
                                         return (
                                             <div key={profile.id} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                 {/* Own Room Profile Details */}
                                                 <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
-                                                    <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
+                                                    <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Ihr Zimmerprofil: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                 </h3>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Avg Age Residents:</span> {profile.avgAge}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Room Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
-                                                <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Miete:</span> {profile.rent}€</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Zimmertyp:</span> {capitalizeFirstLetter(profile.roomType)}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Haustiere erlaubt:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Durchschnittsalter Bewohner:</span> {profile.avgAge}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Bewohner-Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Gemeinschaftliches Wohnen:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
+                                                <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
                                                 <button
                                                     onClick={() => handleDeleteProfile('roomProfiles', profile.id, profile.name, profile.createdBy)}
                                                     className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                 >
-                                                    <Trash2 size={14} className="mr-1.5" /> Delete Profile
+                                                    <Trash2 size={14} className="mr-1.5" /> Profil löschen
                                                 </button>
 
                                                 {/* Matches for this specific Room Profile (titles/details also changed above, consistent now) */}
                                                 <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                    <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers for {profile.name}:
+                                                    <Users size={18} className="mr-1 sm:mr-2" /> Passende Suchende für {profile.name}:
                                                 </h4>
                                                 <div className="space-y-2">
                                                     {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
                                                         profileMatches.matchingSeekers.map(seekerMatch => (
                                                             <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                 <div>
-                                                                    <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
+                                                                    <p className="font-bold text-gray-800 text-base md:text-lg">Suchender: {seekerMatch.searcher.name}</p>
                                                                     <div className="flex items-center mt-1 sm:mt-2">
                                                                         <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                             Score: {seekerMatch.score.toFixed(0)}
@@ -1452,21 +1537,21 @@ function App() {
                                                                         <button
                                                                             onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                            title="Show Match Details"
+                                                                            title="Match Details anzeigen"
                                                                         >
                                                                             <Info size={16} />
                                                                         </button>
                                                                     </div>
-                                                                    <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                    <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zimmerpräferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                    <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
                                                                 </div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-gray-600 text-sm md:text-base">No matching seekers for this Room profile.</p>
+                                                        <p className="text-gray-600 text-sm md:text-base">Keine passenden Suchenden für dieses Zimmerprofil.</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -1477,13 +1562,14 @@ function App() {
                         </div> 
                     ) : (
                         // Message when no own profiles have been created and not in admin mode
+                        // oder wenn kein Nutzer angemeldet ist
                         <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
-                            <p className="text-base sm:text-lg">Please create a Seeker Profile or a Room Offer to see your matches.</p>
+                            <p className="text-base sm:text-lg">Bitte melden Sie sich an, um Profile zu erstellen und Matches zu sehen.</p>
                             <button
-                                onClick={() => setShowSeekerForm(true)}
+                                onClick={handleGoogleSignIn}
                                 className="mt-4 sm:mt-6 px-5 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-base"
                             >
-                                <span className="flex items-center"><Search size={18} className="mr-2" /> Create Profile</span>
+                                <span className="flex items-center"><LogIn size={18} className="mr-2" /> Mit Google anmelden</span>
                             </button>
                         </div>
                     )}

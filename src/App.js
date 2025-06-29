@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
@@ -284,8 +284,9 @@ function App() {
     const [selectedMatchDetails, setSelectedMatchDetails] = useState(null);
     const [isAuthReady, setIsAuthReady] = useState(false); // New state to track auth readiness
     const [showUserIdCopied, setShowUserIdCopied] = useState(false); // State for copy message
+    const [scrollToProfileId, setScrollToProfileId] = useState(null); // New state for scrolling to a specific profile
 
-    const mainContentRef = useRef(null); // Ref for the main content area to scroll to
+    const mainContentRef = useRef(null); // Ref for the general main content area
 
     // Firebase initialization and authentication
     useEffect(() => {
@@ -324,16 +325,28 @@ function App() {
         }
     }, []);
 
-    // Scroll to top of main content area after saving a profile
+    // Effect to scroll to a specific profile after it's been added/rendered
     useEffect(() => {
-        if (saveMessage && mainContentRef.current) {
-            // Adding a small delay to ensure rendering is complete before scrolling
-            // or to allow the "save message" to be briefly visible.
+        if (scrollToProfileId) {
+            const element = document.getElementById(`profile-${scrollToProfileId}`);
+            if (element) {
+                setTimeout(() => { // Small delay to ensure element is rendered and positioned
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setScrollToProfileId(null); // Clear the ID after scrolling
+                }, 100);
+            }
+        }
+    }, [scrollToProfileId, mySearcherProfiles, myRoomProfiles]); // Dependencies ensure re-run when profile data updates
+
+    // General scroll to top of main content area, only if no specific profile scroll is pending
+    useEffect(() => {
+        if (saveMessage && mainContentRef.current && !scrollToProfileId) {
             setTimeout(() => {
                 mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300); // Small delay
+            }, 300);
         }
-    }, [saveMessage]);
+    }, [saveMessage, scrollToProfileId]);
+
 
     // Function for Google Sign-in
     const handleGoogleSignIn = async () => {
@@ -638,13 +651,14 @@ function App() {
                 setError("Could not get collection reference for searcher profiles.");
                 return;
             }
-            await addDoc(collectionRef, {
+            const docRef = await addDoc(collectionRef, {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId, // Link profile to USER_ID
             });
             setSaveMessage('Seeker profile saved successfully!');
             setTimeout(() => setSaveMessage(''), 3000);
+            setScrollToProfileId(docRef.id); // Set the ID to scroll to
         } catch (e) {
             console.error("Error adding seeker profile: ", e);
             setError("Error saving seeker profile.");
@@ -663,13 +677,14 @@ function App() {
                 setError("Could not get collection reference for room profiles.");
                 return;
             }
-            await addDoc(collectionRef, {
+            const docRef = await addDoc(collectionRef, {
                 ...profileData,
                 createdAt: new Date(),
                 createdBy: userId, // Link profile to USER_ID
             });
             setSaveMessage('Room profile saved successfully!');
             setTimeout(() => setSaveMessage(''), 3000);
+            setScrollToProfileId(docRef.id); // Set the ID to scroll to
         } catch (e) {
             console.error("Error adding Room profile: ", e);
             setError("Error saving room profile.");
@@ -1264,7 +1279,7 @@ function App() {
             {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
             {adminMode ? (
                 // ADMIN MODE ON: Show all admin dashboards
-                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12"> {/* Added ref here */}
+                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                     {/* Admin Matches: Seeker finds Room */}
                     <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
                         <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker finds Room (Admin View)</h2>
@@ -1429,7 +1444,7 @@ function App() {
                 </div>
             ) : (
                 // NORMAL MODE: Show form selection + forms and then dashboards (if available)
-                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12"> {/* Added ref here */}
+                <div ref={mainContentRef} className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                     {/* Form Selection Buttons / Login Prompt */}
                     {userId ? (
                         <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8 sm:mb-12 px-4">
@@ -1482,7 +1497,7 @@ function App() {
                                     {mySearcherProfiles.map(profile => {
                                         const profileMatches = matches.find(m => m.searcher.id === profile.id);
                                         return (
-                                            <div key={profile.id} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
+                                            <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                 {/* Own Seeker Profile Details */}
                                                 <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
                                                     <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
@@ -1548,7 +1563,7 @@ function App() {
                                     {myRoomProfiles.map(profile => {
                                         const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
                                         return (
-                                            <div key={profile.id} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
+                                            <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                 {/* Own Room Profile Details */}
                                                 <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
                                                     <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>

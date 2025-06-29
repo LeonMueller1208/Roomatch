@@ -1264,11 +1264,20 @@ function App() {
                 )}
             </div>
 
-            {saveMessage && (
-                <div className="bg-green-100 text-green-700 px-4 py-2 sm:px-5 sm:py-3 rounded-lg mb-4 sm:mb-6 shadow-xl transition-all duration-300 scale-100 animate-fade-in-down text-sm sm:text-base">
-                    {saveMessage}
-                </div>
-            )}
+            {/* Success Message Container - Always present to prevent layout shift */}
+            <div className={`
+                min-h-[50px] sm:min-h-[60px] flex items-center justify-center
+                w-full max-w-xl mx-auto mb-4 sm:mb-6
+                transition-all duration-500 ease-in-out
+                ${saveMessage ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}
+            `}>
+                {saveMessage && ( // Only render text if message exists
+                    <div className="bg-green-100 text-green-700 px-4 py-2 sm:px-5 sm:py-3 rounded-lg shadow-xl text-sm sm:text-base">
+                        {saveMessage}
+                    </div>
+                )}
+            </div>
+
 
             {/* --- MAIN VIEWS (Admin Mode vs. Normal Mode) --- */}
             {adminMode ? (
@@ -1416,10 +1425,12 @@ function App() {
                                 {allRoomProfilesGlobal.map(profile => (
                                     <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                         <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Room Name: {profile.name}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Desired Age:</span> {profile.minAge}-{profile.maxAge}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender Preference:</span> {capitalizeFirstLetter(profile.genderPreference)}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Resident Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age Residents:</span> {profile.avgAge}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Resident Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                        <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
                                         <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
                                         <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
                                         <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>

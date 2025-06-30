@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc, serverTimestamp, orderBy, limit, setDoc } from 'firebase/firestore';
-import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info, LogIn, LogOut, Copy, MessageSquareText } from 'lucide-react'; // Added MessageSquareText
+import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc, serverTimestamp, orderBy, limit, setDoc, getDocs } from 'firebase/firestore'; // Added getDocs
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
@@ -422,18 +421,79 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
 };
 
 // Main Chat Page Component (will be rendered conditionally in App.js)
-const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal }) => {
+const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid }) => {
     const [chats, setChats] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null);
     const [otherUser, setOtherUser] = useState(null);
+    const [isLoadingChat, setIsLoadingChat] = useState(false);
+    const [chatError, setChatError] = useState(null);
 
-    // Fetch all profiles to map UIDs to names for chat display
-    const allProfiles = [...allSearcherProfilesGlobal, ...allRoomProfilesGlobal].reduce((acc, profile) => {
-        acc[profile.createdBy] = profile.name; // Map UID to name
-        return acc;
-    }, {});
+    // Combine all profiles (seekers and rooms) and map UIDs to names
+    const allProfilesMap = useMemo(() => {
+        const map = {};
+        [...allSearcherProfilesGlobal, ...allRoomProfilesGlobal].forEach(profile => {
+            // Use the name from the actual profile created by the user, if available
+            if (profile.createdBy) {
+                map[profile.createdBy] = profile.name;
+            }
+        });
+        return map;
+    }, [allSearcherProfilesGlobal, allRoomProfilesGlobal]);
 
-    // Fetch user's chats
+
+    // Effect to handle initial chat target (when clicking chat button from a match)
+    useEffect(() => {
+        const findOrCreateChat = async () => {
+            if (!db || !currentUserUid || !initialChatTargetUid || isLoadingChat) return;
+
+            setIsLoadingChat(true);
+            setChatError(null);
+
+            try {
+                const chatsRef = collection(db, 'chats');
+                // Query for existing chat where both users are participants
+                // This query assumes participantsUids are always sorted or searched bidirectionally.
+                // For simplicity and to match the rule: search for array-contains-all
+                const q = query(
+                    chatsRef,
+                    where('participantsUids', 'array-contains', currentUserUid),
+                    where('participantsUids', 'array-contains', initialChatTargetUid)
+                );
+
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    // Chat exists, select it
+                    const existingChat = querySnapshot.docs[0];
+                    setSelectedChatId(existingChat.id);
+                    const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
+                    setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+                } else {
+                    // Chat does not exist, create a new one
+                    const newChatRef = await addDoc(chatsRef, {
+                        participantsUids: [currentUserUid, initialChatTargetUid], // Ensure UIDs are stored for rules
+                        createdAt: serverTimestamp(),
+                        lastMessageTimestamp: serverTimestamp(), // Initialize timestamp for sorting
+                        lastMessage: { text: "New chat started.", senderId: currentUserUid },
+                    });
+                    setSelectedChatId(newChatRef.id);
+                    const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
+                    setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+                }
+            } catch (error) {
+                console.error("Error finding or creating chat:", error);
+                setChatError("Failed to start chat. Please try again.");
+            } finally {
+                setIsLoadingChat(false);
+            }
+        };
+
+        if (initialChatTargetUid && currentUserUid && db) {
+            findOrCreateChat();
+        }
+    }, [db, currentUserUid, initialChatTargetUid, allProfilesMap, isLoadingChat]); // Added isLoadingChat to dependencies to prevent re-triggering
+
+    // Fetch user's chats for the list view
     useEffect(() => {
         if (!db || !currentUserUid) return;
 
@@ -445,9 +505,9 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
             const fetchedChats = snapshot.docs.map(doc => {
                 const data = doc.data();
                 // Ensure participants is an array of objects with uid and name
-                const participantsWithNames = data.participants.map(p => ({
-                    uid: p.uid,
-                    name: allProfiles[p.uid] || 'Unknown User' // Use fetched profile names
+                const participantsWithNames = data.participantsUids.map(uid => ({
+                    uid: uid,
+                    name: allProfilesMap[uid] || 'Unknown User' // Use fetched profile names
                 }));
                 return {
                     id: doc.id,
@@ -462,13 +522,23 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 return 0;
             });
             setChats(fetchedChats);
+
+            // If a specific chat was targeted initially, ensure it's selected after chats load
+            if (initialChatTargetUid && !selectedChatId) {
+                const targetChat = fetchedChats.find(chat => chat.participantsUids.includes(initialChatTargetUid));
+                if (targetChat) {
+                    setSelectedChatId(targetChat.id);
+                    const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
+                    setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+                }
+            }
         }, (error) => {
             console.error("Error fetching chats:", error);
+            setChatError("Failed to load your chats.");
         });
 
         return () => unsubscribe();
-    }, [db, currentUserUid, allProfiles]);
-
+    }, [db, currentUserUid, allProfilesMap, initialChatTargetUid, selectedChatId]); // Added initialChatTargetUid, selectedChatId
 
     const handleSelectChat = (chatId) => {
         setSelectedChatId(chatId);
@@ -476,18 +546,33 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         if (selectedChat) {
             // Find the other participant's profile
             const otherParticipantUid = selectedChat.participants.find(p => p.uid !== currentUserUid)?.uid;
-            const otherProfile = [...allSearcherProfilesGlobal, ...allRoomProfilesGlobal].find(p => p.createdBy === otherParticipantUid);
-            setOtherUser({
-                uid: otherParticipantUid,
-                name: otherProfile?.name || 'Unknown User'
-            });
+            const otherUserName = allProfilesMap[otherParticipantUid] || 'Unknown User';
+            setOtherUser({ uid: otherParticipantUid, name: otherUserName });
         }
     };
 
     const handleCloseChat = () => {
         setSelectedChatId(null);
         setOtherUser(null);
+        // Clear initialChatTargetUid when closing chat view
+        // This is handled by App.js setting it to null when switching views
     };
+
+    if (isLoadingChat) {
+        return (
+            <div className="flex items-center justify-center h-[50vh] text-gray-700 text-lg animate-pulse">
+                Loading chat...
+            </div>
+        );
+    }
+
+    if (chatError) {
+        return (
+            <div className="flex items-center justify-center h-[50vh] bg-red-100 text-red-700 p-4 rounded-lg">
+                <p>Chat Error: {chatError}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto">
@@ -539,7 +624,7 @@ function App() {
 
     // New state for current view: 'home' (default profile creation/matches), 'chats', 'admin'
     const [currentView, setCurrentView] = useState('home');
-    const [chatTargetUser, setChatTargetUser] = useState(null); // UID of the user to chat with directly
+    const [initialChatTargetUid, setInitialChatTargetUid] = useState(null); // UID of the user to chat with directly
 
     // Firebase initialization and authentication
     useEffect(() => {
@@ -659,6 +744,7 @@ function App() {
             setAdminMode(false);
             setError(null);
             setCurrentView('home'); // Reset view on sign out
+            setInitialChatTargetUid(null); // Clear target user on sign out
         } catch (error) {
             console.error("Sign-out error:", error);
             setError("Sign-out failed: " + error.message);
@@ -696,6 +782,7 @@ function App() {
         if (!adminMode) {
             setShowSeekerForm(true);
             setCurrentView('home'); // Go back to home view when admin mode is off
+            setInitialChatTargetUid(null); // Clear target user
         }
     }, [adminMode]);
 
@@ -1005,10 +1092,11 @@ function App() {
         }
         if (userId === targetUserUid) {
             setError("You cannot chat with yourself.");
+            setTimeout(() => setError(''), 3000); // Clear error after 3 seconds
             return;
         }
-        setChatTargetUser(targetUserUid);
-        setCurrentView('chats');
+        setInitialChatTargetUid(targetUserUid); // Set the target UID
+        setCurrentView('chats'); // Switch to chat view
     }, [userId]);
 
     // Unified Profile Form Component
@@ -1576,10 +1664,10 @@ function App() {
             )}
 
             {/* Main navigation buttons (Home/Chats) */}
-            {userId && (
+            {userId && !adminMode && ( // Only show navigation if logged in and not in admin mode
                 <div className="w-full max-w-6xl mx-auto flex justify-center space-x-4 mb-8">
                     <button
-                        onClick={() => { setCurrentView('home'); setChatTargetUser(null); }}
+                        onClick={() => { setCurrentView('home'); setInitialChatTargetUid(null); }}
                         className={`px-6 py-3 rounded-xl text-lg font-semibold shadow-md transition-all duration-300 transform hover:scale-105 ${
                             currentView === 'home' ? 'bg-white text-[#3fd5c1]' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
@@ -1587,7 +1675,7 @@ function App() {
                         <HomeIcon className="inline-block mr-2" size={20} /> Home
                     </button>
                     <button
-                        onClick={() => { setCurrentView('chats'); setChatTargetUser(null); }}
+                        onClick={() => { setCurrentView('chats'); setInitialChatTargetUid(null); }} // When clicking 'Chats', reset targetUid
                         className={`px-6 py-3 rounded-xl text-lg font-semibold shadow-md transition-all duration-300 transform hover:scale-105 ${
                             currentView === 'chats' ? 'bg-white text-[#3fd5c1]' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
@@ -1596,6 +1684,7 @@ function App() {
                     </button>
                 </div>
             )}
+
 
             {/* Main content wrapper - Removed top margin as global padding handles it */}
             <div className="w-full max-w-6xl flex flex-col items-center">
@@ -1638,13 +1727,15 @@ function App() {
                                                                         <Info size={16} />
                                                                     </button>
                                                                     {/* Chat button for Admin view */}
-                                                                    <button
-                                                                        onClick={() => handleStartChat(roomMatch.room.createdBy)}
-                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
-                                                                        title="Start Chat with Room Creator"
-                                                                    >
-                                                                        <MessageSquareText size={16} />
-                                                                    </button>
+                                                                    {userId && roomMatch.room.createdBy !== userId && ( // Don't show chat with self
+                                                                        <button
+                                                                            onClick={() => handleStartChat(roomMatch.room.createdBy)}
+                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                            title="Start Chat with Room Creator"
+                                                                        >
+                                                                            <MessageSquareText size={16} />
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
@@ -1697,13 +1788,15 @@ function App() {
                                                                         <Info size={16} />
                                                                     </button>
                                                                     {/* Chat button for Admin view */}
-                                                                    <button
-                                                                        onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
-                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
-                                                                        title="Start Chat with Seeker"
-                                                                    >
-                                                                        <MessageSquareText size={16} />
-                                                                    </button>
+                                                                    {userId && seekerMatch.searcher.createdBy !== userId && ( // Don't show chat with self
+                                                                        <button
+                                                                            onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
+                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                            title="Start Chat with Seeker"
+                                                                        >
+                                                                            <MessageSquareText size={16} />
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
@@ -1881,13 +1974,15 @@ function App() {
                                                                                     >
                                                                                         <Info size={16} />
                                                                                     </button>
-                                                                                    <button
-                                                                                        onClick={() => handleStartChat(roomMatch.room.createdBy)}
-                                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
-                                                                                        title="Start Chat with Room Creator"
-                                                                                    >
-                                                                                        <MessageSquareText size={16} />
-                                                                                    </button>
+                                                                                    {userId && roomMatch.room.createdBy !== userId && ( // Don't show chat with self
+                                                                                        <button
+                                                                                            onClick={() => handleStartChat(roomMatch.room.createdBy)}
+                                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                                            title="Start Chat with Room Creator"
+                                                                                        >
+                                                                                            <MessageSquareText size={16} />
+                                                                                        </button>
+                                                                                    )}
                                                                                 </div>
                                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
@@ -1954,13 +2049,15 @@ function App() {
                                                                                     >
                                                                                         <Info size={16} />
                                                                                     </button>
-                                                                                    <button
-                                                                                        onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
-                                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
-                                                                                        title="Start Chat with Seeker"
-                                                                                    >
-                                                                                        <MessageSquareText size={16} />
-                                                                                    </button>
+                                                                                    {userId && seekerMatch.searcher.createdBy !== userId && ( // Don't show chat with self
+                                                                                        <button
+                                                                                            onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
+                                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                                            title="Start Chat with Seeker"
+                                                                                        >
+                                                                                            <MessageSquareText size={16} />
+                                                                                        </button>
+                                                                                    )}
                                                                                 </div>
                                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
@@ -1995,6 +2092,7 @@ function App() {
                                 currentUserName={userName}
                                 allSearcherProfilesGlobal={allSearcherProfilesGlobal}
                                 allRoomProfilesGlobal={allRoomProfilesGlobal}
+                                initialChatTargetUid={initialChatTargetUid} // Pass the target UID to ChatPage
                             />
                         )}
                     </div>

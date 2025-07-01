@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc, serverTimestamp, orderBy, limit, setDoc, getDocs } from 'firebase/firestore'; // Added getDocs
-import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info, LogIn, LogOut, Copy, MessageSquareText } from 'lucide-react'; // Added all necessary Lucide icons
+import { getFirestore, collection, addDoc, onSnapshot, query, where, doc, deleteDoc, serverTimestamp, orderBy, limit, setDoc, getDocs } from 'firebase/firestore';
+import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCircle, Info, LogIn, LogOut, Copy, MessageSquareText } from 'lucide-react';
+
+// Load Tailwind CSS for styling
+// This script tag is typically placed in the public/index.html file's <head> section
+// For Canvas environment, it's assumed to be available or injected.
+// <script src="https://cdn.tailwindcss.com"></script>
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
+    apiKey: "AIzaSyACGoSxD0_UZxWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -21,20 +26,6 @@ const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports',
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
-// Define fixed weights for matching criteria
-const MATCH_WEIGHTS = {
-    ageMatch: 2.0,           // Age is twice as important
-    genderMatch: 1.0,        // Gender is normally important
-    personalityTraits: 1.5,  // Personality traits are 1.5 times as important
-    interests: 0.5,          // Interests are half as important
-    rentMatch: 2.5,          // Rent is 2.5 times as important
-    petsMatch: 1.2,          // Pets are slightly more important
-    freeTextMatch: 0.2,      // Free text has minor importance
-    avgAgeDifference: 1.0,   // Age difference (negative contribution)
-    communalLiving: 1.8,     // Communal living preferences are important
-    values: 2.0              // Values are twice as important
-};
-
 // **IMPORTANT:** REPLACE THIS VALUE EXACTLY WITH YOUR ACTUAL ADMIN UID, WHICH WILL BE SHOWN IN THE APP AFTER SUCCESSFUL GOOGLE LOGIN!
 const ADMIN_UID = "hFt4BLSEg0UYAAUSfdf404mfw5v2"; // Placeholder: Please enter your Admin ID here!
 
@@ -46,6 +37,15 @@ const capitalizeFirstLetter = (string) => {
     if (!string) return '';
     return string.charAt(0).toUpperCase() + string.slice(1);
 };
+
+// Helper function to get a consistently sorted array of participant UIDs
+// This is crucial for querying 1:1 chats in Firestore
+const getSortedParticipantsUids = (uid1, uid2) => {
+    const uids = [uid1, uid2];
+    uids.sort(); // Sorts alphabetically to ensure consistent chat document ID
+    return uids;
+};
+
 
 // Function to calculate the match score between a seeker and a Room profile
 // Now returns an object with total score and a detailed breakdown
@@ -68,6 +68,20 @@ const calculateMatchScore = (seeker, room) => {
     const getArrayValue = (profile, field) => {
         const value = profile[field];
         return Array.isArray(value) ? value : (value ? String(value).split(',').map(s => s.trim()) : []);
+    };
+
+    // Define fixed weights for matching criteria
+    const MATCH_WEIGHTS = {
+        ageMatch: 2.0,       // Age is twice as important
+        genderMatch: 1.0,    // Gender is normally important
+        personalityTraits: 1.5, // Personality traits are 1.5 times as important
+        interests: 0.5,      // Interests are half as important
+        rentMatch: 2.5,      // Rent is 2.5 times as important
+        petsMatch: 1.2,      // Pets are slightly more important
+        freeTextMatch: 0.2,  // Free text has minor importance
+        avgAgeDifference: 1.0, // Age difference (negative contribution)
+        communalLiving: 1.8, // Communal living preferences are important
+        values: 2.0          // Values are twice as important
     };
 
     // 1. Age Match (Seeker age vs. Room age range)
@@ -262,7 +276,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
     );
 };
 
-// Component for Chat List (to be created in ChatPage.js)
+// Component for Chat List
 const ChatList = ({ chats, onSelectChat, currentUserUid }) => {
     return (
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-xl mx-auto">
@@ -299,7 +313,7 @@ const ChatList = ({ chats, onSelectChat, currentUserUid }) => {
     );
 };
 
-// Component for Chat Conversation (to be created in ChatPage.js)
+// Component for Chat Conversation
 const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUser, db, currentUserName }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -317,6 +331,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
             setMessages(msgs);
         }, (error) => {
             console.error("Error fetching messages:", error);
+            // In a real app, show an error to the user
         });
 
         return () => unsubscribe();
@@ -422,7 +437,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
 };
 
 // Main Chat Page Component (will be rendered conditionally in App.js)
-const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid }) => {
+const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid, setInitialChatTargetUid }) => {
     const [chats, setChats] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null);
     const [otherUser, setOtherUser] = useState(null);
@@ -430,77 +445,96 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
     const [chatError, setChatError] = useState(null);
 
     // Combine all profiles (seekers and rooms) and map UIDs to names
+    // This memoized map is crucial for displaying names in chat list/conversation
     const allProfilesMap = useMemo(() => {
         const map = {};
         [...allSearcherProfilesGlobal, ...allRoomProfilesGlobal].forEach(profile => {
-            // Use the name from the actual profile created by the user, if available
-            if (profile.createdBy) {
+            // Ensure profile.createdBy exists and is a valid UID
+            if (profile.createdBy && profile.name) {
                 map[profile.createdBy] = profile.name;
             }
         });
+        // Add current user's name to the map for self-referencing
+        if (currentUserUid && currentUserName) {
+            map[currentUserUid] = currentUserName;
+        }
         return map;
-    }, [allSearcherProfilesGlobal, allRoomProfilesGlobal]);
+    }, [allSearcherProfilesGlobal, allRoomProfilesGlobal, currentUserUid, currentUserName]); // Dependencies for memoization
 
-
-    // Effect to handle initial chat target (when clicking chat button from a match)
+    // Effect 1: Handle initial chat target (when clicking chat button from a match)
+    // This effect runs when initialChatTargetUid, currentUserUid, or db change.
+    // It finds or creates a chat and sets the selectedChatId.
     useEffect(() => {
         const findOrCreateChat = async () => {
-            if (!db || !currentUserUid || !initialChatTargetUid || isLoadingChat) return;
+            // Only proceed if we have a target UID, current user UID, and DB is ready
+            // Also, ensure we don't re-trigger if a chat is already selected or loading
+            if (!db || !currentUserUid || !initialChatTargetUid || selectedChatId || isLoadingChat) return;
 
             setIsLoadingChat(true);
             setChatError(null);
 
             try {
                 const chatsRef = collection(db, 'chats');
-                // Query for existing chat where both users are participants
-                // This query assumes participantsUids are always sorted or searched bidirectionally.
-                // For simplicity and to match the rule: search for array-contains-all
+                const participantUids = getSortedParticipantsUids(currentUserUid, initialChatTargetUid);
+
+                // Query for existing chat where participantsUids array matches exactly
                 const q = query(
                     chatsRef,
-                    where('participantsUids', 'array-contains', currentUserUid),
-                    where('participantsUids', 'array-contains', initialChatTargetUid)
+                    where('participantsUids', '==', participantUids)
                 );
 
                 const querySnapshot = await getDocs(q);
 
+                let chatToSelectId = null;
                 if (!querySnapshot.empty) {
                     // Chat exists, select it
-                    const existingChat = querySnapshot.docs[0];
-                    setSelectedChatId(existingChat.id);
-                    const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
-                    setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+                    chatToSelectId = querySnapshot.docs[0].id;
                 } else {
                     // Chat does not exist, create a new one
                     const newChatRef = await addDoc(chatsRef, {
-                        participantsUids: [currentUserUid, initialChatTargetUid], // Ensure UIDs are stored for rules
+                        participantsUids: participantUids, // Store sorted UIDs
                         createdAt: serverTimestamp(),
                         lastMessageTimestamp: serverTimestamp(), // Initialize timestamp for sorting
                         lastMessage: { text: "New chat started.", senderId: currentUserUid },
                     });
-                    setSelectedChatId(newChatRef.id);
-                    const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
-                    setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+                    chatToSelectId = newChatRef.id;
                 }
+
+                setSelectedChatId(chatToSelectId);
+                const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
+                setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+
             } catch (error) {
                 console.error("Error finding or creating chat:", error);
                 setChatError("Failed to start chat. Please try again.");
             } finally {
                 setIsLoadingChat(false);
+                // IMPORTANT: Clear initialChatTargetUid in the parent App component
+                // This prevents this effect from re-running unnecessarily if ChatPage re-renders
+                // and initialChatTargetUid is still set from a previous navigation.
+                setInitialChatTargetUid(null); 
             }
         };
 
+        // Trigger this effect only when initialChatTargetUid is explicitly set by the parent App
+        // and other conditions (db, currentUserUid) are met.
         if (initialChatTargetUid && currentUserUid && db) {
             findOrCreateChat();
         }
-    }, [db, currentUserUid, initialChatTargetUid, allProfilesMap, isLoadingChat]); // Added isLoadingChat to dependencies to prevent re-triggering
+    }, [db, currentUserUid, initialChatTargetUid, allProfilesMap, selectedChatId, isLoadingChat, setInitialChatTargetUid]);
 
-    // Fetch user's chats for the list view
+    // Effect 2: Fetch user's chats for the list view
+    // This effect only depends on core data needed to fetch the chat list.
     useEffect(() => {
         if (!db || !currentUserUid) return;
 
         const chatsRef = collection(db, 'chats');
         // Query for chats where the current user is a participant
-        const q = query(chatsRef, where('participantsUids', 'array-contains', currentUserUid));
+        const q = query(
+            chatsRef,
+            where('participantsUids', 'array-contains', currentUserUid),
+            orderBy('lastMessageTimestamp', 'desc') // Order by last message for chat list
+        );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedChats = snapshot.docs.map(doc => {
@@ -515,31 +549,15 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                     ...data,
                     participants: participantsWithNames,
                 };
-            }).sort((a, b) => {
-                // Sort by last message timestamp, newest first
-                if (a.lastMessageTimestamp && b.lastMessageTimestamp) {
-                    return b.lastMessageTimestamp.seconds - a.lastMessageTimestamp.seconds;
-                }
-                return 0;
             });
             setChats(fetchedChats);
-
-            // If a specific chat was targeted initially, ensure it's selected after chats load
-            if (initialChatTargetUid && !selectedChatId) {
-                const targetChat = fetchedChats.find(chat => chat.participantsUids.includes(initialChatTargetUid));
-                if (targetChat) {
-                    setSelectedChatId(targetChat.id);
-                    const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
-                    setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
-                }
-            }
         }, (error) => {
             console.error("Error fetching chats:", error);
             setChatError("Failed to load your chats.");
         });
 
         return () => unsubscribe();
-    }, [db, currentUserUid, allProfilesMap, initialChatTargetUid, selectedChatId]); // Added initialChatTargetUid, selectedChatId
+    }, [db, currentUserUid, allProfilesMap]); // Removed initialChatTargetUid, selectedChatId from dependencies
 
     const handleSelectChat = (chatId) => {
         setSelectedChatId(chatId);
@@ -555,8 +573,10 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
     const handleCloseChat = () => {
         setSelectedChatId(null);
         setOtherUser(null);
-        // Clear initialChatTargetUid when closing chat view
-        // This is handled by App.js setting it to null when switching views
+        // When closing a chat, also ensure initialChatTargetUid in App.js is cleared
+        // This is important if the user navigates back to the chat list from a specific chat
+        // that was initiated via a "Start Chat" button.
+        setInitialChatTargetUid(null); // IMPORTANT: Clear this in the parent App component
     };
 
     if (isLoadingChat) {
@@ -755,8 +775,7 @@ function App() {
     // Function to copy UID to clipboard
     const copyUidToClipboard = () => {
         if (userId) {
-            document.execCommand('copy'); // Using document.execCommand for iFrame compatibility
-            // Fallback if the above doesn't work (e.g. not in user-gesture-driven context)
+            // Using document.execCommand for iFrame compatibility
             const textArea = document.createElement("textarea");
             textArea.value = userId;
             textArea.style.position = "fixed"; // Avoid scrolling to bottom
@@ -962,7 +981,6 @@ function App() {
         setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgProfilesData]);
     }, [newRoomProfilesData, oldWgProfilesData]);
 
-
     // Match calculation for both directions
     useEffect(() => {
         const calculateAllMatches = () => {
@@ -1004,7 +1022,7 @@ function App() {
             setMatches([]);
             setReverseMatches([]);
         }
-    }, [mySearcherProfiles, myRoomProfiles, allSearcherProfilesGlobal, allRoomProfilesGlobal, loading, adminMode, userId, db, isAuthReady]);
+    }, [allSearcherProfilesGlobal, allRoomProfilesGlobal, adminMode, userId, db, isAuthReady]);
 
     // Function to add a seeker profile to Firestore
     const addSearcherProfile = async (profileData) => {
@@ -1700,19 +1718,19 @@ function App() {
                                 <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
                             ) : (
                                 <div className="space-y-6 sm:space-y-8">
-                                    {matches.map((match, index) => (
+                                    {matches.map((searcherMatch, index) => (
                                         <div key={index} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                             <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker: <span className="font-extrabold ml-1 sm:ml-2">{match.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {match.searcher.id.substring(0, 8)}...)</span>
+                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker Name: <span className="font-extrabold ml-1 sm:ml-2">{searcherMatch.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {searcherMatch.searcher.id.substring(0, 8)}...)</span>
                                             </h3>
-                                            <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mb-3 sm:mb-4 flex items-center">
+                                            <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
                                                 <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
                                             </h4>
                                             <div className="space-y-2">
-                                                {match.matchingRooms.length === 0 ? (
-                                                    <p className="text-gray-600 text-sm lg:text-base">No matching rooms.</p>
+                                                {searcherMatch.matchingRooms.length === 0 ? (
+                                                    <p className="text-gray-600 text-sm lg:text-base">No matching rooms for this seeker profile.</p>
                                                 ) : (
-                                                    match.matchingRooms.map(roomMatch => (
+                                                    searcherMatch.matchingRooms.map(roomMatch => (
                                                         <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                             <div>
                                                                 <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
@@ -1721,17 +1739,16 @@ function App() {
                                                                         Score: {roomMatch.score.toFixed(0)}
                                                                     </div>
                                                                     <button
-                                                                        onClick={() => setSelectedMatchDetails({ seeker: match.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
+                                                                        onClick={() => setSelectedMatchDetails({ seeker: searcherMatch.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                         className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
                                                                         title="Show Match Details"
                                                                     >
                                                                         <Info size={16} />
                                                                     </button>
-                                                                    {/* Chat button for Admin view */}
                                                                     {userId && roomMatch.room.createdBy !== userId && ( // Don't show chat with self
                                                                         <button
                                                                             onClick={() => handleStartChat(roomMatch.room.createdBy)}
-                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
                                                                             title="Start Chat with Room Creator"
                                                                         >
                                                                             <MessageSquareText size={16} />
@@ -1739,8 +1756,10 @@ function App() {
                                                                     )}
                                                                 </div>
                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Rent:</span> {roomMatch.room.rent}€, <span className="font-medium">Room Type:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Pets Allowed:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                             </div>
@@ -1788,7 +1807,6 @@ function App() {
                                                                     >
                                                                         <Info size={16} />
                                                                     </button>
-                                                                    {/* Chat button for Admin view */}
                                                                     {userId && seekerMatch.searcher.createdBy !== userId && ( // Don't show chat with self
                                                                         <button
                                                                             onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
@@ -1814,7 +1832,6 @@ function App() {
                                 </div>
                             )}
                         </div>
-
                         {/* All Seeker Profiles (Admin View) */}
                         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
                             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Seeker Profiles (Admin View)</h2>
@@ -1878,9 +1895,9 @@ function App() {
                         </div>
                     </div>
                 ) : (
-                    // NORMAL MODE: Show form selection + forms and then dashboards (if available) or ChatPage
+                    // NORMAL USER MODE
                     <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
-                        {currentView === 'home' && (
+                        {currentView === 'home' ? (
                             <>
                                 {/* Form Selection Buttons / Login Prompt */}
                                 {userId ? (
@@ -1978,7 +1995,7 @@ function App() {
                                                                                     {userId && roomMatch.room.createdBy !== userId && ( // Don't show chat with self
                                                                                         <button
                                                                                             onClick={() => handleStartChat(roomMatch.room.createdBy)}
-                                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
                                                                                             title="Start Chat with Room Creator"
                                                                                         >
                                                                                             <MessageSquareText size={16} />
@@ -1986,15 +2003,17 @@ function App() {
                                                                                     )}
                                                                                 </div>
                                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Rent:</span> {roomMatch.room.rent}€, <span className="font-medium">Room Type:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Pets Allowed:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Resident Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                                             </div>
                                                                         </div>
                                                                     ))
                                                                 ) : (
-                                                                    <p className="text-gray-600 text-sm md:text-base">No matching rooms for this profile.</p>
+                                                                    <p className="text-gray-600 text-sm lg:text-base">No matching rooms for this profile.</p>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -2069,7 +2088,7 @@ function App() {
                                                                         </div>
                                                                     ))
                                                                 ) : (
-                                                                    <p className="text-gray-600 text-sm md:text-base">No matching seekers for this profile.</p>
+                                                                    <p className="text-center text-gray-600 text-sm lg:text-base">No matching seekers for this room profile.</p>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -2079,21 +2098,24 @@ function App() {
                                         )}
                                     </div>
                                 ) : (
-                                    // If no profiles and user is logged in, no dashboard should be rendered,
-                                    // just the form for creating profiles. This 'else' block ensures nothing extra is rendered.
-                                    null
+                                    // If no profiles exist for the user, show a message
+                                    userId && (
+                                        <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
+                                            <p className="text-base sm:text-lg">Create a profile to see your matches!</p>
+                                        </div>
+                                    )
                                 )}
                             </>
-                        )}
-                        
-                        {currentView === 'chats' && userId && db && (
+                        ) : (
+                            // Render ChatPage when currentView is 'chats'
                             <ChatPage
                                 db={db}
                                 currentUserUid={userId}
                                 currentUserName={userName}
                                 allSearcherProfilesGlobal={allSearcherProfilesGlobal}
                                 allRoomProfilesGlobal={allRoomProfilesGlobal}
-                                initialChatTargetUid={initialChatTargetUid} // Pass the target UID to ChatPage
+                                initialChatTargetUid={initialChatTargetUid}
+                                setInitialChatTargetUid={setInitialChatTargetUid} // Pass the setter down
                             />
                         )}
                     </div>

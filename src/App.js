@@ -11,7 +11,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZxWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",

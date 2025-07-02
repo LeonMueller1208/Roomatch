@@ -25,7 +25,7 @@ const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports',
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
-// **WICHTIG:** ERSETZEN SIE DIESEN WERT GENAU DURCH IHRE TATSÄCHLICHE ADMIN-UID, DIE NACH ERFOLGREICHEM GOOGLE-LOGIN IN DER APP ANGEZEIGT WIRD!
+// **WICHTIG:** ERSETZEN SIE DIESEN WERT GENAU DURCH IHRE TATSÄCHTLICHE ADMIN-UID, DIE NACH ERFOLGREICHEM GOOGLE-LOGIN IN DER APP ANGEZEIGT WIRD!
 const ADMIN_UID = "hFt4BLSEg0UYAAUSfdf404mfw5v2"; // Platzhalter: Bitte geben Sie hier Ihre Admin-ID ein!
 
 // Hilfsfunktion zum sicheren Parsen von Zahlen
@@ -1828,7 +1828,7 @@ function App() {
                                                                     )}
                                                                 </div>
                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Gewünschtes Alter:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Miete:</span> {roomMatch.room.rent}€, <span className="font-medium">Zimmertyp:</span> {capitalizeFirstFirstLetter(roomMatch.room.roomType)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Miete:</span> {roomMatch.room.rent}€, <span className="font-medium">Zimmertyp:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Haustiere erlaubt:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen der Bewohner:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>

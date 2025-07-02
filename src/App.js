@@ -52,16 +52,16 @@ const calculateMatchScore = (seeker, room) => {
     let totalScore = 0;
     // Details mit allen möglichen Kategorien und Standardwerten initialisieren
     const details = {
-        ageMatch: { score: 0, description: `Altersübereinstimmung (N/A)` },
-        genderMatch: { score: 0, description: `Geschlechtspräferenz (N/A)` },
-        personalityTraits: { score: 0, description: `Persönlichkeitsüberschneidung (Keine)` },
-        interests: { score: 0, description: `Interessenüberschneidung (Keine)` },
-        rentMatch: { score: 0, description: `Mietübereinstimmung (N/A)` },
-        petsMatch: { score: 0, description: `Haustierkompatibilität (N/A)` },
-        freeTextMatch: { score: 0, description: `Freitext-Schlüsselwörter (Keine)` },
-        avgAgeDifference: { score: 0, description: `Durchschnittlicher Altersunterschied (N/A)` },
-        communalLiving: { score: 0, description: `Präferenzen für das Zusammenleben (Keine)` },
-        values: { score: 0, description: `Gemeinsame Werte (Keine)` },
+        ageMatch: { score: 0, description: `Age Match (N/A)` },
+        genderMatch: { score: 0, description: `Gender Preference (N/A)` },
+        personalityTraits: { score: 0, description: `Personality Overlap (None)` },
+        interests: { score: 0, description: `Interest Overlap (None)` },
+        rentMatch: { score: 0, description: `Rent Match (N/A)` },
+        petsMatch: { score: 0, description: `Pet Compatibility (N/A)` },
+        freeTextMatch: { score: 0, description: `Free Text Keywords (None)` },
+        avgAgeDifference: { score: 0, description: `Average Age Difference (N/A)` },
+        communalLiving: { score: 0, description: `Communal Living Preferences (None)` },
+        values: { score: 0, description: `Shared Values (None)` },
     };
 
     const getArrayValue = (profile, field) => {
@@ -88,7 +88,7 @@ const calculateMatchScore = (seeker, room) => {
     const roomMinAge = safeParseInt(room?.minAge);
     const roomMaxAge = safeParseInt(room?.maxAge);
     let ageScore = 0;
-    let ageDescription = `Altersübereinstimmung (Suchender: ${seeker.age || 'N/A'}, Zimmer: ${room?.minAge || 'N/A'}-${room?.maxAge || 'N/A'})`;
+    let ageDescription = `Age Match (Seeker: ${seeker.age || 'N/A'}, Room: ${room?.minAge || 'N/A'}-${room?.maxAge || 'N/A'})`;
 
     if (seekerAge > 0 && roomMinAge > 0 && roomMaxAge > 0) {
         if (seekerAge >= roomMinAge && seekerAge <= roomMaxAge) {
@@ -104,10 +104,10 @@ const calculateMatchScore = (seeker, room) => {
 
     // 2. Geschlechtspräferenz - Wenn die spezifische Präferenz nicht übereinstimmt, einen disqualifizierenden Score zurückgeben
     let genderScore = 0;
-    let genderDescription = `Geschlechtspräferenz (Suchender: ${capitalizeFirstLetter(seeker.gender || 'N/A')}, Zimmer: ${capitalizeFirstLetter(room?.genderPreference || 'N/A')})`;
+    let genderDescription = `Gender Preference (Seeker: ${capitalizeFirstLetter(seeker.gender || 'N/A')}, Room: ${capitalizeFirstLetter(room?.genderPreference || 'N/A')})`;
     if (seeker.gender && room?.genderPreference) {
         if (room.genderPreference !== 'any' && seeker.gender !== room.genderPreference) {
-            return { totalScore: -999999, details: { ...details, genderMatch: { score: -999999, description: "Geschlechts-Fehlübereinstimmung (Disqualifiziert)" } } };
+            return { totalScore: -999999, details: { ...details, genderMatch: { score: -999999, description: "Gender Mismatch (Disqualified)" } } };
         } else if (room.genderPreference === 'any' || seeker.gender === room.genderPreference) {
             genderScore = 10 * MATCH_WEIGHTS.genderMatch;
         }
@@ -120,7 +120,7 @@ const calculateMatchScore = (seeker, room) => {
     const roomTraits = getArrayValue(room, 'personalityTraits');
     const commonTraits = seekerTraits.filter(trait => roomTraits.includes(trait));
     let personalityScore = commonTraits.length * 5 * MATCH_WEIGHTS.personalityTraits;
-    details.personalityTraits = { score: personalityScore, description: `Persönlichkeitsüberschneidung (${commonTraits.map(capitalizeFirstLetter).join(', ') || 'Keine'})` };
+    details.personalityTraits = { score: personalityScore, description: `Personality Overlap (${commonTraits.map(capitalizeFirstLetter).join(', ') || 'None'})` };
     totalScore += personalityScore;
 
     // 4. Interessen (Überschneidung)
@@ -129,13 +129,13 @@ const calculateMatchScore = (seeker, room) => {
     const commonInterests = seekerInterests.filter(interest => roomInterests.includes(interest));
     let interestsScore = commonInterests.length * 3 * MATCH_WEIGHTS.interests;
     totalScore += interestsScore;
-    details.interests = { score: interestsScore, description: `Interessenüberschneidung (${commonInterests.map(capitalizeFirstLetter).join(', ') || 'Keine'})` };
+    details.interests = { score: interestsScore, description: `Interest Overlap (${commonInterests.map(capitalizeFirstLetter).join(', ') || 'None'})` };
 
     // 5. Miete (Max. Miete des Suchenden >= Miete des Zimmers)
     const seekerMaxRent = safeParseInt(seeker.maxRent);
     const roomRent = safeParseInt(room?.rent);
     let rentScore = 0;
-    let rentDescription = `Mietübereinstimmung (Max: ${seekerMaxRent || 'N/A'}€, Zimmer: ${roomRent || 'N/A'}€)`;
+    let rentDescription = `Rent Match (Max: ${seekerMaxRent || 'N/A'}€, Room: ${roomRent || 'N/A'}€)`;
 
     if (seekerMaxRent > 0 && roomRent > 0) {
         if (seekerMaxRent >= roomRent) {
@@ -149,7 +149,7 @@ const calculateMatchScore = (seeker, room) => {
 
     // 6. Haustiere (Übereinstimmung)
     let petsScore = 0;
-    let petsDescription = `Haustierkompatibilität (Suchender: ${capitalizeFirstLetter(seeker.pets || 'N/A')}, Zimmer: ${capitalizeFirstLetter(room?.petsAllowed || 'N/A')})`;
+    let petsDescription = `Pet Compatibility (Seeker: ${capitalizeFirstLetter(seeker.pets || 'N/A')}, Room: ${capitalizeFirstLetter(room?.petsAllowed || 'N/A')})`;
     if (seeker.pets && room?.petsAllowed) {
         if (seeker.pets === 'yes' && room.petsAllowed === 'yes') {
             petsScore = 8 * MATCH_WEIGHTS.petsMatch;
@@ -178,13 +178,13 @@ const calculateMatchScore = (seeker, room) => {
     });
     let freeTextScore = matchedKeywords.length * 1 * MATCH_WEIGHTS.freeTextMatch;
     totalScore += freeTextScore;
-    details.freeTextMatch = { score: freeTextScore, description: `Freitext-Schlüsselwörter (${matchedKeywords.map(capitalizeFirstLetter).join(', ') || 'Keine'})` };
+    details.freeTextMatch = { score: freeTextScore, description: `Free Text Keywords (${matchedKeywords.map(capitalizeFirstLetter).join(', ') || 'None'})` };
     
     // 8. Durchschnittliches Alter der Zimmerbewohner im Vergleich zum Alter des Suchenden
     const seekerAgeAvg = safeParseInt(seeker.age);
     const roomAvgAge = safeParseInt(room?.avgAge);
     let avgAgeDiffScore = 0;
-    let avgAgeDescription = `Durchschnittlicher Altersunterschied (Suchender: ${seeker.age || 'N/A'}, Zimmer-Durchschnitt: ${room?.avgAge || 'N/A'})`;
+    let avgAgeDescription = `Average Age Difference (Seeker: ${seeker.age || 'N/A'}, Room Average: ${room?.avgAge || 'N/A'})`;
     if (seekerAgeAvg > 0 && roomAvgAge > 0) {
         avgAgeDiffScore = -Math.abs(seekerAgeAvg - roomAvgAge) * MATCH_WEIGHTS.avgAgeDifference;
     }
@@ -197,15 +197,15 @@ const calculateMatchScore = (seeker, room) => {
     const commonCommunalPrefs = seekerCommunalPrefs.filter(pref => roomCommunalPrefs.includes(pref));
     let communalLivingScore = commonCommunalPrefs.length * 7 * MATCH_WEIGHTS.communalLiving;
     totalScore += communalLivingScore;
-    details.communalLiving = { score: communalLivingScore, description: `Präferenzen für das Zusammenleben (${commonCommunalPrefs.map(capitalizeFirstLetter).join(', ') || 'Keine'})` };
+    details.communalLiving = { score: communalLivingScore, description: `Communal Living Preferences (${commonCommunalPrefs.map(capitalizeFirstLetter).join(', ') || 'None'})` };
 
     // 10. Neu: Werte
     const seekerValues = getArrayValue(seeker, 'values');
-    const roomValues = getArrayValue(room, 'roomValues');
+    const roomValues = getArrayValue(room, 'values'); // Korrigiert von roomValues zu values
     const commonValues = seekerValues.filter(val => roomValues.includes(val));
     let valuesScore = commonValues.length * 10 * MATCH_WEIGHTS.values;
     totalScore += valuesScore;
-    details.values = { score: valuesScore, description: `Gemeinsame Werte (${commonValues.map(capitalizeFirstLetter).join(', ') || 'Keine'})` };
+    details.values = { score: valuesScore, description: `Shared Values (${commonValues.map(capitalizeFirstLetter).join(', ') || 'None'})` };
 
     return { totalScore, details };
 };
@@ -238,19 +238,19 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                 >
                     <XCircle size={24} />
                 </button>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 text-center">Übereinstimmungsdetails</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 text-center">Match Details</h2>
                 <p className="text-base sm:text-lg font-semibold mb-2">
-                    <span className="text-[#5a9c68]">Suchender:</span> {seeker.name}
+                    <span className="text-[#5a9c68]">Seeker:</span> {seeker.name}
                 </p>
                 <p className="text-base sm:text-lg font-semibold mb-4">
-                    <span className="text-[#cc8a2f]">Zimmerangebot:</span> {room.name}
+                    <span className="text-[#cc8a2f]">Room Offer:</span> {room.name}
                 </p>
 
                 <div className={`mt-2 mb-6 px-4 py-2 rounded-full text-lg sm:text-xl font-bold text-center ${getScoreColorClass(matchDetails.totalScore)}`}>
-                    Gesamtpunktzahl: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
+                    Total Score: {matchDetails.totalScore !== undefined && matchDetails.totalScore !== null ? matchDetails.totalScore.toFixed(0) : 'N/A'}
                 </div>
 
-                <h3 className="text-xl text-gray-700 mb-3">Score-Aufschlüsselung:</h3>
+                <h3 className="text-xl text-gray-700 mb-3">Score Breakdown:</h3>
                 <ul className="space-y-3">
                     {detailsEntries.map(([key, value]) => (
                         <li key={key} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-xs">
@@ -267,7 +267,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
                         onClick={onClose}
                         className="px-6 py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out"
                     >
-                        Schließen
+                        Close
                     </button>
                 </div>
             </div>
@@ -279,14 +279,15 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
 const ChatList = ({ chats, onSelectChat, currentUserUid, allUserDisplayNamesMap }) => {
     return (
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 text-center">Meine Chats</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 text-center">My Chats</h2>
             {chats.length === 0 ? (
-                <p className="text-center text-gray-600">Noch keine aktiven Chats. Starten Sie einen Chat aus Ihren Matches!</p>
+                <p className="text-center text-gray-600">No active chats yet. Start a chat from your matches!</p>
             ) : (
                 <div className="space-y-3">
                     {chats.map(chat => {
                         const otherParticipantUid = chat.participantsUids.find(uid => uid !== currentUserUid);
-                        const otherUserName = allUserDisplayNamesMap[otherParticipantUid] || 'Unbekannter Benutzer';
+                        const otherUserName = allUserDisplayNamesMap[otherParticipantUid] || 'Unknown User';
+                        console.log(`ChatList: Chat ID ${chat.id}, Other UID: ${otherParticipantUid}, Name from Map: ${allUserDisplayNamesMap[otherParticipantUid]}`); // Debugging
                         return (
                             <div
                                 key={chat.id}
@@ -295,16 +296,16 @@ const ChatList = ({ chats, onSelectChat, currentUserUid, allUserDisplayNamesMap 
                             >
                                 <div className="flex-1">
                                     <p className="font-semibold text-gray-800">
-                                        Chat mit: {otherUserName}
+                                        Chat with: {otherUserName}
                                     </p>
                                     {chat.initialContext && ( // Display initial context in chat list
                                         <p className="text-xs text-blue-600 mt-1">
-                                            Über: {chat.initialContext.profileName} ({capitalizeFirstLetter(chat.initialContext.type === 'room' ? 'Zimmer' : 'Suchprofil')})
+                                            About: {chat.initialContext.profileName} ({capitalizeFirstLetter(chat.initialContext.type === 'room' ? 'Room Offer' : 'Seeker Profile')})
                                         </p>
                                     )}
                                     {chat.lastMessage && (
                                         <p className="text-sm text-gray-600 truncate">
-                                            {chat.lastMessage.senderId === currentUserUid ? 'Du: ' : ''}
+                                            {chat.lastMessage.senderId === currentUserUid ? 'You: ' : ''}
                                             {chat.lastMessage.text}
                                         </p>
                                     )}
@@ -342,7 +343,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                 setChatInitialContext(docSnapshot.data().initialContext || null);
             }
         }, (error) => {
-            console.error("Fehler beim Abrufen des Chat-Dokuments:", error);
+            console.error("Error fetching chat document:", error);
         });
 
         // Listener für Nachrichten
@@ -350,7 +351,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
             const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMessages(msgs);
         }, (error) => {
-            console.error("Fehler beim Abrufen von Nachrichten:", error);
+            console.error("Error fetching messages:", error);
             // In einer echten App dem Benutzer einen Fehler anzeigen
         });
 
@@ -391,7 +392,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
             }, { merge: true }); // Merge verwenden, um nur diese Felder zu aktualisieren
             
         } catch (error) {
-            console.error("Fehler beim Senden der Nachricht:", error);
+            console.error("Error sending message:", error);
             // In einer echten App dem Benutzer einen Fehler anzeigen
         }
     };
@@ -400,7 +401,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-xl mx-auto flex flex-col h-[70vh]">
             <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-                    Chat mit: {otherUser?.name || 'Unbekannter Benutzer'}
+                    Chat with: {otherUser?.name || 'Unknown User'}
                 </h2>
                 <button onClick={onCloseChat} className="text-gray-500 hover:text-gray-700">
                     <XCircle size={24} />
@@ -409,8 +410,8 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
 
             {chatInitialContext && ( // NEU: Initialen Kontext anzeigen
                 <div className="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-sm text-center">
-                    Dieser Chat wurde über das {chatInitialContext.type === 'room' ? 'Zimmerangebot' : 'Suchprofil'} "
-                    <span className="font-semibold">{chatInitialContext.profileName}</span>" gestartet.
+                    This chat was started via the {chatInitialContext.type === 'room' ? 'Room Offer' : 'Seeker Profile'} "
+                    <span className="font-semibold">{chatInitialContext.profileName}</span>".
                 </div>
             )}
 
@@ -428,7 +429,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                             }`}
                         >
                             <p className="font-semibold text-sm mb-1">
-                                {msg.senderId === currentUserUid ? currentUserName : otherUser?.name || 'Unbekannter Benutzer'}
+                                {msg.senderId === currentUserUid ? currentUserName : otherUser?.name || 'Unknown User'}
                             </p>
                             <p className="text-sm">{msg.text}</p>
                             {msg.timestamp && (
@@ -452,14 +453,14 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                             handleSendMessage();
                         }
                     }}
-                    placeholder="Nachricht eingeben..."
+                    placeholder="Enter message..."
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1]"
                 />
                 <button
                     onClick={handleSendMessage}
                     className="px-6 py-2 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition"
                 >
-                    Senden
+                    Send
                 </button>
             </div>
         </div>
@@ -485,7 +486,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
 
             setIsLoadingChat(true);
             setChatError(null);
-            console.log("ChatPage: Versuche, Chat mit Ziel-Benutzer-UID zu finden oder zu erstellen:", initialChatTargetUid, "für Profil:", initialChatTargetProfileName);
+            console.log("ChatPage: Attempting to find or create chat with target user UID:", initialChatTargetUid, "for profile:", initialChatTargetProfileName);
 
 
             try {
@@ -505,7 +506,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 if (!querySnapshot.empty) {
                     // Chat existiert, auswählen
                     chatToSelectId = querySnapshot.docs[0].id;
-                    console.log("ChatPage: Bestehender Chat mit ID gefunden:", chatToSelectId);
+                    console.log("ChatPage: Existing chat found with ID:", chatToSelectId);
                 } else {
                     // Chat existiert nicht, neuen erstellen
                     const newChatRef = await addDoc(chatsRef, {
@@ -522,23 +523,25 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                         contextProfileId: initialChatTargetProfileId, // NEU: Feld für die Abfrage
                         lastMessage: {
                             senderId: currentUserUid,
-                            text: `Ich bin an Ihrem ${initialChatTargetProfileType === 'room' ? 'Zimmerangebot' : 'Suchprofil'} '${initialChatTargetProfileName}' interessiert.`,
+                            text: `I am interested in your ${initialChatTargetProfileType === 'room' ? 'Room Offer' : 'Seeker Profile'} '${initialChatTargetProfileName}'.`,
                         },
                     });
                     chatToSelectId = newChatRef.id;
-                    console.log("ChatPage: Neuer Chat mit ID erstellt:", chatToSelectId);
+                    console.log("ChatPage: New chat created with ID:", chatToSelectId);
                 }
 
                 setSelectedChatId(chatToSelectId);
                 // Hier den Namen aus der allUserDisplayNamesMap verwenden
-                const otherUserName = allUserDisplayNamesMap[initialChatTargetUid] || 'Unbekannter Benutzer';
+                const otherUserName = allUserDisplayNamesMap[initialChatTargetUid] || 'Unknown User';
                 setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
-                console.log("ChatPage: Chat gestartet mit:", otherUserName, "(UID:", initialChatTargetUid, ") über Profil:", initialChatTargetProfileName);
+                console.log("ChatPage: Chat started with:", otherUserName, "(UID:", initialChatTargetUid, ") via profile:", initialChatTargetProfileName);
+                console.log("ChatPage: allUserDisplayNamesMap at chat start:", allUserDisplayNamesMap); // Debugging
+                console.log("ChatPage: Looked up name for target UID:", initialChatTargetUid, "is:", allUserDisplayNamesMap[initialChatTargetUid]); // Debugging
 
 
             } catch (error) {
-                console.error("Fehler beim Suchen oder Erstellen des Chats:", error);
-                setChatError("Chat konnte nicht gestartet werden. Bitte versuchen Sie es erneut.");
+                console.error("Error finding or creating chat:", error);
+                setChatError("Could not start chat. Please try again.");
             } finally {
                 setIsLoadingChat(false);
                 // WICHTIG: initialChatTargetUid und Profil-Kontext in der übergeordneten App-Komponente löschen
@@ -581,10 +584,10 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 };
             });
             setChats(fetchedChats);
-            console.log("ChatPage: Chat-Liste abgerufen. Anzahl der Chats:", fetchedChats.length);
+            console.log("ChatPage: Chat list fetched. Number of chats:", fetchedChats.length);
         }, (error) => {
-            console.error("Fehler beim Abrufen von Chats:", error);
-            setChatError("Fehler beim Laden Ihrer Chats.");
+            console.error("Error fetching chats:", error);
+            setChatError("Error loading your chats.");
         });
 
         return () => unsubscribe();
@@ -596,9 +599,11 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         if (selectedChat) {
             // Das Profil des anderen Teilnehmers finden
             const otherParticipantUid = selectedChat.participantsUids.find(uid => uid !== currentUserUid);
-            const otherUserName = allUserDisplayNamesMap[otherParticipantUid] || 'Unbekannter Benutzer';
+            const otherUserName = allUserDisplayNamesMap[otherParticipantUid] || 'Unknown User';
             setOtherUser({ uid: otherParticipantUid, name: otherUserName });
-            console.log("ChatPage: Bestehender Chat ausgewählt. Anderer Benutzer:", otherUserName, "(UID:", otherParticipantUid, ")");
+            console.log("ChatPage: Existing chat selected. Other user:", otherUserName, "(UID:", otherParticipantUid, ")");
+            console.log("ChatPage: allUserDisplayNamesMap at chat select:", allUserDisplayNamesMap); // Debugging
+            console.log("ChatPage: Looked up name for selected UID:", otherParticipantUid, "is:", allUserDisplayNamesMap[otherParticipantUid]); // Debugging
         }
     };
 
@@ -612,13 +617,13 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         setInitialChatTargetProfileId(null); // Neu
         setInitialChatTargetProfileName(null); // Neu
         setInitialChatTargetProfileType(null); // Neu
-        console.log("ChatPage: Chat geschlossen.");
+        console.log("ChatPage: Chat closed.");
     };
 
     if (isLoadingChat) {
         return (
             <div className="flex items-center justify-center h-[50vh] text-gray-700 text-lg animate-pulse">
-                Chat wird geladen...
+                Loading chat...
             </div>
         );
     }
@@ -626,7 +631,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
     if (chatError) {
         return (
             <div className="flex items-center justify-center h-[50vh] bg-red-100 text-red-700 p-4 rounded-lg">
-                <p>Chat-Fehler: {chatError}</p>
+                <p>Chat Error: {chatError}</p>
             </div>
         );
     }
@@ -704,7 +709,7 @@ function App() {
             const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (user) {
                     setUserId(user.uid);
-                    const displayName = user.displayName || user.email || 'Gast';
+                    const displayName = user.displayName || user.email || 'Guest';
                     setUserName(displayName);
                     setAdminMode(user.uid === ADMIN_UID);
 
@@ -715,8 +720,9 @@ function App() {
                             displayName: displayName,
                             lastSeen: serverTimestamp(),
                         }, { merge: true });
+                        console.log(`App: Display name for UID ${user.uid} (${displayName}) saved to Firestore.`); // Debugging
                     } catch (e) {
-                        console.error("Fehler beim Speichern des Benutzernamens:", e);
+                        console.error("Error saving user display name:", e);
                     }
 
                 } else {
@@ -733,8 +739,8 @@ function App() {
                 unsubscribeAuth();
             };
         } catch (initError) {
-            console.error("Fehler bei der Firebase-Initialisierung:", initError);
-            setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
+            console.error("Firebase initialization error:", initError);
+            setError("Firebase could not be initialized. Please check your Firebase configuration and internet connection.");
             setLoading(false);
         }
     }, []); // Leeres Abhängigkeits-Array, da dies nur einmal beim Laden der App ausgeführt werden soll
@@ -750,9 +756,9 @@ function App() {
                 namesMap[doc.id] = doc.data().displayName;
             });
             setAllUserDisplayNamesMap(namesMap);
-            console.log("allUserDisplayNamesMap aktualisiert:", namesMap); // Debugging-Ausgabe
+            console.log("App: allUserDisplayNamesMap updated:", namesMap); // Debugging-Ausgabe
         }, (err) => {
-            console.error("Fehler beim Abrufen der Benutzernamen:", err);
+            console.error("Error fetching user display names:", err);
             // Optional: Fehlerbehandlung, z.B. setError('Fehler beim Laden der Benutzernamen.');
         });
 
@@ -810,7 +816,7 @@ function App() {
     // Funktion für die Google-Anmeldung
     const handleGoogleSignIn = async () => {
         if (!auth) {
-            setError("Authentifizierungsdienst nicht bereit.");
+            setError("Authentication service not ready.");
             return;
         }
         try {
@@ -818,12 +824,12 @@ function App() {
             await signInWithPopup(auth, provider);
             setError(null);
         } catch (error) {
-            console.error("Google-Anmeldefehler:", error);
+            console.error("Google sign-in error:", error);
             // Verbesserte Fehlermeldung für ungültigen API-Schlüssel
             if (error.code === 'auth/api-key-not-valid') {
-                setError("Anmeldung fehlgeschlagen: Der Firebase API-Schlüssel ist ungültig. Bitte überprüfen Sie ihn in der Firebase Console.");
+                setError("Sign-in failed: The Firebase API key is invalid. Please check it in the Firebase Console.");
             } else {
-                setError("Google-Anmeldung fehlgeschlagen: " + error.message);
+                setError("Google sign-in failed: " + error.message);
             }
         }
     };
@@ -831,7 +837,7 @@ function App() {
     // Funktion zum Abmelden
     const handleSignOut = async () => {
         if (!auth) {
-            setError("Authentifizierungsdienst nicht bereit zum Abmelden.");
+            setError("Authentication service not ready for sign out.");
             return;
         }
         try {
@@ -846,8 +852,8 @@ function App() {
             setInitialChatTargetProfileName(null); // Neu
             setInitialChatTargetProfileType(null); // Neu
         } catch (error) {
-            console.error("Abmeldefehler:", error);
-            setError("Abmeldung fehlgeschlagen: " + error.message);
+            console.error("Sign-out error:", error);
+            setError("Sign-out failed: " + error.message);
         }
     };
 
@@ -867,7 +873,7 @@ function App() {
                 setShowUserIdCopied(true);
                 setTimeout(() => setShowUserIdCopied(false), 2000);
             } catch (err) {
-                console.error('Fallback: Ups, konnte nicht kopieren', err);
+                console.error('Fallback: Oops, could not copy', err);
                 // In einer echten App könnte hier stattdessen eine benutzerfreundliche Nachricht angezeigt werden
             } finally {
                 document.body.removeChild(textArea);
@@ -891,7 +897,7 @@ function App() {
     // Hilfsfunktion zum Abrufen des Sammlungs-Pfades (vereinfacht für Sammlungen auf Root-Ebene gemäß den Regeln)
     const getCollectionRef = useCallback((collectionName) => {
         if (!db) {
-            console.warn("Versuch, Sammlungsreferenz abzurufen, bevor Firestore DB initialisiert wurde.");
+            console.warn("Attempting to get collection reference before Firestore DB is initialized.");
             return null;
         }
         return collection(db, collectionName);
@@ -906,7 +912,7 @@ function App() {
         const timer = setTimeout(() => {
             const collectionRef = getCollectionRef(`searcherProfiles`);
             if (!collectionRef) {
-                console.error("Sammlungsreferenz für Suchprofile ist nach Verzögerung null.");
+                console.error("Collection reference for searcher profiles is null after delay.");
                 return;
             }
             const mySearchersQuery = query(collectionRef, where('createdBy', '==', userId));
@@ -914,8 +920,8 @@ function App() {
                 const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setMySearcherProfiles(profiles);
             }, (err) => {
-                console.error("Fehler beim Abrufen eigener Suchprofile:", err);
-                setError("Fehler beim Laden eigener Suchprofile.");
+                console.error("Error fetching own seeker profiles:", err);
+                setError("Error loading your seeker profiles.");
             });
         }, 100);
 
@@ -944,11 +950,11 @@ function App() {
                     const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
                     setMyNewRoomProfilesData(profiles);
                 }, (err) => {
-                    console.error("Fehler beim Abrufen eigener neuer Zimmerprofile:", err);
-                    setError("Fehler beim Laden eigener Zimmerprofile.");
+                    console.error("Error fetching own new room profiles:", err);
+                    setError("Error loading your room profiles.");
                 });
             } else {
-                console.error("Sammlungsreferenz für roomProfiles ist nach Verzögerung null.");
+                console.error("Collection reference for roomProfiles is null after delay.");
             }
 
             // Aus 'wgProfiles' (alt) abrufen
@@ -959,10 +965,10 @@ function App() {
                     const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
                     setMyOldWgProfilesData(profiles);
                 }, (err) => {
-                    console.error("Fehler beim Abrufen eigener alter WG-Profile:", err);
+                    console.error("Error fetching own old WG profiles:", err);
                 });
             } else {
-                console.error("Sammlungsreferenz für wgProfiles ist nach Verzögerung null.");
+                console.error("Collection reference for wgProfiles is null after delay.");
             }
         }, 100);
 
@@ -992,7 +998,7 @@ function App() {
         const timer = setTimeout(() => {
             const collectionRef = getCollectionRef(`searcherProfiles`);
             if (!collectionRef) {
-                console.error("Sammlungsreferenz für alle Suchprofile ist nach Verzögerung null.");
+                console.error("Collection reference for all searcher profiles is null after delay.");
                 return;
             }
             const allSearchersQuery = query(collectionRef);
@@ -1000,7 +1006,7 @@ function App() {
                 const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setAllSearcherProfilesGlobal(profiles);
             }, (err) => {
-                console.error("Fehler beim Abrufen aller Suchprofile (global):", err);
+                console.error("Error fetching all seeker profiles (global):", err);
             });
         }, 100);
 
@@ -1031,10 +1037,10 @@ function App() {
                     const profiles = roomSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: false }));
                     setNewRoomProfilesData(profiles);
                 }, (err) => {
-                    console.error("Fehler beim Abrufen aller Zimmerprofile (neue Sammlung):", err);
+                    console.error("Error fetching all room profiles (new collection):", err);
                 });
             } else {
-                console.error("Sammlungsreferenz für roomProfiles (global) ist nach Verzögerung null.");
+                console.error("Collection reference for roomProfiles (global) is null after delay.");
             }
 
             // Aus 'wgProfiles' (alt) abrufen
@@ -1045,10 +1051,10 @@ function App() {
                     const profiles = wgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), isLegacy: true }));
                     setOldWgProfilesData(profiles);
                 }, (err) => {
-                    console.error("Fehler beim Abrufen aller Zimmerprofile (alte WG-Sammlung):", err);
+                    console.error("Error fetching all room profiles (old WG collection):", err);
                 });
             } else {
-                console.error("Sammlungsreferenz für wgProfiles (global) ist nach Verzögerung null.");
+                console.error("Collection reference for wgProfiles (global) is null after delay.");
             }
         }, 100);
 
@@ -1109,13 +1115,13 @@ function App() {
     // Funktion zum Hinzufügen eines Suchprofils zu Firestore
     const addSearcherProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit oder nicht angemeldet. Bitte warten Sie oder melden Sie sich an.");
+            setError("Database not ready or not logged in. Please wait or log in.");
             return;
         }
         try {
             const collectionRef = getCollectionRef(`searcherProfiles`);
             if (!collectionRef) {
-                setError("Konnte keine Sammlungsreferenz für Suchprofile erhalten.");
+                setError("Could not get collection reference for seeker profiles.");
                 return;
             }
             const docRef = await addDoc(collectionRef, {
@@ -1123,25 +1129,25 @@ function App() {
                 createdAt: new Date(),
                 createdBy: userId, // Profil mit USER_ID verknüpfen
             });
-            setSaveMessage('Suchprofil erfolgreich gespeichert!');
+            setSaveMessage('Seeker profile saved successfully!');
             setScrollToProfileId(docRef.id); // ID zum Scrollen festlegen
             setShowSeekerForm(true); // Sicherstellen, dass der Suchformular-Tab nach der Erstellung aktiv ist
         } catch (e) {
-            console.error("Fehler beim Hinzufügen des Suchprofils: ", e);
-            setError("Fehler beim Speichern des Suchprofils.");
+            console.error("Error adding seeker profile: ", e);
+            setError("Error saving seeker profile.");
         }
     };
 
     // Funktion zum Hinzufügen eines Zimmerprofils zu Firestore
     const addRoomProfile = async (profileData) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit oder nicht angemeldet. Bitte warten Sie oder melden Sie sich an.");
+            setError("Database not ready or not logged in. Please wait or log in.");
             return;
         }
         try {
             const collectionRef = getCollectionRef(`roomProfiles`);
             if (!collectionRef) {
-                setError("Konnte keine Sammlungsreferenz für Zimmerprofile erhalten.");
+                setError("Could not get collection reference for room profiles.");
                 return;
             }
             const docRef = await addDoc(collectionRef, {
@@ -1149,24 +1155,24 @@ function App() {
                 createdAt: new Date(),
                 createdBy: userId, // Profil mit USER_ID verknüpfen
             });
-            setSaveMessage('Zimmerprofil erfolgreich gespeichert!');
+            setSaveMessage('Room offer saved successfully!');
             setScrollToProfileId(docRef.id); // ID zum Scrollen festlegen
             setShowSeekerForm(false); // Sicherstellen, dass der Zimmerformular-Tab nach der Erstellung aktiv ist
         } catch (e) {
-            console.error("Fehler beim Hinzufügen des Zimmerprofils: ", e);
-            setError("Fehler beim Speichern des Zimmerprofils.");
+            console.error("Error adding room profile: ", e);
+            setError("Error saving room profile.");
         }
     };
 
     // Funktion zum Löschen eines Profils
     const handleDeleteProfile = async (collectionName, docId, profileName, profileCreatorId) => {
         if (!db || !userId) {
-            setError("Datenbank nicht bereit zum Löschen oder nicht angemeldet.");
+            setError("Database not ready for deletion or not logged in.");
             return;
         }
 
         if (!adminMode && userId !== profileCreatorId) {
-            setError("Sie sind nicht berechtigt, dieses Profil zu löschen.");
+            setError("You are not authorized to delete this profile.");
             setTimeout(() => setError(''), 3000);
             return;
         }
@@ -1174,14 +1180,14 @@ function App() {
         try {
             const collectionRef = getCollectionRef(collectionName);
             if (!collectionRef) {
-                setError(`Konnte keine Sammlungsreferenz für ${collectionName} erhalten.`);
+                setError(`Could not get collection reference for ${collectionName}.`);
                 return;
             }
             await deleteDoc(doc(collectionRef, docId));
-            setSaveMessage(`Profil "${profileName}" erfolgreich gelöscht!`);
+            setSaveMessage(`Profile "${profileName}" deleted successfully!`);
         } catch (e) {
-            console.error(`Fehler beim Löschen des Profils ${profileName}: `, e);
-            setError(`Fehler beim Löschen des Profils "${profileName}".`);
+            console.error(`Error deleting profile ${profileName}: `, e);
+            setError(`Error deleting profile "${profileName}".`);
         }
     };
 
@@ -1189,11 +1195,11 @@ function App() {
     // Jetzt mit zusätzlichen Parametern für den Kontext des Profils
     const handleStartChat = useCallback((targetUserUid, targetProfileId, targetProfileName, typeOfTargetProfile) => {
         if (!userId) {
-            setError("Bitte melden Sie sich an, um einen Chat zu starten.");
+            setError("Please log in to start a chat.");
             return;
         }
         if (userId === targetUserUid) {
-            setError("Sie können nicht mit sich selbst chatten.");
+            setError("You cannot chat with yourself.");
             setTimeout(() => setError(''), 3000); // Fehler nach 3 Sekunden löschen
             return;
         }
@@ -1286,7 +1292,7 @@ function App() {
         return (
             <form className="p-8 bg-white rounded-2xl shadow-xl space-y-4 sm:space-y-6 w-full max-w-xl mx-auto transform transition-all duration-300 hover:scale-[1.01]">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-4 sm:mb-6 text-center">
-                    {type === 'seeker' ? `Suchprofil erstellen (Schritt ${currentStep}/${totalSteps})` : `Zimmerangebot erstellen (Schritt ${currentStep}/${totalSteps})`}
+                    {type === 'seeker' ? `Create Seeker Profile (Step ${currentStep}/${totalSteps})` : `Create Room Offer (Step ${currentStep}/${totalSteps})`}
                 </h2>
 
                 {/* --- SCHRITT 1 --- */}
@@ -1295,7 +1301,7 @@ function App() {
                         {/* Name / Zimmername */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Ihr Name:' : 'Zimmername:'}
+                                {type === 'seeker' ? 'Your Name:' : 'Room Name:'}
                             </label>
                             <input
                                 type="text"
@@ -1310,7 +1316,7 @@ function App() {
                         {/* Alter (Suchender) / Altersbereich (Anbieter) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Ihr Alter:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Your Age:</label>
                                 <input
                                     type="number"
                                     name="age"
@@ -1324,7 +1330,7 @@ function App() {
                         {type === 'provider' && (
                             <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Min. Mitbewohner-Alter:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Min. Flatmate Age:</label>
                                     <input
                                         type="number"
                                         name="minAge"
@@ -1335,7 +1341,7 @@ function App() {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Max. Mitbewohner-Alter:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Max. Flatmate Age:</label>
                                     <input
                                         type="number"
                                         name="maxAge"
@@ -1351,22 +1357,22 @@ function App() {
                         {/* Geschlecht (Suchender) / Geschlechtspräferenz (Anbieter) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Ihr Geschlecht:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Your Gender:</label>
                                 <select
                                     name="gender"
                                     value={formState.gender}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="male">Männlich</option>
-                                    <option value="female">Weiblich</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
                                 <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2 flex items-center">
-                                    Geschlechtspräferenz für Mitbewohner:
+                                    Gender Preference for Flatmates:
                                     <div
                                         className="relative ml-2 cursor-pointer text-red-500 hover:text-red-700"
                                         onMouseEnter={() => setShowGenderTooltip(true)}
@@ -1375,7 +1381,7 @@ function App() {
                                         <Info size={18} />
                                         {showGenderTooltip && (
                                             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 bg-red-100 text-red-800 text-sm rounded-lg shadow-lg z-10 border border-red-300 sm:left-full sm:translate-x-0 sm:ml-2 sm:mt-0">
-                                                Die Auswahl "Männlich" oder "Weiblich" schließt Suchende des anderen Geschlechts von Ihren Suchergebnissen aus.
+                                                Selecting "Male" or "Female" will exclude seekers of the other gender from your search results.
                                             </div>
                                         )}
                                     </div>
@@ -1386,16 +1392,16 @@ function App() {
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="any">Beliebig</option>
-                                    <option value="male">Männlich</option>
-                                    <option value="female">Weiblich</option>
+                                    <option value="any">Any</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
                                 </select>
                             </div>
                         )}
 
                         {/* Ort / Stadtteil (für beide) */}
                         <div>
-                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Ort / Stadtteil:</label>
+                            <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Location / District:</label>
                             <select
                                 name="location"
                                 value={formState.location}
@@ -1403,7 +1409,7 @@ function App() {
                                 required
                                 className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                             >
-                                <option value="Cologne">Köln</option>
+                                <option value="Cologne">Cologne</option>
                             </select>
                         </div>
                     </div>
@@ -1415,7 +1421,7 @@ function App() {
                         {/* Maximale Miete (Suchender) / Miete (Anbieter) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Maximale Miete (€):</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Maximum Rent (€):</label>
                                 <input
                                     type="number"
                                     name="maxRent"
@@ -1427,7 +1433,7 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Miete (€):</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Rent (€):</label>
                                 <input
                                     type="number"
                                     name="rent"
@@ -1441,31 +1447,31 @@ function App() {
                         {/* Haustiere (Suchender) / Haustiere erlaubt (Anbieter) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Haustiere:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Pets:</label>
                                 <select
                                     name="pets"
                                     value={formState.pets}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="any">Beliebig</option>
-                                    <option value="yes">Ja</option>
-                                    <option value="no">Nein</option>
+                                    <option value="any">Any</option>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Haustiere erlaubt:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Pets Allowed:</label>
                                 <select
                                     name="petsAllowed"
                                     value={formState.petsAllowed}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="any">Beliebig</option>
-                                    <option value="yes">Ja</option>
-                                    <option value="no">Nein</option>
+                                    <option value="any">Any</option>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
                                 </select>
                             </div>
                         )}
@@ -1473,7 +1479,7 @@ function App() {
                         {/* Persönlichkeitsmerkmale (für beide) */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Ihre Persönlichkeitsmerkmale:' : 'Persönlichkeitsmerkmale der aktuellen Bewohner:'}
+                                {type === 'seeker' ? 'Your Personality Traits:' : 'Current Residents\' Personality Traits:'}
                             </label>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allPersonalityTraits.map(trait => (
@@ -1495,7 +1501,7 @@ function App() {
                         {/* Interessen (für beide) */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Ihre Interessen:' : 'Interessen der aktuellen Bewohner:'}
+                                {type === 'seeker' ? 'Your Interests:' : 'Current Residents\' Interests:'}
                             </label>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allInterests.map(interest => (
@@ -1517,7 +1523,7 @@ function App() {
                         {/* Neu: Präferenzen für das Zusammenleben */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Ihre Präferenzen für das Zusammenleben:' : 'Präferenzen für das Zusammenleben im Zimmer:'}
+                                {type === 'seeker' ? 'Your Communal Living Preferences:' : 'Communal Living Preferences for the Room:'}
                             </label>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allCommunalLivingPreferences.map(pref => (
@@ -1544,7 +1550,7 @@ function App() {
                         {/* Was gesucht wird (Suchender) / Beschreibung des Zimmers (Anbieter) */}
                         {type === 'seeker' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Was suchen Sie in einem Zimmer?:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">What are you looking for in a room?:</label>
                                 <textarea
                                     name="lookingFor"
                                     value={formState.lookingFor}
@@ -1557,7 +1563,7 @@ function App() {
                         {type === 'provider' && (
                             <>
                                 <div>
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Zimmerbeschreibung:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Room Description:</label>
                                     <textarea
                                         name="description"
                                         value={formState.description}
@@ -1567,7 +1573,7 @@ function App() {
                                     ></textarea>
                                 </div>
                                 <div>
-                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Was suchen Sie in einem neuen Mitbewohner?:</label>
+                                    <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">What are you looking for in a new flatmate?:</label>
                                     <textarea
                                         name="lookingForInFlatmate"
                                         value={formState.lookingForInFlatmate}
@@ -1580,21 +1586,21 @@ function App() {
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Zimmertyp:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Room Type:</label>
                                 <select
                                     name="roomType"
                                     value={formState.roomType}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1] transition-all duration-200 text-sm sm:text-base"
                                 >
-                                    <option value="Single Room">Einzelzimmer</option>
-                                    <option value="Double Room">Doppelzimmer</option>
+                                    <option value="Single Room">Single Room</option>
+                                    <option value="Double Room">Double Room</option>
                                 </select>
                             </div>
                         )}
                         {type === 'provider' && (
                             <div>
-                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Durchschnittliches Alter der Bewohner:</label>
+                                <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">Average Age of Residents:</label>
                                 <input
                                     type="number"
                                     name="avgAge"
@@ -1608,7 +1614,7 @@ function App() {
                         {/* Neu: Werte */}
                         <div>
                             <label className="block text-gray-700 text-sm sm:text-base font-semibold mb-1 sm:mb-2">
-                                {type === 'seeker' ? 'Ihre Werte und Erwartungen an das WG-Leben:' : 'Werte und Erwartungen des Zimmers:'}
+                                {type === 'seeker' ? 'Your Values and Expectations for Flat-sharing:' : 'Room Values and Expectations:'}
                             </label>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
                                 {allWGValues.map(val => (
@@ -1635,7 +1641,7 @@ function App() {
                         onClick={handleCancel}
                         className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                     >
-                        <XCircle size={18} className="mr-1 sm:mr-2" /> Abbrechen
+                        <XCircle size={18} className="mr-1 sm:mr-2" /> Cancel
                     </button>
                     {currentStep > 1 && (
                         <button
@@ -1643,7 +1649,7 @@ function App() {
                             onClick={prevStep}
                             className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-gray-300 text-gray-800 font-bold rounded-xl shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                         >
-                            Zurück
+                            Back
                         </button>
                     )}
                     {currentStep < totalSteps ? (
@@ -1652,7 +1658,7 @@ function App() {
                             onClick={nextStep}
                             className="flex items-center px-4 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-sm sm:text-base"
                         >
-                            Weiter
+                            Next
                         </button>
                     ) : (
                         <button
@@ -1664,7 +1670,7 @@ function App() {
                                     : 'bg-[#fecd82] hover:bg-[#e6b772] text-[#333333]'
                             }`}
                         >
-                            <CheckCircle size={18} className="mr-1 sm:mr-2" /> Profil speichern
+                            <CheckCircle size={18} className="mr-1 sm:mr-2" /> Save Profile
                         </button>
                     )}
                 </div>
@@ -1675,7 +1681,7 @@ function App() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#3fd5c1] to-[#e0f7f4]">
-                <p className="text-gray-700 text-lg animate-pulse">App und Daten werden geladen...</p>
+                <p className="text-gray-700 text-lg animate-pulse">Loading app and data...</p>
             </div>
         );
     }
@@ -1683,7 +1689,7 @@ function App() {
     if (error) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-red-100 text-red-700 p-4 rounded-lg">
-                <p>Fehler: {error}</p>
+                <p>Error: {error}</p>
             </div>
         );
     }
@@ -1706,7 +1712,7 @@ function App() {
                 {userId ? (
                     <>
                         <span className="mb-1 sm:mb-0 sm:mr-2 flex items-center">
-                            <User size={16} className="mr-1" /> Angemeldet als: <span className="font-semibold ml-1">{userName}</span>
+                            <User size={16} className="mr-1" /> Logged in as: <span className="font-semibold ml-1">{userName}</span>
                         </span>
                         {/* Benutzer-ID und Kopier-Button anzeigen */}
                         <div className="flex items-center ml-2 sm:ml-4 relative">
@@ -1714,13 +1720,13 @@ function App() {
                             <button
                                 onClick={copyUidToClipboard}
                                 className="ml-2 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                title="Benutzer-ID kopieren"
+                                title="Copy User ID"
                             >
                                 <Copy size={14} />
                             </button>
                             {showUserIdCopied && (
                                 <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs px-2 py-1 rounded-md animate-fade-in-out">
-                                    Kopiert!
+                                    Copied!
                                 </span>
                             )}
                         </div>
@@ -1733,26 +1739,26 @@ function App() {
                                     checked={adminMode}
                                     onChange={() => setAdminMode(!adminMode)}
                                 />
-                                <span className="ml-2 text-[#0a665a] font-bold select-none">Admin-Modus</span>
+                                <span className="ml-2 text-[#0a665a] font-bold select-none">Admin Mode</span>
                             </label>
                         )}
                         <button
                             onClick={handleSignOut}
                             className="ml-4 sm:ml-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 font-bold rounded-lg shadow-md hover:bg-gray-300 transition duration-150 ease-in-out flex items-center text-sm"
                         >
-                            <LogOut size={16} className="mr-1.5" /> Abmelden
+                            <LogOut size={16} className="mr-1.5" /> Sign Out
                         </button>
                     </>
                 ) : (
                     <>
                         <span className="mb-1 sm:mb-0 sm:mr-2 flex items-center">
-                            <User size={16} className="mr-1" /> Nicht angemeldet.
+                            <User size={16} className="mr-1" /> Not logged in.
                         </span>
                         <button
                             onClick={handleGoogleSignIn}
                             className="ml-4 sm:ml-6 px-3 py-1.5 sm:px-4 sm:py-2 bg-white text-[#3fd5c1] font-bold rounded-lg shadow-md hover:bg-gray-100 transition duration-150 ease-in-out flex items-center text-sm"
                         >
-                            <LogIn size={16} className="mr-1.5" /> Mit Google anmelden
+                            <LogIn size={16} className="mr-1.5" /> Sign in with Google
                         </button>
                     </>
                 )}
@@ -1779,7 +1785,7 @@ function App() {
                             currentView === 'home' ? 'bg-white text-[#3fd5c1]' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                     >
-                        <HomeIcon className="inline-block mr-2" size={20} /> Startseite
+                        <HomeIcon className="inline-block mr-2" size={20} /> Home
                     </button>
                     <button
                         onClick={() => { setCurrentView('chats'); setInitialChatTargetUid(null); setInitialChatTargetProfileId(null); setInitialChatTargetProfileName(null); setInitialChatTargetProfileType(null); }} // Beim Klicken auf 'Chats' targetUid zurücksetzen
@@ -1801,27 +1807,27 @@ function App() {
                     <div className="w-full max-w-6xl flex flex-col gap-8 sm:gap-12">
                         {/* Admin-Matches: Suchender findet Zimmer */}
                         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Suchender findet Zimmer (Admin-Ansicht)</h2>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Seeker Finds Room (Admin View)</h2>
                             {matches.length === 0 ? (
-                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">Keine Übereinstimmungen gefunden.</p>
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
                             ) : (
                                 <div className="space-y-6 sm:space-y-8">
                                     {matches.map((searcherMatch, index) => (
                                         <div key={index} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                             <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Name des Suchenden: <span className="font-extrabold ml-1 sm:ml-2">{searcherMatch.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {searcherMatch.searcher.id.substring(0, 8)}...)</span>
+                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Seeker Name: <span className="font-extrabold ml-1 sm:ml-2">{searcherMatch.searcher.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {searcherMatch.searcher.id.substring(0, 8)}...)</span>
                                             </h3>
                                             <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                <Heart size={18} className="mr-1 sm:mr-2" /> Passende Zimmerangebote:
+                                                <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers:
                                             </h4>
                                             <div className="space-y-2">
                                                 {searcherMatch.matchingRooms.length === 0 ? (
-                                                    <p className="text-gray-600 text-sm lg:text-base">Keine passenden Zimmer für dieses Profil.</p>
+                                                    <p className="text-gray-600 text-sm lg:text-base">No matching rooms for this profile.</p>
                                                 ) : (
                                                     searcherMatch.matchingRooms.map(roomMatch => (
                                                         <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                             <div>
-                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Zimmername: {roomMatch.room.name}</p>
+                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
                                                                 <div className="flex items-center mt-1 sm:mt-2">
                                                                     <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                         Score: {roomMatch.score.toFixed(0)}
@@ -1829,7 +1835,7 @@ function App() {
                                                                     <button
                                                                         onClick={() => setSelectedMatchDetails({ seeker: searcherMatch.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                         className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                        title="Match-Details anzeigen"
+                                                                        title="Show Match Details"
                                                                     >
                                                                         <Info size={16} />
                                                                     </button>
@@ -1840,19 +1846,19 @@ function App() {
                                                                                 handleStartChat(roomMatch.room.createdBy, roomMatch.room.id, roomMatch.room.name, 'room');
                                                                             }}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
-                                                                            title="Chat mit Zimmerersteller starten"
+                                                                            title="Start chat with Room Creator"
                                                                         >
                                                                             <MessageSquareText size={16} />
                                                                         </button>
                                                                     )}
                                                                 </div>
-                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Gewünschtes Alter:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Miete:</span> {roomMatch.room.rent}€, <span className="font-medium">Zimmertyp:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Haustiere erlaubt:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen der Bewohner:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zusammenleben:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Rent:</span> {roomMatch.room.rent}€, <span className="font-medium">Room Type:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Pets Allowed:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Residents' Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                             </div>
                                                         </div>
                                                     ))
@@ -1866,27 +1872,27 @@ function App() {
 
                         {/* Admin-Matches: Zimmer findet Suchenden */}
                         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Zimmer findet Suchenden (Admin-Ansicht)</h2>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Matches: Room Finds Seeker (Admin View)</h2>
                             {reverseMatches.length === 0 ? (
-                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">Keine Übereinstimmungen gefunden.</p>
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No matches found.</p>
                             ) : (
                                 <div className="space-y-6 sm:space-y-8">
                                     {reverseMatches.map((roomMatch, index) => (
                                         <div key={index} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                             <h3 className="text-xl sm:text-2xl font-bold text-[#333333] mb-3 sm:mb-4 flex items-center">
-                                                <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Zimmername: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
+                                                <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Room Name: <span className="font-extrabold ml-1 sm:ml-2">{roomMatch.room.name}</span> <span className="text-sm font-normal text-gray-600 ml-1">(ID: {roomMatch.room.id.substring(0, 8)}...)</span>
                                             </h3>
                                             <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                <Users size={18} className="mr-1 sm:mr-2" /> Passende Suchende:
+                                                <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers:
                                             </h4>
                                             <div className="space-y-2">
                                                 {roomMatch.matchingSeekers.length === 0 ? (
-                                                    <p className="text-gray-600 text-sm lg:text-base">Keine passenden Suchenden für dieses Zimmerprofil.</p>
+                                                    <p className="text-gray-600 text-sm lg:text-base">No matching seekers for this room profile.</p>
                                                 ) : (
                                                     roomMatch.matchingSeekers.map(seekerMatch => (
                                                         <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                             <div>
-                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Suchender: {seekerMatch.searcher.name}</p>
+                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
                                                                 <div className="flex items-center mt-1 sm:mt-2">
                                                                     <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                         Score: {seekerMatch.score.toFixed(0)}
@@ -1894,7 +1900,7 @@ function App() {
                                                                     <button
                                                                         onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
                                                                         className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                        title="Match-Details anzeigen"
+                                                                        title="Show Match Details"
                                                                     >
                                                                         <Info size={16} />
                                                                     </button>
@@ -1905,17 +1911,17 @@ function App() {
                                                                                 handleStartChat(seekerMatch.searcher.createdBy, seekerMatch.searcher.id, seekerMatch.searcher.name, 'seeker');
                                                                             }}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
-                                                                            title="Chat mit Suchendem starten"
+                                                                            title="Start chat with Seeker"
                                                                         >
                                                                             <MessageSquareText size={16} />
                                                                         </button>
                                                                     )}
                                                                 </div>
-                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zimmerpräferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
                                                             </div>
                                                         </div>
                                                     ))
@@ -1928,27 +1934,27 @@ function App() {
                         </div>
                         {/* Alle Suchprofile (Admin-Ansicht) */}
                         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Alle Suchprofile (Admin-Ansicht)</h2>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Seeker Profiles (Admin View)</h2>
                             {allSearcherProfilesGlobal.length === 0 ? (
-                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">Noch keine Suchprofile verfügbar.</p>
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No seeker profiles available yet.</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {allSearcherProfilesGlobal.map(profile => (
                                         <div key={profile.id} className="bg-[#f0f8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
                                             <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Name: {profile.name}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Alter:</span> {profile.age}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Geschlecht:</span> {capitalizeFirstLetter(profile.gender)}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Zusammenleben:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
-                                            <p className="text-xs text-gray-500 mt-3 sm:mt-4">Erstellt von: {profile.createdBy}</p>
-                                            <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
+                                            <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
+                                            <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                             <button
                                                 onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                                 className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                             >
-                                                <Trash2 size={14} className="mr-1.5" /> Löschen
+                                                <Trash2 size={14} className="mr-1.5" /> Delete
                                             </button>
                                         </div>
                                     ))}
@@ -1958,29 +1964,29 @@ function App() {
 
                         {/* Alle Zimmerprofile (Admin-Ansicht) */}
                         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Alle Zimmerangebote (Admin-Ansicht)</h2>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">All Room Offers (Admin View)</h2>
                             {allRoomProfilesGlobal.length === 0 ? (
-                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">Noch keine Zimmerangebote verfügbar.</p>
+                                <p className="text-center text-gray-600 text-base sm:text-lg py-4">No room offers available yet.</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {allRoomProfilesGlobal.map(profile => (
                                         <div key={profile.id} className="bg-[#fff8f0] p-5 sm:p-6 rounded-xl shadow-lg border border-[#fecd82] flex flex-col transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl">
-                                            <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Zimmername: {profile.name}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Miete:</span> {profile.rent}€</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Zimmertyp:</span> {capitalizeFirstLetter(profile.roomType)}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Haustiere erlaubt:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Durchschnittliches Alter der Bewohner:</span> {profile.avgAge}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen der Bewohner:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Zusammenleben:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
-                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
-                                            <p className="text-xs text-gray-500 mt-3 sm:mt-4">Erstellt von: {profile.createdBy}</p>
-                                            <p className="text-xs text-gray-500">Am: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                            <p className="font-bold text-[#333333] text-base md:text-lg mb-2">Room Name: {profile.name}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age of Residents:</span> {profile.avgAge}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
+                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
+                                            <p className="text-xs text-gray-500 mt-3 sm:mt-4">Created by: {profile.createdBy}</p>
+                                            <p className="text-xs text-gray-500">On: {new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
                                             <button
                                                 onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
                                                 className="mt-4 sm:mt-6 px-4 py-1.5 sm:px-5 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out self-end flex items-center transform hover:-translate-y-0.5 text-sm"
                                             >
-                                                <Trash2 size={14} className="mr-1.5" /> Löschen
+                                                <Trash2 size={14} className="mr-1.5" /> Delete
                                             </button>
                                         </div>
                                     ))}
@@ -2004,7 +2010,7 @@ function App() {
                                                     : 'bg-white text-[#9adfaa] hover:bg-gray-50'
                                             }`}
                                         >
-                                            <Search size={20} className="mr-2" /> Suchprofil
+                                            <Search size={20} className="mr-2" /> Seeker Profile
                                         </button>
                                         <button
                                             onClick={() => setShowSeekerForm(false)}
@@ -2014,17 +2020,17 @@ function App() {
                                                     : 'bg-white text-[#fecd82] hover:bg-gray-50'
                                             }`}
                                         >
-                                            <HomeIcon size={20} className="mr-2" /> Zimmerangebot
+                                            <HomeIcon size={20} className="mr-2" /> Room Offer
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
-                                        <p className="text-base sm:text-lg">Bitte melden Sie sich an, um Profile zu erstellen und Matches zu sehen.</p>
+                                        <p className="text-base sm:text-lg">Please log in to create profiles and see matches.</p>
                                         <button
                                             onClick={handleGoogleSignIn}
                                             className="mt-4 sm:mt-6 px-5 py-2 sm:px-6 sm:py-3 bg-[#3fd5c1] text-white font-bold rounded-xl shadow-lg hover:bg-[#32c0ae] transition duration-150 ease-in-out transform hover:-translate-y-0.5 text-base"
                                         >
-                                            <span className="flex items-center"><LogIn size={18} className="mr-2" /> Mit Google anmelden</span>
+                                            <span className="flex items-center"><LogIn size={18} className="mr-2" /> Sign in with Google</span>
                                         </button>
                                     </div>
                                 )}
@@ -2041,40 +2047,40 @@ function App() {
                                     <div className="flex flex-col gap-8 sm:gap-12 w-full">
                                         {mySearcherProfiles.length > 0 && (
                                             <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                                                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Meine Suchprofile & Matches</h2>
+                                                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Seeker Profiles & Matches</h2>
                                                 {mySearcherProfiles.map(profile => {
                                                     const profileMatches = matches.find(m => m.searcher.id === profile.id);
                                                     return (
                                                         <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#f0f8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#9adfaa] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                             {/* Eigene Suchprofildetails */}
                                                             <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
-                                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Ihr Profil: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
+                                                                <Search size={20} className="mr-2 sm:mr-3 text-[#5a9c68]" /> Your Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                             </h3>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Alter:</span> {profile.age}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Geschlecht:</span> {capitalizeFirstLetter(profile.gender)}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Max. Miete:</span> {profile.maxRent}€</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Haustiere:</span> {capitalizeFirstLetter(profile.pets === 'yes' ? 'Ja' : 'Nein')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Zusammenleben:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Age:</span> {profile.age}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Gender:</span> {capitalizeFirstLetter(profile.gender)}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Max. Rent:</span> {profile.maxRent}€</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets:</span> {capitalizeFirstLetter(profile.pets === 'yes' ? 'Yes' : 'No')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Communal Living:</span> {Array.isArray(profile.communalLivingPreferences) ? profile.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.communalLivingPreferences || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(profile.values) ? profile.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.values || 'N/A')}</p>
                                                             <button
                                                                 onClick={() => handleDeleteProfile('searcherProfiles', profile.id, profile.name, profile.createdBy)}
                                                                 className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                             >
-                                                                <Trash2 size={14} className="mr-1.5" /> Profil löschen
+                                                                <Trash2 size={14} className="mr-1.5" /> Delete Profile
                                                             </button>
 
                                                             {/* Matches für dieses spezifische Suchprofil */}
                                                             <h4 className="text-lg sm:text-xl font-bold text-[#5a9c68] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                                <Heart size={18} className="mr-1 sm:mr-2" /> Passende Zimmerangebote für {profile.name}:
+                                                                <Heart size={18} className="mr-1 sm:mr-2" /> Matching Room Offers for {profile.name}:
                                                             </h4>
                                                             <div className="space-y-2">
                                                                 {profileMatches && profileMatches.matchingRooms.length > 0 ? (
                                                                     profileMatches.matchingRooms.map(roomMatch => (
                                                                         <div key={roomMatch.room.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#9adfaa] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                             <div>
-                                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Zimmername: {roomMatch.room.name}</p>
+                                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Room Name: {roomMatch.room.name}</p>
                                                                                 <div className="flex items-center mt-1 sm:mt-2">
                                                                                     <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(roomMatch.score)}`}>
                                                                                         Score: {roomMatch.score.toFixed(0)}
@@ -2082,7 +2088,7 @@ function App() {
                                                                                     <button
                                                                                         onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
                                                                                         className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                                        title="Match-Details anzeigen"
+                                                                                        title="Show Match Details"
                                                                                     >
                                                                                         <Info size={16} />
                                                                                     </button>
@@ -2093,24 +2099,24 @@ function App() {
                                                                                                 handleStartChat(roomMatch.room.createdBy, roomMatch.room.id, roomMatch.room.name, 'room');
                                                                                             }}
                                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
-                                                                                            title="Chat mit Zimmerersteller starten"
+                                                                                            title="Start chat with Room Creator"
                                                                                         >
                                                                                             <MessageSquareText size={16} />
                                                                                         </button>
                                                                                     )}
                                                                                 </div>
-                                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Gewünschtes Alter:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Miete:</span> {roomMatch.room.rent}€, <span className="font-medium">Zimmertyp:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Haustiere erlaubt:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen der Bewohner:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zusammenleben:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Desired Age:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Gender Preference:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Rent:</span> {roomMatch.room.rent}€, <span className="font-medium">Room Type:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Pets Allowed:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Residents' Interests:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(roomMatch.room.roomCommunalLiving) ? roomMatch.room.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomCommunalLiving || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(roomMatch.room.roomValues) ? roomMatch.room.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.roomValues || 'N/A')}</p>
                                                             </div>
                                                         </div>
                                                     ))
                                                 ) : (
-                                                    <p className="text-gray-600 text-sm lg:text-base">Keine passenden Zimmer für dieses Profil.</p>
+                                                    <p className="text-gray-600 text-sm lg:text-base">No matching rooms for this profile.</p>
                                                 )}
                                                             </div>
                                                         </div>
@@ -2121,40 +2127,40 @@ function App() {
 
                                         {myRoomProfiles.length > 0 && (
                                             <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 hover:shadow-3xl mb-8 sm:mb-12">
-                                                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">Meine Zimmerangebote & Matches</h2>
+                                                <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-800 mb-6 sm:mb-8 text-center">My Room Offers & Matches</h2>
                                                 {myRoomProfiles.map(profile => {
                                                     const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
                                                     return (
                                                         <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
                                                             {/* Eigene Zimmerprofildetails */}
                                                             <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
-                                                                <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Ihr Zimmerprofil: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
+                                                                <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>
                                                             </h3>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Miete:</span> {profile.rent}€</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Zimmertyp:</span> {capitalizeFirstLetter(profile.roomType)}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Haustiere erlaubt:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Durchschnittliches Alter der Bewohner:</span> {profile.avgAge}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Interessen der Bewohner:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Persönlichkeit:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Zusammenleben:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
-                                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Zimmerwerte:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Rent:</span> {profile.rent}€</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Room Type:</span> {capitalizeFirstLetter(profile.roomType)}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Pets Allowed:</span> {capitalizeFirstLetter(profile.petsAllowed === 'yes' ? 'Yes' : 'No')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Average Age of Residents:</span> {profile.avgAge}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Residents' Interests:</span> {Array.isArray(profile.interests) ? profile.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.interests || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-semibold">Personality:</span> {Array.isArray(profile.personalityTraits) ? profile.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.personalityTraits || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-0.5 leading-tight"><span className="font-medium">Communal Living:</span> {Array.isArray(profile.roomCommunalLiving) ? profile.roomCommunalLiving.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomCommunalLiving || 'N/A')}</p>
+                                                            <p className="text-sm md:text-base text-gray-700 mb-1 leading-tight"><span className="font-medium">Room Values:</span> {Array.isArray(profile.roomValues) ? profile.roomValues.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(profile.roomValues || 'N/A')}</p>
                                                             <button
                                                                 onClick={() => handleDeleteProfile(profile.isLegacy ? 'wgProfiles' : 'roomProfiles', profile.id, profile.name, profile.createdBy)}
                                                                 className="mt-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-150 ease-in-out flex items-center text-sm"
                                                             >
-                                                                <Trash2 size={14} className="mr-1.5" /> Profil löschen
+                                                                <Trash2 size={14} className="mr-1.5" /> Delete Profile
                                                             </button>
 
                                                             {/* Matches für dieses spezifische Zimmerprofil */}
                                                             <h4 className="text-lg sm:text-xl font-bold text-[#cc8a2f] mt-6 sm:mt-8 mb-3 sm:mb-4 flex items-center">
-                                                                <Users size={18} className="mr-1 sm:mr-2" /> Passende Suchende für {profile.name}:
+                                                                <Users size={18} className="mr-1 sm:mr-2" /> Matching Seekers for {profile.name}:
                                                             </h4>
                                                             <div className="space-y-2">
                                                                 {profileMatches && profileMatches.matchingSeekers.length > 0 ? (
                                                                     profileMatches.matchingSeekers.map(seekerMatch => (
                                                                         <div key={seekerMatch.searcher.id} className="bg-white p-4 sm:p-5 rounded-lg shadow border border-[#fecd82] flex flex-col md:flex-row justify-between items-start md:items-center transform transition-all duration-200 hover:scale-[1.005]">
                                                                             <div>
-                                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Suchender: {seekerMatch.searcher.name}</p>
+                                                                                <p className="font-bold text-gray-800 text-base md:text-lg">Seeker: {seekerMatch.searcher.name}</p>
                                                                                 <div className="flex items-center mt-1 sm:mt-2">
                                                                                     <div className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-bold inline-block ${getScoreColorClass(seekerMatch.score)}`}>
                                                                                         Score: {seekerMatch.score.toFixed(0)}
@@ -2162,7 +2168,7 @@ function App() {
                                                                                     <button
                                                                                         onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
                                                                                         className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
-                                                                                        title="Match-Details anzeigen"
+                                                                                        title="Show Match Details"
                                                                                     >
                                                                                         <Info size={16} />
                                                                                     </button>
@@ -2173,22 +2179,22 @@ function App() {
                                                                                                 handleStartChat(seekerMatch.searcher.createdBy, seekerMatch.searcher.id, seekerMatch.searcher.name, 'seeker');
                                                                                             }}
                                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
-                                                                                            title="Chat mit Suchendem starten"
+                                                                                            title="Start chat with Seeker"
                                                                                         >
                                                                                             <MessageSquareText size={16} />
                                                                                         </button>
                                                                                     )}
                                                                                 </div>
-                                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Alter:</span> {seekerMatch.searcher.age}, <span className="font-medium">Geschlecht:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zimmerpräferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
-                                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Age:</span> {seekerMatch.searcher.age}, <span className="font-medium">Gender:</span> {capitalizeFirstLetter(seekerMatch.searcher.gender)}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interests:</span> {Array.isArray(seekerMatch.searcher.interests) ? seekerMatch.searcher.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.interests || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Personality:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Room Preferences:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
+                                                                                <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Values:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
                                                             </div>
                                                         </div>
                                                     ))
                                                 ) : (
-                                                    <p className="text-center text-gray-600 text-sm lg:text-base">Keine passenden Suchenden für dieses Zimmerprofil.</p>
+                                                    <p className="text-center text-gray-600 text-sm lg:text-base">No matching seekers for this room profile.</p>
                                                 )}
                                                             </div>
                                                         </div>
@@ -2201,7 +2207,7 @@ function App() {
                                     // Wenn keine Profile für den Benutzer existieren, eine Nachricht anzeigen
                                     userId && (
                                         <div className="w-full max-w-xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center text-gray-600 mb-8 sm:mb-12 mx-auto">
-                                            <p className="text-base sm:text-lg">Erstellen Sie ein Profil, um Ihre Matches zu sehen!</p>
+                                            <p className="text-base sm:text-lg">Create a profile to see your matches!</p>
                                         </div>
                                     )
                                 )}
@@ -2241,3 +2247,4 @@ function App() {
 }
 
 export default App;
+

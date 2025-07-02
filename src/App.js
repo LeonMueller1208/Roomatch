@@ -11,7 +11,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Configuration (provided by the user)
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY INSERTED HERE!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY UPDATED HERE!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -472,6 +472,8 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
 
             setIsLoadingChat(true);
             setChatError(null);
+            console.log("ChatPage: Attempting to find or create chat with Target User UID:", initialChatTargetUid);
+
 
             try {
                 const chatsRef = collection(db, 'chats');
@@ -489,6 +491,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 if (!querySnapshot.empty) {
                     // Chat exists, select it
                     chatToSelectId = querySnapshot.docs[0].id;
+                    console.log("ChatPage: Found existing chat with ID:", chatToSelectId);
                 } else {
                     // Chat does not exist, create a new one
                     const newChatRef = await addDoc(chatsRef, {
@@ -498,11 +501,14 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                         lastMessage: { text: "New chat started.", senderId: currentUserUid },
                     });
                     chatToSelectId = newChatRef.id;
+                    console.log("ChatPage: Created new chat with ID:", chatToSelectId);
                 }
 
                 setSelectedChatId(chatToSelectId);
                 const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unknown User';
                 setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
+                console.log("ChatPage: Chat initiated with:", otherUserName, "(UID:", initialChatTargetUid, ")");
+
 
             } catch (error) {
                 console.error("Error finding or creating chat:", error);
@@ -551,6 +557,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 };
             });
             setChats(fetchedChats);
+            console.log("ChatPage: Fetched chat list. Number of chats:", fetchedChats.length);
         }, (error) => {
             console.error("Error fetching chats:", error);
             setChatError("Failed to load your chats.");
@@ -567,6 +574,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
             const otherParticipantUid = selectedChat.participants.find(p => p.uid !== currentUserUid)?.uid;
             const otherUserName = allProfilesMap[otherParticipantUid] || 'Unknown User';
             setOtherUser({ uid: otherParticipantUid, name: otherUserName });
+            console.log("ChatPage: Selected existing chat. Other User:", otherUserName, "(UID:", otherParticipantUid, ")");
         }
     };
 
@@ -577,6 +585,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         // This is important if the user navigates back to the chat list from a specific chat
         // that was initiated via a "Start Chat" button.
         setInitialChatTargetUid(null); // IMPORTANT: Clear this in the parent App component
+        console.log("ChatPage: Closed chat.");
     };
 
     if (isLoadingChat) {
@@ -1114,6 +1123,7 @@ function App() {
             setTimeout(() => setError(''), 3000); // Clear error after 3 seconds
             return;
         }
+        console.log("App: Calling handleStartChat with targetUserUid:", targetUserUid);
         setInitialChatTargetUid(targetUserUid); // Set the target UID
         setCurrentView('chats'); // Switch to chat view
     }, [userId]);
@@ -1747,7 +1757,10 @@ function App() {
                                                                     </button>
                                                                     {userId && roomMatch.room.createdBy !== userId && ( // Don't show chat with self
                                                                         <button
-                                                                            onClick={() => handleStartChat(roomMatch.room.createdBy)}
+                                                                            onClick={() => {
+                                                                                console.log("App: Clicked chat from Seeker Matches. Target UID:", roomMatch.room.createdBy, "Room Name:", roomMatch.room.name);
+                                                                                handleStartChat(roomMatch.room.createdBy);
+                                                                            }}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
                                                                             title="Start Chat with Room Creator"
                                                                         >
@@ -1809,7 +1822,10 @@ function App() {
                                                                     </button>
                                                                     {userId && seekerMatch.searcher.createdBy !== userId && ( // Don't show chat with self
                                                                         <button
-                                                                            onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
+                                                                            onClick={() => {
+                                                                                console.log("App: Clicked chat from Room Matches. Target UID:", seekerMatch.searcher.createdBy, "Seeker Name:", seekerMatch.searcher.name);
+                                                                                handleStartChat(seekerMatch.searcher.createdBy);
+                                                                            }}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
                                                                             title="Start Chat with Seeker"
                                                                         >
@@ -1994,7 +2010,10 @@ function App() {
                                                                                     </button>
                                                                                     {userId && roomMatch.room.createdBy !== userId && ( // Don't show chat with self
                                                                                         <button
-                                                                                            onClick={() => handleStartChat(roomMatch.room.createdBy)}
+                                                                                            onClick={() => {
+                                                                                                console.log("App: Clicked chat from Seeker Matches. Target UID:", roomMatch.room.createdBy, "Room Name:", roomMatch.room.name);
+                                                                                                handleStartChat(roomMatch.room.createdBy);
+                                                                                            }}
                                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
                                                                                             title="Start Chat with Room Creator"
                                                                                         >
@@ -2071,7 +2090,10 @@ function App() {
                                                                                     </button>
                                                                                     {userId && seekerMatch.searcher.createdBy !== userId && ( // Don't show chat with self
                                                                                         <button
-                                                                                            onClick={() => handleStartChat(seekerMatch.searcher.createdBy)}
+                                                                                            onClick={() => {
+                                                                                                console.log("App: Clicked chat from Room Matches. Target UID:", seekerMatch.searcher.createdBy, "Seeker Name:", seekerMatch.searcher.name);
+                                                                                                handleStartChat(seekerMatch.searcher.createdBy);
+                                                                                            }}
                                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
                                                                                             title="Start Chat with Seeker"
                                                                                         >

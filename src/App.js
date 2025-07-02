@@ -10,7 +10,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Konfiguration
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
+    apiKey: "AIzaSyACGoSxD0_UZW06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -276,7 +276,7 @@ const MatchDetailsModal = ({ isOpen, onClose, seeker, room, matchDetails }) => {
 };
 
 // Komponente für die Chat-Liste
-const ChatList = ({ chats, onSelectChat, currentUserUid }) => {
+const ChatList = ({ chats, onSelectChat, currentUserUid, allUserDisplayNamesMap }) => {
     return (
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 text-center">Meine Chats</h2>
@@ -284,33 +284,37 @@ const ChatList = ({ chats, onSelectChat, currentUserUid }) => {
                 <p className="text-center text-gray-600">Noch keine aktiven Chats. Starten Sie einen Chat aus Ihren Matches!</p>
             ) : (
                 <div className="space-y-3">
-                    {chats.map(chat => (
-                        <div
-                            key={chat.id}
-                            className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100 transition"
-                            onClick={() => onSelectChat(chat.id)}
-                        >
-                            <div className="flex-1">
-                                <p className="font-semibold text-gray-800">
-                                    Chat mit: {chat.participants.find(p => p.uid !== currentUserUid)?.name || 'Unbekannter Benutzer'}
-                                </p>
-                                {chat.initialContext && ( // Display initial context in chat list
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        Über: {chat.initialContext.profileName} ({capitalizeFirstLetter(chat.initialContext.type === 'room' ? 'Zimmer' : 'Suchprofil')})
+                    {chats.map(chat => {
+                        const otherParticipantUid = chat.participantsUids.find(uid => uid !== currentUserUid);
+                        const otherUserName = allUserDisplayNamesMap[otherParticipantUid] || 'Unbekannter Benutzer';
+                        return (
+                            <div
+                                key={chat.id}
+                                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100 transition"
+                                onClick={() => onSelectChat(chat.id)}
+                            >
+                                <div className="flex-1">
+                                    <p className="font-semibold text-gray-800">
+                                        Chat mit: {otherUserName}
                                     </p>
-                                )}
-                                {chat.lastMessage && (
-                                    <p className="text-sm text-gray-600 truncate">
-                                        {chat.lastMessage.senderId === currentUserUid ? 'Du: ' : ''}
-                                        {chat.lastMessage.text}
-                                    </p>
-                                )}
+                                    {chat.initialContext && ( // Display initial context in chat list
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            Über: {chat.initialContext.profileName} ({capitalizeFirstLetter(chat.initialContext.type === 'room' ? 'Zimmer' : 'Suchprofil')})
+                                        </p>
+                                    )}
+                                    {chat.lastMessage && (
+                                        <p className="text-sm text-gray-600 truncate">
+                                            {chat.lastMessage.senderId === currentUserUid ? 'Du: ' : ''}
+                                            {chat.lastMessage.text}
+                                        </p>
+                                    )}
+                                </div>
+                                <span className="text-xs text-gray-500 ml-4">
+                                    {chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
                             </div>
-                            <span className="text-xs text-gray-500 ml-4">
-                                {chat.lastMessageTimestamp ? new Date(chat.lastMessageTimestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </span>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -463,31 +467,12 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
 };
 
 // Haupt-Chat-Seitenkomponente (wird bedingt in App.js gerendert)
-const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid, setInitialChatTargetUid, initialChatTargetProfileId, setInitialChatTargetProfileId, initialChatTargetProfileName, setInitialChatTargetProfileName, initialChatTargetProfileType, setInitialChatTargetProfileType }) => {
+const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid, setInitialChatTargetUid, initialChatTargetProfileId, setInitialChatTargetProfileId, initialChatTargetProfileName, setInitialChatTargetProfileName, initialChatTargetProfileType, setInitialChatTargetProfileType, allUserDisplayNamesMap }) => {
     const [chats, setChats] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null);
     const [otherUser, setOtherUser] = useState(null);
     const [isLoadingChat, setIsLoadingChat] = useState(false);
     const [chatError, setChatError] = useState(null);
-
-    // Alle Profile (Suchende und Zimmer) kombinieren und UIDs Namen zuordnen
-    // Diese memoized Map ist entscheidend für die Anzeige von Namen in der Chat-Liste/Konversation
-    const allProfilesMap = useMemo(() => {
-        const map = {};
-        // Den Anzeigenamen des aktuellen Benutzers aus der Authentifizierung priorisieren
-        if (currentUserUid && currentUserName) {
-            map[currentUserUid] = currentUserName;
-        }
-
-        // Alle Profile durchlaufen. Wenn ein Benutzer bereits einen Namen in der Map hat (z. B. vom aktuellen Benutzernamen),
-        // oder wenn ein Name bereits durch ein früheres Profil gesetzt wurde, nicht überschreiben.
-        [...allSearcherProfilesGlobal, ...allRoomProfilesGlobal].forEach(profile => {
-            if (profile.createdBy && profile.name && !map[profile.createdBy]) { // Nur setzen, wenn noch nicht vorhanden
-                map[profile.createdBy] = profile.name;
-            }
-        });
-        return map;
-    }, [allSearcherProfilesGlobal, allRoomProfilesGlobal, currentUserUid, currentUserName]); // Abhängigkeiten für Memoization
 
     // Effekt 1: Initialen Chat-Ziel behandeln (beim Klicken auf Chat-Button von einem Match)
     // Dieser Effekt läuft, wenn sich initialChatTargetUid, currentUserUid oder db ändern.
@@ -545,7 +530,8 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 }
 
                 setSelectedChatId(chatToSelectId);
-                const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unbekannter Benutzer';
+                // Hier den Namen aus der allUserDisplayNamesMap verwenden
+                const otherUserName = allUserDisplayNamesMap[initialChatTargetUid] || 'Unbekannter Benutzer';
                 setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
                 console.log("ChatPage: Chat gestartet mit:", otherUserName, "(UID:", initialChatTargetUid, ") über Profil:", initialChatTargetProfileName);
 
@@ -570,7 +556,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         if (initialChatTargetUid && currentUserUid && db) {
             findOrCreateChat();
         }
-    }, [db, currentUserUid, initialChatTargetUid, initialChatTargetProfileId, initialChatTargetProfileName, initialChatTargetProfileType, allProfilesMap, selectedChatId, isLoadingChat, setInitialChatTargetUid, setInitialChatTargetProfileId, setInitialChatTargetProfileName, setInitialChatTargetProfileType]);
+    }, [db, currentUserUid, initialChatTargetUid, initialChatTargetProfileId, initialChatTargetProfileName, initialChatTargetProfileType, allUserDisplayNamesMap, selectedChatId, isLoadingChat, setInitialChatTargetUid, setInitialChatTargetProfileId, setInitialChatTargetProfileName, setInitialChatTargetProfileType]);
 
     // Effekt 2: Chats des Benutzers für die Listenansicht abrufen
     // Dieser Effekt hängt nur von den Kerndaten ab, die zum Abrufen der Chat-Liste benötigt werden.
@@ -588,15 +574,10 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedChats = snapshot.docs.map(doc => {
                 const data = doc.data();
-                // Sicherstellen, dass Teilnehmer ein Array von Objekten mit uid und name ist
-                const participantsWithNames = data.participantsUids.map(uid => ({
-                    uid: uid,
-                    name: allProfilesMap[uid] || 'Unbekannter Benutzer' // Abgerufene Profilnamen verwenden
-                }));
                 return {
                     id: doc.id,
                     ...data,
-                    participants: participantsWithNames,
+                    // participants: participantsWithNames, // Nicht mehr benötigt, da Namen aus allUserDisplayNamesMap geholt werden
                 };
             });
             setChats(fetchedChats);
@@ -607,15 +588,15 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         });
 
         return () => unsubscribe();
-    }, [db, currentUserUid, allProfilesMap]); // initialChatTargetUid, selectedChatId aus Abhängigkeiten entfernt
+    }, [db, currentUserUid]); // allUserDisplayNamesMap aus Abhängigkeiten entfernt, da es in ChatList verwendet wird, nicht hier
 
     const handleSelectChat = (chatId) => {
         setSelectedChatId(chatId);
         const selectedChat = chats.find(chat => chat.id === chatId);
         if (selectedChat) {
             // Das Profil des anderen Teilnehmers finden
-            const otherParticipantUid = selectedChat.participants.find(p => p.uid !== currentUserUid)?.uid;
-            const otherUserName = allProfilesMap[otherParticipantUid] || 'Unbekannter Benutzer';
+            const otherParticipantUid = selectedChat.participantsUids.find(uid => uid !== currentUserUid);
+            const otherUserName = allUserDisplayNamesMap[otherParticipantUid] || 'Unbekannter Benutzer';
             setOtherUser({ uid: otherParticipantUid, name: otherUserName });
             console.log("ChatPage: Bestehender Chat ausgewählt. Anderer Benutzer:", otherUserName, "(UID:", otherParticipantUid, ")");
         }
@@ -657,6 +638,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                     chats={chats}
                     onSelectChat={handleSelectChat}
                     currentUserUid={currentUserUid}
+                    allUserDisplayNamesMap={allUserDisplayNamesMap} // allUserDisplayNamesMap weitergeben
                 />
             ) : (
                 <ChatConversation
@@ -697,6 +679,7 @@ function App() {
     const [isAuthReady, setIsAuthReady] = useState(false); // Neuer Zustand zur Verfolgung der Authentifizierungsbereitschaft
     const [showUserIdCopied, setShowUserIdCopied] = useState(false); // Zustand für die Kopiernachricht
     const [scrollToProfileId, setScrollToProfileId] = useState(null); // Neuer Zustand zum Scrollen zu einem bestimmten Profil
+    const [allUserDisplayNamesMap, setAllUserDisplayNamesMap] = useState({}); // NEU: Map für UID zu DisplayName
 
     // Neuer Zustand für die aktuelle Ansicht: 'home' (Standardprofilerstellung/Matches), 'chats', 'admin'
     const [currentView, setCurrentView] = useState('home');
@@ -718,11 +701,23 @@ function App() {
             setDb(dbInstance);
             setAuth(authInstance);
 
-            const unsubscribeAuth = onAuthStateChanged(authInstance, (user) => {
+            const unsubscribeAuth = onAuthStateChanged(authInstance, async (user) => {
                 if (user) {
                     setUserId(user.uid);
-                    setUserName(user.displayName || user.email || 'Gast');
+                    const displayName = user.displayName || user.email || 'Gast';
+                    setUserName(displayName);
                     setAdminMode(user.uid === ADMIN_UID);
+
+                    // NEU: Benutzer-Displaynamen in Firestore speichern/aktualisieren
+                    try {
+                        await setDoc(doc(dbInstance, 'users', user.uid), {
+                            displayName: displayName,
+                            lastSeen: serverTimestamp(),
+                        }, { merge: true });
+                    } catch (e) {
+                        console.error("Fehler beim Speichern des Benutzernamens:", e);
+                    }
+
                 } else {
                     // Kein Benutzer angemeldet. Auf explizite Google-Anmeldung warten.
                     setUserId(null);
@@ -733,15 +728,29 @@ function App() {
                 setLoading(false); // Laden beendet
             });
 
+            // NEU: Listener für alle Benutzer-Displaynamen
+            const usersCollectionRef = collection(dbInstance, 'users');
+            const unsubscribeUsers = onSnapshot(usersCollectionRef, (snapshot) => {
+                const namesMap = {};
+                snapshot.docs.forEach(doc => {
+                    namesMap[doc.id] = doc.data().displayName;
+                });
+                setAllUserDisplayNamesMap(namesMap);
+            }, (err) => {
+                console.error("Fehler beim Abrufen der Benutzernamen:", err);
+            });
+
+
             return () => {
                 unsubscribeAuth();
+                unsubscribeUsers(); // Cleanup für den neuen Listener
             };
         } catch (initError) {
             console.error("Fehler bei der Firebase-Initialisierung:", initError);
             setError("Firebase konnte nicht initialisiert werden. Bitte überprüfen Sie Ihre Firebase-Konfiguration und Internetverbindung.");
             setLoading(false);
         }
-    }, []);
+    }, []); // Leeres Abhängigkeits-Array, da dies nur einmal beim Laden der App ausgeführt werden soll
 
     // Effekt zum Scrollen zu einem bestimmten Profil, nachdem es hinzugefügt/gerendert wurde
     useEffect(() => {
@@ -2205,6 +2214,7 @@ function App() {
                                 setInitialChatTargetProfileName={setInitialChatTargetProfileName} // Neu
                                 initialChatTargetProfileType={initialChatTargetProfileType} // Neu
                                 setInitialChatTargetProfileType={setInitialChatTargetProfileType} // Neu
+                                allUserDisplayNamesMap={allUserDisplayNamesMap} // allUserDisplayNamesMap weitergeben
                             />
                         )}
                     </div>

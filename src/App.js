@@ -2188,7 +2188,7 @@ function App() {
                                 )}
                             </>
                         ) : (
-                            // ChatPage rendern, wenn currentView 'chats' ist
+                            // ChatPage rendern, wenn currentView 'chats' ist!
                             <ChatPage
                                 db={db}
                                 currentUserUid={userId}

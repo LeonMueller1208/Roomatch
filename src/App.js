@@ -294,6 +294,11 @@ const ChatList = ({ chats, onSelectChat, currentUserUid }) => {
                                 <p className="font-semibold text-gray-800">
                                     Chat mit: {chat.participants.find(p => p.uid !== currentUserUid)?.name || 'Unbekannter Benutzer'}
                                 </p>
+                                {chat.initialContext && ( // Display initial context in chat list
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        Über: {chat.initialContext.profileName} ({capitalizeFirstLetter(chat.initialContext.type === 'room' ? 'Zimmer' : 'Suchprofil')})
+                                    </p>
+                                )}
                                 {chat.lastMessage && (
                                     <p className="text-sm text-gray-600 truncate">
                                         {chat.lastMessage.senderId === currentUserUid ? 'Du: ' : ''}
@@ -316,16 +321,28 @@ const ChatList = ({ chats, onSelectChat, currentUserUid }) => {
 const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUser, db, currentUserName }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    const [chatInitialContext, setChatInitialContext] = useState(null); // NEU: Zustand für initialen Chat-Kontext
     const messagesEndRef = useRef(null); // Ref zum Scrollen nach unten
 
     // Nachrichten für den ausgewählten Chat abrufen
     useEffect(() => {
         if (!db || !selectedChatId) return;
 
+        const chatDocRef = doc(db, 'chats', selectedChatId);
         const messagesRef = collection(db, 'chats', selectedChatId, 'messages');
         const q = query(messagesRef, orderBy('timestamp'), limit(50)); // Auf die letzten 50 Nachrichten beschränken
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        // Listener für das Chat-Dokument selbst, um initialContext abzurufen
+        const unsubscribeChatDoc = onSnapshot(chatDocRef, (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                setChatInitialContext(docSnapshot.data().initialContext || null);
+            }
+        }, (error) => {
+            console.error("Fehler beim Abrufen des Chat-Dokuments:", error);
+        });
+
+        // Listener für Nachrichten
+        const unsubscribeMessages = onSnapshot(q, (snapshot) => {
             const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setMessages(msgs);
         }, (error) => {
@@ -333,7 +350,10 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
             // In einer echten App dem Benutzer einen Fehler anzeigen
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeChatDoc();
+            unsubscribeMessages();
+        };
     }, [db, selectedChatId]);
 
     // Zum neuesten Nachricht scrollen, wenn sich Nachrichten aktualisieren
@@ -382,6 +402,13 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                     <XCircle size={24} />
                 </button>
             </div>
+
+            {chatInitialContext && ( // NEU: Initialen Kontext anzeigen
+                <div className="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-sm text-center">
+                    Dieser Chat wurde über das {chatInitialContext.type === 'room' ? 'Zimmerangebot' : 'Suchprofil'} "
+                    <span className="font-semibold">{chatInitialContext.profileName}</span>" gestartet.
+                </div>
+            )}
 
             <div className="flex-1 overflow-y-auto mb-4 space-y-3 p-2 bg-gray-50 rounded-lg">
                 {messages.map((msg) => (
@@ -436,7 +463,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
 };
 
 // Haupt-Chat-Seitenkomponente (wird bedingt in App.js gerendert)
-const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid, setInitialChatTargetUid }) => {
+const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlobal, allRoomProfilesGlobal, initialChatTargetUid, setInitialChatTargetUid, initialChatTargetProfileId, setInitialChatTargetProfileId, initialChatTargetProfileName, setInitialChatTargetProfileName, initialChatTargetProfileType, setInitialChatTargetProfileType }) => {
     const [chats, setChats] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null);
     const [otherUser, setOtherUser] = useState(null);
@@ -473,7 +500,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
 
             setIsLoadingChat(true);
             setChatError(null);
-            console.log("ChatPage: Versuche, Chat mit Ziel-Benutzer-UID zu finden oder zu erstellen:", initialChatTargetUid);
+            console.log("ChatPage: Versuche, Chat mit Ziel-Benutzer-UID zu finden oder zu erstellen:", initialChatTargetUid, "für Profil:", initialChatTargetProfileName);
 
 
             try {
@@ -499,7 +526,17 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                         participantsUids: participantUids, // Sortierte UIDs speichern
                         createdAt: serverTimestamp(),
                         lastMessageTimestamp: serverTimestamp(), // Timestamp für Sortierung initialisieren
-                        lastMessage: { text: "Neuer Chat gestartet.", senderId: currentUserUid },
+                        // NEU: Kontext des Profils hinzufügen
+                        initialContext: {
+                            profileId: initialChatTargetProfileId,
+                            profileName: initialChatTargetProfileName,
+                            type: initialChatTargetProfileType,
+                            initiatorUid: currentUserUid // Wer den Chat initiiert hat
+                        },
+                        lastMessage: {
+                            senderId: currentUserUid,
+                            text: `Ich bin an Ihrem ${initialChatTargetProfileType === 'room' ? 'Zimmerangebot' : 'Suchprofil'} '${initialChatTargetProfileName}' interessiert.`,
+                        },
                     });
                     chatToSelectId = newChatRef.id;
                     console.log("ChatPage: Neuer Chat mit ID erstellt:", chatToSelectId);
@@ -508,7 +545,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 setSelectedChatId(chatToSelectId);
                 const otherUserName = allProfilesMap[initialChatTargetUid] || 'Unbekannter Benutzer';
                 setOtherUser({ uid: initialChatTargetUid, name: otherUserName });
-                console.log("ChatPage: Chat gestartet mit:", otherUserName, "(UID:", initialChatTargetUid, ")");
+                console.log("ChatPage: Chat gestartet mit:", otherUserName, "(UID:", initialChatTargetUid, ") über Profil:", initialChatTargetProfileName);
 
 
             } catch (error) {
@@ -516,10 +553,13 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 setChatError("Chat konnte nicht gestartet werden. Bitte versuchen Sie es erneut.");
             } finally {
                 setIsLoadingChat(false);
-                // WICHTIG: initialChatTargetUid in der übergeordneten App-Komponente löschen
+                // WICHTIG: initialChatTargetUid und Profil-Kontext in der übergeordneten App-Komponente löschen
                 // Dies verhindert, dass dieser Effekt unnötigerweise erneut ausgeführt wird, wenn ChatPage neu gerendert wird
                 // und initialChatTargetUid von einer früheren Navigation noch gesetzt ist.
-                setInitialChatTargetUid(null); 
+                setInitialChatTargetUid(null);
+                setInitialChatTargetProfileId(null); // Neu
+                setInitialChatTargetProfileName(null); // Neu
+                setInitialChatTargetProfileType(null); // Neu
             }
         };
 
@@ -528,7 +568,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         if (initialChatTargetUid && currentUserUid && db) {
             findOrCreateChat();
         }
-    }, [db, currentUserUid, initialChatTargetUid, allProfilesMap, selectedChatId, isLoadingChat, setInitialChatTargetUid]);
+    }, [db, currentUserUid, initialChatTargetUid, initialChatTargetProfileId, initialChatTargetProfileName, initialChatTargetProfileType, allProfilesMap, selectedChatId, isLoadingChat, setInitialChatTargetUid, setInitialChatTargetProfileId, setInitialChatTargetProfileName, setInitialChatTargetProfileType]);
 
     // Effekt 2: Chats des Benutzers für die Listenansicht abrufen
     // Dieser Effekt hängt nur von den Kerndaten ab, die zum Abrufen der Chat-Liste benötigt werden.
@@ -586,6 +626,9 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
         // Dies ist wichtig, wenn der Benutzer von einem bestimmten Chat, der über einen "Chat starten"-Button initiiert wurde,
         // zur Chat-Liste zurücknavigiert.
         setInitialChatTargetUid(null); // WICHTIG: Dies in der übergeordneten App-Komponente löschen
+        setInitialChatTargetProfileId(null); // Neu
+        setInitialChatTargetProfileName(null); // Neu
+        setInitialChatTargetProfileType(null); // Neu
         console.log("ChatPage: Chat geschlossen.");
     };
 
@@ -656,6 +699,10 @@ function App() {
     // Neuer Zustand für die aktuelle Ansicht: 'home' (Standardprofilerstellung/Matches), 'chats', 'admin'
     const [currentView, setCurrentView] = useState('home');
     const [initialChatTargetUid, setInitialChatTargetUid] = useState(null); // UID des Benutzers, mit dem direkt gechattet werden soll
+    // NEU: Zustände für den initialen Profilkontext beim Chat-Start
+    const [initialChatTargetProfileId, setInitialChatTargetProfileId] = useState(null);
+    const [initialChatTargetProfileName, setInitialChatTargetProfileName] = useState(null);
+    const [initialChatTargetProfileType, setInitialChatTargetProfileType] = useState(null);
 
     // Firebase-Initialisierung und Authentifizierung
     useEffect(() => {
@@ -776,6 +823,9 @@ function App() {
             setError(null);
             setCurrentView('home'); // Ansicht beim Abmelden zurücksetzen
             setInitialChatTargetUid(null); // Zielbenutzer beim Abmelden löschen
+            setInitialChatTargetProfileId(null); // Neu
+            setInitialChatTargetProfileName(null); // Neu
+            setInitialChatTargetProfileType(null); // Neu
         } catch (error) {
             console.error("Abmeldefehler:", error);
             setError("Abmeldung fehlgeschlagen: " + error.message);
@@ -813,6 +863,9 @@ function App() {
             setShowSeekerForm(true);
             setCurrentView('home'); // Zurück zur Startansicht, wenn der Admin-Modus deaktiviert ist
             setInitialChatTargetUid(null); // Zielbenutzer löschen
+            setInitialChatTargetProfileId(null); // Neu
+            setInitialChatTargetProfileName(null); // Neu
+            setInitialChatTargetProfileType(null); // Neu
         }
     }, [adminMode]);
 
@@ -1114,7 +1167,8 @@ function App() {
     };
 
     // Funktion zum Navigieren zum Chat mit einem bestimmten Benutzer (dessen Profil-UID)
-    const handleStartChat = useCallback((targetUserUid) => {
+    // Jetzt mit zusätzlichen Parametern für den Kontext des Profils
+    const handleStartChat = useCallback((targetUserUid, targetProfileId, targetProfileName, typeOfTargetProfile) => {
         if (!userId) {
             setError("Bitte melden Sie sich an, um einen Chat zu starten.");
             return;
@@ -1124,10 +1178,14 @@ function App() {
             setTimeout(() => setError(''), 3000); // Fehler nach 3 Sekunden löschen
             return;
         }
-        console.log("App: Calling handleStartChat with targetUserUid:", targetUserUid);
-        setInitialChatTargetUid(targetUserUid); // Ziel-UID festlegen
+        console.log("App: Calling handleStartChat with targetUserUid:", targetUserUid, "Target Profile ID:", targetProfileId, "Target Profile Name:", targetProfileName, "Type:", typeOfTargetProfile);
+        // Setzen der initialen Chat-Ziel-Informationen
+        setInitialChatTargetUid(targetUserUid);
+        setInitialChatTargetProfileId(targetProfileId); // Neu
+        setInitialChatTargetProfileName(targetProfileName); // Neu
+        setInitialChatTargetProfileType(typeOfTargetProfile); // Neu
         setCurrentView('chats'); // Zur Chat-Ansicht wechseln
-    }, [userId]);
+    }, [userId]); // Abhängigkeiten aktualisiert
 
     // Vereinheitlichte Profilformular-Komponente
     const ProfileForm = ({ onSubmit, type }) => {
@@ -1697,7 +1755,7 @@ function App() {
             {userId && !adminMode && ( // Navigation nur anzeigen, wenn angemeldet und nicht im Admin-Modus
                 <div className="w-full max-w-6xl mx-auto flex justify-center space-x-4 mb-8">
                     <button
-                        onClick={() => { setCurrentView('home'); setInitialChatTargetUid(null); }}
+                        onClick={() => { setCurrentView('home'); setInitialChatTargetUid(null); setInitialChatTargetProfileId(null); setInitialChatTargetProfileName(null); setInitialChatTargetProfileType(null); }}
                         className={`px-6 py-3 rounded-xl text-lg font-semibold shadow-md transition-all duration-300 transform hover:scale-105 ${
                             currentView === 'home' ? 'bg-white text-[#3fd5c1]' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
@@ -1705,7 +1763,7 @@ function App() {
                         <HomeIcon className="inline-block mr-2" size={20} /> Startseite
                     </button>
                     <button
-                        onClick={() => { setCurrentView('chats'); setInitialChatTargetUid(null); }} // Beim Klicken auf 'Chats' targetUid zurücksetzen
+                        onClick={() => { setCurrentView('chats'); setInitialChatTargetUid(null); setInitialChatTargetProfileId(null); setInitialChatTargetProfileName(null); setInitialChatTargetProfileType(null); }} // Beim Klicken auf 'Chats' targetUid zurücksetzen
                         className={`px-6 py-3 rounded-xl text-lg font-semibold shadow-md transition-all duration-300 transform hover:scale-105 ${
                             currentView === 'chats' ? 'bg-white text-[#3fd5c1]' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
@@ -1760,7 +1818,7 @@ function App() {
                                                                         <button
                                                                             onClick={() => {
                                                                                 console.log("App: Clicked chat from Seeker Matches. Target UID:", roomMatch.room.createdBy, "Room Name:", roomMatch.room.name);
-                                                                                handleStartChat(roomMatch.room.createdBy);
+                                                                                handleStartChat(roomMatch.room.createdBy, roomMatch.room.id, roomMatch.room.name, 'room');
                                                                             }}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
                                                                             title="Chat mit Zimmerersteller starten"
@@ -1770,7 +1828,7 @@ function App() {
                                                                     )}
                                                                 </div>
                                                                 <p className="text-sm md:text-base text-gray-600 mt-1 mb-0.5 leading-tight"><span className="font-medium">Gewünschtes Alter:</span> {roomMatch.room.minAge}-{roomMatch.room.maxAge}, <span className="font-medium">Geschlechtspräferenz:</span> {capitalizeFirstLetter(roomMatch.room.genderPreference)}</p>
-                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Miete:</span> {roomMatch.room.rent}€, <span className="font-medium">Zimmertyp:</span> {capitalizeFirstLetter(roomMatch.room.roomType)}</p>
+                                                                <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Miete:</span> {roomMatch.room.rent}€, <span className="font-medium">Zimmertyp:</span> {capitalizeFirstFirstLetter(roomMatch.room.roomType)}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Haustiere erlaubt:</span> {capitalizeFirstLetter(roomMatch.room.petsAllowed === 'yes' ? 'Ja' : 'Nein')}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Interessen der Bewohner:</span> {Array.isArray(roomMatch.room.interests) ? roomMatch.room.interests.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.interests || 'N/A')}</p>
                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(roomMatch.room.personalityTraits) ? roomMatch.room.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(roomMatch.room.personalityTraits || 'N/A')}</p>
@@ -1825,7 +1883,7 @@ function App() {
                                                                         <button
                                                                             onClick={() => {
                                                                                 console.log("App: Clicked chat from Room Matches. Target UID:", seekerMatch.searcher.createdBy, "Seeker Name:", seekerMatch.searcher.name);
-                                                                                handleStartChat(seekerMatch.searcher.createdBy);
+                                                                                handleStartChat(seekerMatch.searcher.createdBy, seekerMatch.searcher.id, seekerMatch.searcher.name, 'seeker');
                                                                             }}
                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
                                                                             title="Chat mit Suchendem starten"
@@ -2013,7 +2071,7 @@ function App() {
                                                                                         <button
                                                                                             onClick={() => {
                                                                                                 console.log("App: Clicked chat from Seeker Matches. Target UID:", roomMatch.room.createdBy, "Room Name:", roomMatch.room.name);
-                                                                                                handleStartChat(roomMatch.room.createdBy);
+                                                                                                handleStartChat(roomMatch.room.createdBy, roomMatch.room.id, roomMatch.room.name, 'room');
                                                                                             }}
                                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
                                                                                             title="Chat mit Zimmerersteller starten"
@@ -2093,7 +2151,7 @@ function App() {
                                                                                         <button
                                                                                             onClick={() => {
                                                                                                 console.log("App: Clicked chat from Room Matches. Target UID:", seekerMatch.searcher.createdBy, "Seeker Name:", seekerMatch.searcher.name);
-                                                                                                handleStartChat(seekerMatch.searcher.createdBy);
+                                                                                                handleStartChat(seekerMatch.searcher.createdBy, seekerMatch.searcher.id, seekerMatch.searcher.name, 'seeker');
                                                                                             }}
                                                                                             className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
                                                                                             title="Chat mit Suchendem starten"
@@ -2107,12 +2165,12 @@ function App() {
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Persönlichkeit:</span> {Array.isArray(seekerMatch.searcher.personalityTraits) ? seekerMatch.searcher.personalityTraits.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.personalityTraits || 'N/A')}</p>
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-0.5 leading-tight"><span className="font-medium">Zimmerpräferenzen:</span> {Array.isArray(seekerMatch.searcher.communalLivingPreferences) ? seekerMatch.searcher.communalLivingPreferences.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.communalLivingPreferences || 'N/A')}</p>
                                                                                 <p className="text-sm md:text-base text-gray-600 mb-1 leading-tight"><span className="font-medium">Werte:</span> {Array.isArray(seekerMatch.searcher.values) ? seekerMatch.searcher.values.map(capitalizeFirstLetter).join(', ') : capitalizeFirstLetter(seekerMatch.searcher.values || 'N/A')}</p>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))
-                                                                ) : (
-                                                                    <p className="text-center text-gray-600 text-sm lg:text-base">Keine passenden Suchenden für dieses Zimmerprofil.</p>
-                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-center text-gray-600 text-sm lg:text-base">Keine passenden Suchenden für dieses Zimmerprofil.</p>
+                                                )}
                                                             </div>
                                                         </div>
                                                     );
@@ -2139,6 +2197,12 @@ function App() {
                                 allRoomProfilesGlobal={allRoomProfilesGlobal}
                                 initialChatTargetUid={initialChatTargetUid}
                                 setInitialChatTargetUid={setInitialChatTargetUid} // Den Setter weitergeben
+                                initialChatTargetProfileId={initialChatTargetProfileId} // Neu
+                                setInitialChatTargetProfileId={setInitialChatTargetProfileId} // Neu
+                                initialChatTargetProfileName={initialChatTargetProfileName} // Neu
+                                setInitialChatTargetProfileName={setInitialChatTargetProfileName} // Neu
+                                initialChatTargetProfileType={initialChatTargetProfileType} // Neu
+                                setInitialChatTargetProfileType={setInitialChatTargetProfileType} // Neu
                             />
                         )}
                     </div>

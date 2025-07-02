@@ -135,7 +135,7 @@ const calculateMatchScore = (seeker, room) => {
     const seekerMaxRent = safeParseInt(seeker.maxRent);
     const roomRent = safeParseInt(room?.rent);
     let rentScore = 0;
-    let rentDescription = `Mietübereinstimmung (Max: ${seeker.maxRent || 'N/A'}€, Zimmer: ${room?.rent || 'N/A'}€)`;
+    let rentDescription = `Mietübereinstimmung (Max: ${seekerMaxRent || 'N/A'}€, Zimmer: ${roomRent || 'N/A'}€)`;
 
     if (seekerMaxRent > 0 && roomRent > 0) {
         if (seekerMaxRent >= roomRent) {
@@ -507,10 +507,11 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                 const chatsRef = collection(db, 'chats');
                 const participantUids = getSortedParticipantsUids(currentUserUid, initialChatTargetUid);
 
-                // Nach bestehendem Chat abfragen, bei dem das participantsUids-Array exakt übereinstimmt
+                // Nach bestehendem Chat abfragen, bei dem das participantsUids-Array UND die contextProfileId exakt übereinstimmen
                 const q = query(
                     chatsRef,
-                    where('participantsUids', '==', participantUids)
+                    where('participantsUids', '==', participantUids),
+                    where('contextProfileId', '==', initialChatTargetProfileId) // NEU: Bedingung für die Profil-ID
                 );
 
                 const querySnapshot = await getDocs(q);
@@ -533,6 +534,7 @@ const ChatPage = ({ db, currentUserUid, currentUserName, allSearcherProfilesGlob
                             type: initialChatTargetProfileType,
                             initiatorUid: currentUserUid // Wer den Chat initiiert hat
                         },
+                        contextProfileId: initialChatTargetProfileId, // NEU: Feld für die Abfrage
                         lastMessage: {
                             senderId: currentUserUid,
                             text: `Ich bin an Ihrem ${initialChatTargetProfileType === 'room' ? 'Zimmerangebot' : 'Suchprofil'} '${initialChatTargetProfileName}' interessiert.`,
@@ -2188,7 +2190,7 @@ function App() {
                                 )}
                             </>
                         ) : (
-                            // ChatPage rendern, wenn currentView 'chats' ist!
+                            // ChatPage rendern, wenn currentView 'chats' ist
                             <ChatPage
                                 db={db}
                                 currentUserUid={userId}

@@ -709,6 +709,7 @@ function App() {
                     setAdminMode(user.uid === ADMIN_UID);
 
                     // NEU: Benutzer-Displaynamen in Firestore speichern/aktualisieren
+                    // Dies sollte immer passieren, wenn sich ein Benutzer anmeldet
                     try {
                         await setDoc(doc(dbInstance, 'users', user.uid), {
                             displayName: displayName,
@@ -728,22 +729,8 @@ function App() {
                 setLoading(false); // Laden beendet
             });
 
-            // NEU: Listener für alle Benutzer-Displaynamen
-            const usersCollectionRef = collection(dbInstance, 'users');
-            const unsubscribeUsers = onSnapshot(usersCollectionRef, (snapshot) => {
-                const namesMap = {};
-                snapshot.docs.forEach(doc => {
-                    namesMap[doc.id] = doc.data().displayName;
-                });
-                setAllUserDisplayNamesMap(namesMap);
-            }, (err) => {
-                console.error("Fehler beim Abrufen der Benutzernamen:", err);
-            });
-
-
             return () => {
                 unsubscribeAuth();
-                unsubscribeUsers(); // Cleanup für den neuen Listener
             };
         } catch (initError) {
             console.error("Fehler bei der Firebase-Initialisierung:", initError);
@@ -751,6 +738,27 @@ function App() {
             setLoading(false);
         }
     }, []); // Leeres Abhängigkeits-Array, da dies nur einmal beim Laden der App ausgeführt werden soll
+
+    // NEU: Separater useEffect für den Listener der Benutzernamen-Map
+    useEffect(() => {
+        if (!db) return; // Warten, bis die Firestore-Instanz verfügbar ist
+
+        const usersCollectionRef = collection(db, 'users');
+        const unsubscribeUsers = onSnapshot(usersCollectionRef, (snapshot) => {
+            const namesMap = {};
+            snapshot.docs.forEach(doc => {
+                namesMap[doc.id] = doc.data().displayName;
+            });
+            setAllUserDisplayNamesMap(namesMap);
+            console.log("allUserDisplayNamesMap aktualisiert:", namesMap); // Debugging-Ausgabe
+        }, (err) => {
+            console.error("Fehler beim Abrufen der Benutzernamen:", err);
+            // Optional: Fehlerbehandlung, z.B. setError('Fehler beim Laden der Benutzernamen.');
+        });
+
+        return () => unsubscribeUsers(); // Cleanup-Funktion für den Listener
+    }, [db]); // Abhängigkeit von 'db'
+
 
     // Effekt zum Scrollen zu einem bestimmten Profil, nachdem es hinzugefügt/gerendert wurde
     useEffect(() => {

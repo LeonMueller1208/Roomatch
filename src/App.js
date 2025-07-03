@@ -327,6 +327,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
     const [newMessage, setNewMessage] = useState('');
     const [chatInitialContext, setChatInitialContext] = useState(null); // NEW: State for initial chat context
     const messagesEndRef = useRef(null); // Ref for scrolling down
+    const [isSending, setIsSending] = useState(false); // State for sending feedback
 
     // Fetch messages for the selected chat
     useEffect(() => {
@@ -368,8 +369,9 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
     }, [messages]);
 
     const handleSendMessage = async () => {
-        if (newMessage.trim() === '' || !db || !selectedChatId || !currentUserUid) return;
+        if (newMessage.trim() === '' || !db || !selectedChatId || !currentUserUid || isSending) return;
 
+        setIsSending(true); // Set sending state to true
         try {
             const messagesRef = collection(db, 'chats', selectedChatId, 'messages');
             await addDoc(messagesRef, {
@@ -393,6 +395,8 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
         } catch (error) {
             console.error("Error sending message:", error);
             // In a real app, display an error to the user
+        } finally {
+            setIsSending(false); // Reset sending state
         }
     };
 
@@ -442,7 +446,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                 <div ref={messagesEndRef} /> {/* Dummy div for scrolling */}
             </div>
 
-            <div className="flex">
+            <div className="flex z-10"> {/* Added z-10 to ensure it's on top */}
                 <input
                     type="text"
                     value={newMessage}
@@ -454,6 +458,7 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                     }}
                     placeholder="Enter message..."
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1]"
+                    disabled={isSending} // Disable input while sending
                 />
                 <button
                     onClick={(e) => {
@@ -465,9 +470,10 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                         e.stopPropagation(); // Prevent event bubbling
                         handleSendMessage();
                     }}
-                    className="px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition cursor-pointer select-none" // Added cursor-pointer and select-none
+                    className="px-6 py-3 sm:px-8 sm:py-4 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition cursor-pointer select-none min-w-[80px] min-h-[48px] flex items-center justify-center" // Increased padding, min-width/height
+                    disabled={isSending} // Disable button while sending
                 >
-                    Send
+                    {isSending ? 'Sending...' : 'Send'} {/* Visual feedback */}
                 </button>
             </div>
         </div>
@@ -2153,7 +2159,7 @@ function App() {
                                                 {myRoomProfiles.map(profile => {
                                                     const profileMatches = reverseMatches.find(m => m.room.id === profile.id);
                                                     return (
-                                                        <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:shadow-xl mb-6 sm:mb-8">
+                                                        <div key={profile.id} id={`profile-${profile.id}`} className="bg-[#fff8f0] p-6 sm:p-8 rounded-xl shadow-lg border border-[#fecd82] transform transition-all duration-300 hover:scale-[1.005] hover:hover:shadow-xl mb-6 sm:mb-8">
                                                             {/* Own Room Profile Details */}
                                                             <h3 className="font-bold text-[#333333] text-base md:text-lg mb-3 sm:mb-4 flex items-center">
                                                                 <HomeIcon size={20} className="mr-2 sm:mr-3 text-[#cc8a2f]" /> Your Room Profile: <span className="font-extrabold ml-1 sm:ml-2">{profile.name}</span>

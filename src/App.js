@@ -457,6 +457,10 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                 />
                 <button
                     onClick={handleSendMessage}
+                    onTouchEnd={(e) => { // Added onTouchEnd for better mobile compatibility
+                        e.preventDefault(); // Prevent default to avoid potential double-firing or touch issues
+                        handleSendMessage();
+                    }}
                     className="px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition"
                 >
                     Send

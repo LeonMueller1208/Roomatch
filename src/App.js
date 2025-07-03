@@ -456,12 +456,16 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1]"
                 />
                 <button
-                    onClick={handleSendMessage}
-                    onTouchEnd={(e) => { // Added onTouchEnd for better mobile compatibility
-                        e.preventDefault(); // Prevent default to avoid potential double-firing or touch issues
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent event bubbling
                         handleSendMessage();
                     }}
-                    className="px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition"
+                    onTouchEnd={(e) => {
+                        e.preventDefault(); // Prevent default to avoid potential double-firing or touch issues
+                        e.stopPropagation(); // Prevent event bubbling
+                        handleSendMessage();
+                    }}
+                    className="px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition cursor-pointer select-none" // Added cursor-pointer and select-none
                 >
                     Send
                 </button>

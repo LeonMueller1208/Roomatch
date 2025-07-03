@@ -10,7 +10,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Konfiguration
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
+    apiKey: "AIzaSyACGoSxD0_UZW06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebaseapp.com",
@@ -1834,7 +1834,7 @@ function App() {
                                                                     </div>
                                                                     <button
                                                                         onClick={() => setSelectedMatchDetails({ seeker: searcherMatch.searcher, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
-                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                        className="ml-2 sm:ml-3 p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                         title="Show Match Details"
                                                                     >
                                                                         <Info size={16} />
@@ -1845,7 +1845,7 @@ function App() {
                                                                                 console.log("App: Clicked chat from Seeker Matches. Target UID:", roomMatch.room.createdBy, "Room Name:", roomMatch.room.name);
                                                                                 handleStartChat(roomMatch.room.createdBy, roomMatch.room.id, roomMatch.room.name, 'room');
                                                                             }}
-                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
+                                                                            className="ml-2 sm:ml-3 p-2 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                             title="Start chat with Room Creator"
                                                                         >
                                                                             <MessageSquareText size={16} />
@@ -1899,7 +1899,7 @@ function App() {
                                                                     </div>
                                                                     <button
                                                                         onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: roomMatch.room, matchDetails: seekerMatch.fullMatchResult })}
-                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                        className="ml-2 sm:ml-3 p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                         title="Show Match Details"
                                                                     >
                                                                         <Info size={16} />
@@ -1910,7 +1910,7 @@ function App() {
                                                                                 console.log("App: Clicked chat from Room Matches. Target UID:", seekerMatch.searcher.createdBy, "Seeker Name:", seekerMatch.searcher.name);
                                                                                 handleStartChat(seekerMatch.searcher.createdBy, seekerMatch.searcher.id, seekerMatch.searcher.name, 'seeker');
                                                                             }}
-                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                            className="ml-2 sm:ml-3 p-2 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                             title="Start chat with Seeker"
                                                                         >
                                                                             <MessageSquareText size={16} />
@@ -2087,7 +2087,7 @@ function App() {
                                                                                     </div>
                                                                                     <button
                                                                                         onClick={() => setSelectedMatchDetails({ seeker: profile, room: roomMatch.room, matchDetails: roomMatch.fullMatchResult })}
-                                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                                        className="ml-2 sm:ml-3 p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                                         title="Show Match Details"
                                                                                     >
                                                                                         <Info size={16} />
@@ -2098,7 +2098,7 @@ function App() {
                                                                                                 console.log("App: Clicked chat from Seeker Matches. Target UID:", roomMatch.room.createdBy, "Room Name:", roomMatch.room.name);
                                                                                                 handleStartChat(roomMatch.room.createdBy, roomMatch.room.id, roomMatch.room.name, 'room');
                                                                                             }}
-                                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition"
+                                                                                            className="ml-2 sm:ml-3 p-2 rounded-full bg-[#9adfaa] text-white hover:bg-[#85c292] transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                                             title="Start chat with Room Creator"
                                                                                         >
                                                                                             <MessageSquareText size={16} />
@@ -2167,7 +2167,7 @@ function App() {
                                                                                     </div>
                                                                                     <button
                                                                                         onClick={() => setSelectedMatchDetails({ seeker: seekerMatch.searcher, room: profile, matchDetails: seekerMatch.fullMatchResult })}
-                                                                                        className="ml-2 sm:ml-3 p-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                                                                                        className="ml-2 sm:ml-3 p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                                         title="Show Match Details"
                                                                                     >
                                                                                         <Info size={16} />
@@ -2178,7 +2178,7 @@ function App() {
                                                                                                 console.log("App: Clicked chat from Room Matches. Target UID:", seekerMatch.searcher.createdBy, "Seeker Name:", seekerMatch.searcher.name);
                                                                                                 handleStartChat(seekerMatch.searcher.createdBy, seekerMatch.searcher.id, seekerMatch.searcher.name, 'seeker');
                                                                                             }}
-                                                                                            className="ml-2 sm:ml-3 p-1 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition"
+                                                                                            className="ml-2 sm:ml-3 p-2 rounded-full bg-[#fecd82] text-white hover:bg-[#e6b772] transition min-w-[44px] min-h-[44px] flex items-center justify-center"
                                                                                             title="Start chat with Seeker"
                                                                                         >
                                                                                             <MessageSquareText size={16} />

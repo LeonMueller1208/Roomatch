@@ -10,7 +10,7 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Konfiguration
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
+    apiKey: "AIzaSyACGoSxD0_UZW06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
     storageBucket: "mvp-roomatch.firebasestorage.app",
@@ -25,7 +25,7 @@ const allInterests = ['Cooking', 'Movies', 'Music', 'Games', 'Nature', 'Sports',
 const allCommunalLivingPreferences = ['very tidy', 'rather relaxed', 'prefers weekly cleaning schedules', 'spontaneous tidying', 'often cook together', 'sometimes cook together', 'rarely cook together'];
 const allWGValues = ['sustainability important', 'open communication preferred', 'respect for privacy', 'shared activities important', 'prefers quiet home', 'prefers lively home', 'politically engaged', 'culturally interested'];
 
-// **WICHTIG:** ERSETZEN SIE DIESEN WERT GENAU DURCH IHRE TATSÄCHTLICHE ADMIN-UID, DIE NACH ERFOLGREICHEM GOOGLE-LOGIN IN DER APP ANGEZEIGT WIRD!
+// **WICHTIG:** ERSETZEN SIE DIESEN WERT GENAU DURCH IHRE TATSÄCHLICHE ADMIN-UID, DIE NACH ERFOLGREICHEM GOOGLE-LOGIN IN DER APP ANGEZEIGT WIRD!
 const ADMIN_UID = "hFt4BLSEg0UYAAUSfdf404mfw5v2"; // Platzhalter: Bitte geben Sie hier Ihre Admin-ID ein!
 
 // Hilfsfunktion zum sicheren Parsen von Zahlen
@@ -454,11 +454,11 @@ const ChatConversation = ({ selectedChatId, onCloseChat, currentUserUid, otherUs
                         }
                     }}
                     placeholder="Enter message..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1]"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-[#3fd5c1]"
                 />
                 <button
                     onClick={handleSendMessage}
-                    className="px-6 py-2 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition"
+                    className="px-6 py-3 bg-[#3fd5c1] text-white font-bold rounded-r-lg shadow-md hover:bg-[#32c0ae] transition"
                 >
                     Send
                 </button>
@@ -1066,8 +1066,8 @@ function App() {
     }, [db, userId, isAuthReady, adminMode, getCollectionRef]); // userId und adminMode zu Abhängigkeiten hinzugefügt
 
     useEffect(() => {
-        setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgProfilesData]);
-    }, [newRoomProfilesData, oldWgProfilesData]);
+        setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgsProfilesData]);
+    }, [newRoomProfilesData, oldWgsProfilesData]);
 
     // Übereinstimmungsberechnung für beide Richtungen
     useEffect(() => {
@@ -2247,4 +2247,3 @@ function App() {
 }
 
 export default App;
-

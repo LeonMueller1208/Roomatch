@@ -10,10 +10,10 @@ import { Search, Users, Heart, Trash2, User, Home as HomeIcon, CheckCircle, XCir
 
 // Firebase Konfiguration
 const firebaseConfig = {
-    apiKey: "AIzaSyACGoSxD0_UZW06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
+    apiKey: "AIzaSyACGoSxD0_UZhWg06gzZjaifBn3sI06YGg", // <--- API KEY HIER AKTUALISIERT!
     authDomain: "mvp-roomatch.firebaseapp.com",
     projectId: "mvp-roomatch",
-    storageBucket: "mvp-roomatch.firebasestorage.app",
+    storageBucket: "mvp-roomatch.firebaseapp.com",
     messagingSenderId: "190918526277",
     appId: "1:190918526277:web:268e07e2f1f326b8e86a2c",
     measurementId: "G-5JPWLD0ZC"
@@ -1066,8 +1066,8 @@ function App() {
     }, [db, userId, isAuthReady, adminMode, getCollectionRef]); // userId und adminMode zu Abhängigkeiten hinzugefügt
 
     useEffect(() => {
-        setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgsProfilesData]);
-    }, [newRoomProfilesData, oldWgsProfilesData]);
+        setAllRoomProfilesGlobal([...newRoomProfilesData, ...oldWgProfilesData]);
+    }, [newRoomProfilesData, oldWgProfilesData]);
 
     // Übereinstimmungsberechnung für beide Richtungen
     useEffect(() => {
